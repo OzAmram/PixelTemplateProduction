@@ -1,5 +1,9 @@
 
 /* *******************************************************************   
+ * Original Author: Morris Swartz
+ * Translator to C++: Oz Amram
+ *
+ *
  * This program reads and aanalyzes 21x13 pixel summary files.     *   
  * Create cluster length templates for x-/y-fitting procedure      *
  * Implement 2-pass appproach (3/6/06)                             *
@@ -63,6 +67,8 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
     int nxntry[9], nyntry[9], nxytry[4][4], jy[Ny];
 
     //declare larger arrays dynamically to avoid stack overflow
+    //should probably make some of these actually 2d or 3d arrays rather than
+    //doing the index gymnastics currently in the code
 
     double *xproj = new double[Nx*nevents];
     double *yproj = new double[Ny*nevents];
@@ -80,8 +86,6 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
     float spxmax;
     bool storep = false;
 
-    /*
-    */
 
 
     //size of pixel (in pixelav coordinates)
@@ -152,8 +156,6 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         sscanf(buffer, "%f %f %f", &xsize, &ysize, &zsize);
         printf("xsize = %f,  ysize = %f, zsize = %f \n", xsize, ysize, zsize);
 
-        float half_xsize = xsize/2.0;
-        float half_ysize = ysize/2.0;
 
         float z_center = zsize/2.0;
 
@@ -195,7 +197,7 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
 
 
             //  Pixelav gives hit position at face of pixel, translate to
-            //  center of the pixel
+            //  3d center of the pixel
             //  propagate from edge to center of pixel
             float xhit = x1 + (z_center - z1) * cosx/cosz;
             float yhit = y1 + (z_center - z1) * cosy/cosz;
@@ -208,7 +210,7 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
             iproj[n] = int(xhit/xsize * 8. + 4.5);
             jproj[n] = int(yhit/ysize * 8. + 4.5);
 
-            //divide into 2d bins for max charge
+            //divide into 2d bins (4x4) for max charge
             int i2dn  = int(xhit/xsize*4 + 2.0);
             //restrict from 0 to 3;
             i2dn = std::min(3, std::max(i2dn, 0));
@@ -295,6 +297,9 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         for(n=0; n<nmc; n++){
 
             //Do single pixel analysis here before charge cut
+            
+            //Analyze what happens with single pixels to get rough lorentz
+            //drift information
             int mx =0;
             int ix=0;
             for(int i=0; i<Nx; i++){
@@ -306,7 +311,6 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
 
             if(mx == 1){
                 float xrec = xsize * (ix - NHx);
-                //why no abs?
                 float dx = xrec - xh[n];
                 mx1 +=1;
                 sx1 += dx;
@@ -344,6 +348,9 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
             //We make templates with only events with less than average charge
             //to avoid long tails (charge is truncated in reco anyway)
             if(qsum[n] < qavg){
+
+
+                //fill 2d 4x4 2d template for average charge determination
                 int k = i2d[n];
                 int l = j2d[n];
                 nxytry[k][l] +=1;
@@ -355,14 +362,16 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
                     }
                 }
 
+                //fill 1d projection templates, x first
+                
                 //hit position bin
                 k = iproj[n];
 
-                //renorm distributions and print them
                 if(k < 0 || k > 8){
                     printf("Problem with event %i, index (k) is =%i \n", n, k);
                 }
                 else if(k==0 || k==8){
+                    //these bins always get filled together
                     nxntry[0] += 1;
                     nxntry[8] +=1;
                 }
@@ -372,6 +381,7 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
                 for(int i=0; i<Nx; i++){
                     xtemp[i][k] += xproj[i*nevents+n];
                     xtemp2[i][k] += xproj[i*nevents+n]*xproj[i*nevents+n];
+                    
                     //0th bin of new pixel same as last bin of previous pixel
                     if(k==0 && i>0){
                         xtemp[i][8] += xproj[(i-1)*nevents+n];
@@ -383,6 +393,9 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
                     }
                 }
 
+                //do y projections
+                
+                //y hit position bin
                 l = jproj[n];
 
 
@@ -399,6 +412,8 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
                 for(int j=0; j<Ny; j++){
                     ytemp[j][l] += yproj[j*nevents+n];
                     ytemp2[j][l] += yproj[j*nevents+n]*yproj[j*nevents+n];
+                    
+                    //0th bin of new pixel same as last bin of previous pixel
                     if(l==0 && j>0){
 
                         ytemp[j][8] += yproj[(j-1)*nevents+n];
@@ -409,15 +424,19 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
                         ytemp2[j-1][0] += yproj[j*nevents+n] * yproj[j*nevents+n];
                     }
                 }
-            } //end if over less than avg pixel charge
-        }//loop over events
+            } 
+        }//end loop over events
+
+        /*
+         * print number of template entries (debug)
         for(int i=0; i<9; i++){
             printf("%i ", nxntry[i]);
         }
         printf("\n");
+        */
 
 
-        //find maximum average pixel signal
+        //find maximum average pixel signal in 4x4 grid
         float pixmax = 0.;
 
         for(int i =0; i<Nx; i++){
@@ -438,6 +457,8 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         }
         printf("Number of 1 x-clusters %i, dx %7.2f +/- %7.2f \n", mx1, sx1, sx12);
 
+        //save single pixel info for smallest angle run (used for lorentz drift
+        //estimate)
         if(mx1 > 10 && fabs(cotb) < cotbmn){
             lorxw1 = sx1;
             dx1sig = sx12;
@@ -452,7 +473,8 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         }
         printf("Number of 1 y-clusters %i, dy %7.2f +/- %7.2f \n", my1, sy1, sy12);
 
-        //why extra condition for y? (ymax) 
+        //save single pixel info for smallest angle run and most single
+        //clusters (used for lorentz drift estimate)
         if(my1 > 10 && fabs(cota) < cotamn && my1 > ny1max){
             loryw1 = sy1;
             dy1sig = sy12;
@@ -478,7 +500,7 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         }
 
 
-        //analyze error vs signals for entry and exit sides of cluster
+        //analyze variance of charge vs charge for entry and exit sides of cluster
         char plot_title[100];
 
         //x projection fits
@@ -493,7 +515,7 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         xsignal2.push_back(0.);
         xssignal2.push_back(0.);
 
-        //add small error to intercept for stability
+        //add small error to intercept to anchor fit
         float zero_err = 1./pow(10, 0.5);
         xssignal1err.push_back(zero_err);
         xssignal2err.push_back(zero_err);
@@ -507,7 +529,6 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
                         xssignal1.push_back(sqrt(xtemp2[i][k]));
                         xssignal1err.push_back(1.);
 
-                        //why sxmax from first side only?
                         sxmax = std::max(sxmax, xtemp[i][k]);
                         ssxmax = std::max(ssxmax, sqrt(xtemp2[i][k]));
                     }
@@ -565,7 +586,7 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         //
         ROOT::Math::MinimizerOptions::SetDefaultStrategy(2);
         ROOT::Math::MinimizerOptions::SetDefaultTolerance(0.1);
-        ROOT::Math::MinimizerOptions::SetDefaultMaxFunctionCalls(2000);
+        ROOT::Math::MinimizerOptions::SetDefaultMaxFunctionCalls(10000);
 
         g_xtemp1->Fit(f_xtemp1, "VR EX0");
         g_xtemp1->Draw("AP");
@@ -588,7 +609,7 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         std::vector<float> ysignal1, yssignal1, ysignal2, yssignal2;
         std::vector<float>  yssignal1err,  yssignal2err;
 
-        //start with zeros to get better fit
+        //start with zeros to anchor fit
         ysignal1.push_back(0.);
         yssignal1.push_back(0.);
         ysignal2.push_back(0.);
@@ -600,7 +621,7 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
 
         for (int k=0; k<9; k++){
             for(int i=0; i<Ny; i++){
-                //separate two sides of cluster
+                //separate two sides of sensor
                 if(ytemp[i][k] > 20.){
                     if(i<= NHy){
                         ysignal1.push_back(ytemp[i][k]);
@@ -679,10 +700,13 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
             xpar[p][3] = f_ytemp2->GetParameter(p);
         }
 
+        /*
+        //print out charges and variances that are being fit (for debugging)
         printf("y1s \n");
         for(int i=0; i<ysignal1.size(); i++){
             printf("%.1f %.1f %.1f \n", ysignal1[i], yssignal1[i], yssignal1err[i]);
         }
+        */
             
 
 
@@ -693,6 +717,7 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         sprintf(file_out, "ztemp_%i.txt", iFile);
         FILE *ztemp_file = fopen(file_out, "w+");
         fprintf(ztemp_file, "%9.6f %9.6f %9.6f \n", cosx, cosy, cosz);
+
         if(clslnx > (0.8*xsize) || clslny > (0.4*ysize)){
             fprintf(ztemp_file, "%8.1f %8.1f %8.1f \n", qavg, sxmax, pixmax);
 
@@ -707,24 +732,23 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
             storep = true;
         }
         // If the cluster length is smaller than a pixel, there aren't enough points for a reliable
-        // fit.  Use the last (1 pixel length cluster) params instead for the z-template
+        // fit.  Use the one from the previous file
         else if(storep){
             fprintf(ztemp_file, "%8.1f %8.1f %8.1f \n", qavg, spxmax, pixmax);
             for(int k=0; k <2; k++){
                 for(int p=0; p<nprm; p++){
-                    fprintf(ztemp_file,"%15.8E ", xpar[p][k]);
-                    spar[p][k] = xpar[p][k];
+                    fprintf(ztemp_file,"%15.8E ", spar[p][k]);
                 }
                 fprintf(ztemp_file, "\n");
             }
 
         }
+        //we are the first file so there are no previous to reference
         else{
             fprintf(ztemp_file, "%8.1f %8.1f %8.1f \n", qavg, sxmax, pixmax);
             for(int k=0; k <2; k++){
                 for(int p=0; p<nprm; p++){
                     fprintf(ztemp_file, "%15.8E ", xpar[p][k]);
-                    spar[p][k] = xpar[p][k];
                 }
                 fprintf(ztemp_file, "\n");
             }
@@ -752,7 +776,6 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         for(int k=0; k <2; k++){
             for(int p=0; p<nprm; p++){
                 fprintf(ptemp_file, "%15.8E ", xpar[p][k]);
-                spar[p][k] = xpar[p][k];
             }
             fprintf(ptemp_file, "\n");
         }
