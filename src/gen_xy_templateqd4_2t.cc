@@ -26,16 +26,20 @@
 #include <cstdlib>
 #include <cmath>
 #include <cstring>
-#include <TGraph.h>
+#include <TGraphErrors.h>
 #include <TCanvas.h>
 #include <TF1.h>
+#include <TMath.h>
+#include <TROOT.h>
+#include "Math/MinimizerOptions.h"
 
 
-Double_t fit_fn(Double_t *x, Double_t *par){
+Double_t fit_fn(Double_t *xs, Double_t *par){
     //sqrt of 4th order polynomial, avoid negative
-    Float_t xx = x[0];
-    Double_t arg = par[0] + par[1]*xx + par[2]*xx*xx + par[3] * xx*xx*xx + par[4]*xx*xx*xx*xx;
-    if(arg > 0.) return TMath::Sqrt(arg);
+    Float_t x = xs[0];
+    Double_t arg = par[0] + par[1]*x + par[2]*x*x + par[3] * x*x*x + par[4]*x*x*x*x;
+    Double_t abs_arg = TMath::Abs(arg);
+    if(abs_arg > 0.) return (arg/abs_arg)* TMath::Sqrt(abs_arg);
     else return 0.;
 }
 
@@ -337,6 +341,8 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
             }
 
             //count number of pixels with less than average charge
+            //We make templates with only events with less than average charge
+            //to avoid long tails (charge is truncated in reco anyway)
             if(qsum[n] < qavg){
                 int k = i2d[n];
                 int l = j2d[n];
@@ -479,12 +485,18 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         double sxmax = 0.;
         double ssxmax = 0.;
         std::vector<float> xsignal1, xssignal1, xsignal2, xssignal2;
+        std::vector<float> xssignal1err, xssignal2err;
 
         //start with zeros to get better fit
         xsignal1.push_back(0.);
         xssignal1.push_back(0.);
         xsignal2.push_back(0.);
         xssignal2.push_back(0.);
+
+        //add small error to intercept for stability
+        float zero_err = 1./pow(10, 0.5);
+        xssignal1err.push_back(zero_err);
+        xssignal2err.push_back(zero_err);
 
         for (int k=0; k<9; k++){
             for(int i=0; i<Nx; i++){
@@ -493,6 +505,7 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
                     if(i<= NHx){
                         xsignal1.push_back(xtemp[i][k]);
                         xssignal1.push_back(sqrt(xtemp2[i][k]));
+                        xssignal1err.push_back(1.);
 
                         //why sxmax from first side only?
                         sxmax = std::max(sxmax, xtemp[i][k]);
@@ -501,6 +514,7 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
                     if(i>=NHx){
                         xsignal2.push_back(xtemp[i][k]);
                         xssignal2.push_back(sqrt(xtemp2[i][k]));
+                        xssignal2err.push_back(1.);
                     }
 
                 }
@@ -510,20 +524,21 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
 
 
 
-        TGraph *g_xtemp1 = new TGraph(xsignal1.size(), xsignal1.data(), xssignal1.data());
+        TGraphErrors *g_xtemp1 = new TGraphErrors(xsignal1.size(), xsignal1.data(), xssignal1.data(), nullptr, xssignal1err.data());
         g_xtemp1->SetTitle("X projections: Charge Variance vs. Charge");
-        TGraph *g_xtemp2 = new TGraph(xsignal2.size(), xsignal2.data(), xssignal2.data());
+        TGraphErrors *g_xtemp2 = new TGraphErrors(xsignal2.size(), xsignal2.data(), xssignal2.data(), nullptr, xssignal2err.data());
         TCanvas *c_xtemp = new TCanvas("c_xtemp", "", 800, 800);
 
+
         TF1 *f_xtemp1 = new TF1("f_xtemp1", fit_fn,
-                0.00, sxmax*1.01, nprm);
-        f_xtemp1->FixParameter(0, 0.);
+                -0.01, sxmax*1.01, nprm);
+        f_xtemp1->SetParameter(0, 0.);
         f_xtemp1->SetParameter(1, guess);
         f_xtemp1->SetParameter(2, 0.);
         f_xtemp1->SetParameter(3, 0.);
         f_xtemp1->FixParameter(4, 0.);
 
-        f_xtemp1->SetParError(0, 0.);
+        f_xtemp1->SetParError(0, 1.);
         f_xtemp1->SetParError(1, 1.);
         f_xtemp1->SetParError(2, 1.);
         f_xtemp1->SetParError(3, 1.);
@@ -531,8 +546,8 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         f_xtemp1->SetLineColor(kRed);
 
         TF1 *f_xtemp2 = new TF1("f_xtemp2", fit_fn,
-                0.00, sxmax*1.01, nprm);
-        f_xtemp2->FixParameter(0, 0.);
+                -0.01, sxmax*1.01, nprm);
+        f_xtemp2->SetParameter(0, 0.);
         f_xtemp2->SetParameter(1, guess);
         f_xtemp2->SetParameter(2, 0.);
         f_xtemp2->SetParameter(3, 0.);
@@ -545,13 +560,20 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         f_xtemp2->SetParError(4, 0.);
         f_xtemp2->SetLineColor(kBlue);
 
-        g_xtemp1->Fit(f_xtemp1, "VWR");
+
+        //set minuit options for all fits
+        //
+        ROOT::Math::MinimizerOptions::SetDefaultStrategy(2);
+        ROOT::Math::MinimizerOptions::SetDefaultTolerance(0.1);
+        ROOT::Math::MinimizerOptions::SetDefaultMaxFunctionCalls(2000);
+
+        g_xtemp1->Fit(f_xtemp1, "VR EX0");
         g_xtemp1->Draw("AP");
         g_xtemp1->SetMarkerSize(1.4);
         g_xtemp1->SetMarkerStyle(20);
 
 
-        g_xtemp2->Fit(f_xtemp2, "VWR");
+        g_xtemp2->Fit(f_xtemp2, "VR EX0");
         g_xtemp2->Draw("P same");
         g_xtemp2->SetMarkerSize(1.4);
         g_xtemp2->SetMarkerStyle(21);
@@ -564,6 +586,7 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         double symax = 0.;
         double ssymax = 0.;
         std::vector<float> ysignal1, yssignal1, ysignal2, yssignal2;
+        std::vector<float>  yssignal1err,  yssignal2err;
 
         //start with zeros to get better fit
         ysignal1.push_back(0.);
@@ -571,6 +594,9 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         ysignal2.push_back(0.);
         yssignal2.push_back(0.);
 
+        //add small error to intercept for stability
+        yssignal1err.push_back(zero_err);
+        yssignal2err.push_back(zero_err);
 
         for (int k=0; k<9; k++){
             for(int i=0; i<Ny; i++){
@@ -579,6 +605,7 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
                     if(i<= NHy){
                         ysignal1.push_back(ytemp[i][k]);
                         yssignal1.push_back(sqrt(ytemp2[i][k]));
+                        yssignal1err.push_back(1.);
 
                         symax = std::max(symax, ytemp[i][k]);
                         ssymax = std::max(ssymax, sqrt(ytemp2[i][k]));
@@ -586,6 +613,7 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
                     if(i>= NHy){
                         ysignal2.push_back(ytemp[i][k]);
                         yssignal2.push_back(sqrt(ytemp2[i][k]));
+                        yssignal2err.push_back(1.);
                     }
 
                 }
@@ -594,14 +622,14 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         guess = ssymax*ssymax/symax;
 
 
-        TGraph *g_ytemp1 = new TGraph(ysignal1.size(), ysignal1.data(), yssignal1.data());
+        TGraph *g_ytemp1 = new TGraphErrors(ysignal1.size(), ysignal1.data(), yssignal1.data(), nullptr, yssignal1err.data());
         g_ytemp1->SetTitle("Y projections: Charge Variance vs. Charge");
-        TGraph *g_ytemp2 = new TGraph(ysignal2.size(), ysignal2.data(), yssignal2.data());
+        TGraph *g_ytemp2 = new TGraphErrors(ysignal2.size(), ysignal2.data(), yssignal2.data(), nullptr, yssignal2err.data());
         TCanvas *c_ytemp = new TCanvas("c_ytemp", "", 800, 800);
 
         TF1 *f_ytemp1 = new TF1("f_ytemp1", fit_fn,
-                0.0, symax*1.01, nprm);
-        f_ytemp1->FixParameter(0, 0.);
+                -0.01, symax*1.01, nprm);
+        f_ytemp1->SetParameter(0, 0.);
         f_ytemp1->SetParameter(1, guess);
         f_ytemp1->SetParameter(2, 0.);
         f_ytemp1->SetParameter(3, 0.);
@@ -615,8 +643,8 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         f_ytemp1->SetLineColor(kRed);
 
         TF1 *f_ytemp2 = new TF1("f_ytemp2", fit_fn,
-                0.0, symax*1.01, nprm);
-        f_ytemp2->FixParameter(0, 0.);
+                -0.01, symax*1.01, nprm);
+        f_ytemp2->SetParameter(0, 0.);
         f_ytemp2->SetParameter(1, guess);
         f_ytemp2->SetParameter(2, 0.);
         f_ytemp2->SetParameter(3, 0.);
@@ -629,13 +657,13 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         f_ytemp2->SetParError(4, 0.);
         f_ytemp2->SetLineColor(kBlue);
 
-        g_ytemp1->Fit(f_ytemp1, "VWR");
+        g_ytemp1->Fit(f_ytemp1, "VR EX0");
         g_ytemp1->Draw("AP");
         g_ytemp1->SetMarkerSize(1.4);
         g_ytemp1->SetMarkerStyle(20);
 
 
-        g_ytemp2->Fit(f_ytemp2, "VWR");
+        g_ytemp2->Fit(f_ytemp2, "VR EX0");
         g_ytemp2->Draw("P same");
         g_ytemp2->SetMarkerSize(1.4);
         g_ytemp2->SetMarkerStyle(21);
@@ -651,11 +679,10 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
             xpar[p][3] = f_ytemp2->GetParameter(p);
         }
 
-        /*
-        for(int i=0; i<ysignal2.size(); i++){
-            printf("%.1f %.1f \n", ysignal2[i], yssignal2[i]);
+        printf("y1s \n");
+        for(int i=0; i<ysignal1.size(); i++){
+            printf("%.1f %.1f %.1f \n", ysignal1[i], yssignal1[i], yssignal1err[i]);
         }
-        */
             
 
 
