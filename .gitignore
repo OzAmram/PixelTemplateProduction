@@ -4,4 +4,5 @@
 *.top
 *.swp
 *.un~
+cmssw_code/*
 

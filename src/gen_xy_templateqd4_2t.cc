@@ -24,18 +24,7 @@
  * Translated from fortran to C++                      May 2019
  *******************************************************************
  */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string>
-#include <cstdlib>
-#include <cmath>
-#include <cstring>
-#include <TGraphErrors.h>
-#include <TCanvas.h>
-#include <TF1.h>
-#include <TMath.h>
-#include <TROOT.h>
-#include "Math/MinimizerOptions.h"
+#include "template_utils.h"
 
 
 Double_t fit_fn(Double_t *xs, Double_t *par){
@@ -103,17 +92,14 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         exit(1);
     }
 
-    int file_start, num_files, linear;
-    float q100, q101, fq100, noise, fcal, fgain, rnoise;
-    fscanf(f_config, "%i %i %f %f %f %f %f %f %f %i", 
-            &file_start, &num_files, &noise, &q100, &q101, 
-            &fq100, &fcal, &fgain, &rnoise, &linear);
-    printf("processing %i files starting at file %i \n"
-            "thr0 = %f, thr1 = %f rms thres = %f \n"
-            "preamp noise = %f cluster noise frac = %f gain noise frac %f \n"
-            "readout noise %f linear response %i \n ", 
-            num_files, file_start, q100, q101, 
-            fq100, noise, fcal, fgain, rnoise, linear);
+    int file_start, num_files, non_linear;
+    float q100, q101, q100_frac, noise, common_frac, gain_frac, readout_noise;
+	fscanf(f_config,"%d %d %f %f %f %f %f %f %f %d", &file_start, &num_files, &noise, &q100, &q101, &q100_frac, &common_frac, 
+            &gain_frac, &readout_noise, &non_linear);
+	fclose(f_config);
+	printf("processing %d files starting from %d, noise = %f, threshold0 = %f, threshold1 = %f," 
+            "rms threshold frac = %f, common_frac = %f, gain fraction = %f, readout noise = %f, nonlinear_resp = %d \n", 
+            num_files, file_start, noise, q100, q101, q100_frac, common_frac, gain_frac, readout_noise, non_linear);
 
     fclose(f_config);
 
@@ -131,15 +117,12 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
     float cotbmn=1.10;
 
 
-    bool tstsig = true;
-    if (linear == 2) tstsig = false;
-
 
     char fname[100];
     char header[120];
     char buffer[120];
 
-    //loop over files
+    //loop over files backwards
     for(int iFile = file_start + num_files - 1; iFile >= file_start; iFile--){
         sprintf(fname, "template_events_d%i.out", iFile);
         FILE *f_evts = fopen(fname, "r");
