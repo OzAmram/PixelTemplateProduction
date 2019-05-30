@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
 	
 	//  Open template output file
 
-    sprintf(infile,"template_summary2D_zp%5.5d.out",nfile);
+    sprintf(infile,"template_summary_zp%5.5d.out",nfile);
     ofp = fopen(infile, "w");
     if (ofp==NULL) {
       printf("couldn't open template output file/n");
@@ -207,8 +207,8 @@ int main(int argc, char *argv[])
 		
 // Create template object
 	
-   std::vector< SiPixelTemplateStore2D > thePixelTemp_;
-   SiPixelTemplate2D templ(thePixelTemp_);
+   std::vector< SiPixelTemplateStore > thePixelTemp_;
+   SiPixelTemplate templ(thePixelTemp_);
    
 //  Set the ID to zero to flag the special reco mode
 
@@ -391,7 +391,7 @@ firstp: ;
 secondp: clslnx = pplast-ppfrst;
        if(clslnx < 0.f) clslnx = 0.f;
        
-//  Read in 2D template information
+//  Read in template information
     
        sprintf(infile,"./zptemp_%5.5d.txt",ifile);
 
@@ -404,7 +404,7 @@ secondp: clslnx = pplast-ppfrst;
        }
        
        
-       SiPixelTemplateEntry2D * slice = new SiPixelTemplateEntry2D;
+       SiPixelTemplateEntry * slice = new SiPixelTemplateEntry;
        
 // Copy info into the slice and reformat from pixelav coordinates to CMSSW local coordinates
 

@@ -46,9 +46,9 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
     const int Ny = 13;
 
 
-    double  pixelt[Nx][Ny], bixin[Nx][Ny], pixel[Nx][Ny],
+    double  pixelt[Nx][Ny],  pixel[Nx][Ny],
     xsum[Nx], ysum[Ny],
-    ier[nprm], xpar[nprm][4], spar[nprm][4],
+    xpar[nprm][4], spar[nprm][4],
     xtemp[Nx][9], xtemp2[Nx][9],
     ytemp[Ny][9], ytemp2[Ny][9],
     xytemp[Nx][Ny][4][4];
@@ -169,7 +169,8 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
 
 
 
-            float bixin[Ny][Nx];
+            float bixin[Nx][Ny];
+            memset(bixin, 0., sizeof(bixin));
             //note the confusing index switch. input arrays are 13x21, we swap
             //to 21x13
             for(int j=0; j<Ny; j++){
@@ -794,9 +795,18 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
     fclose(f_lor_new);
 
 
-    delete[] xproj, yproj, qsum, pixev,
-        xh, yh, xprojt, yproj;
-    delete[] iproj, jproj, i2d, j2d;
+    delete[] xproj;
+    delete[] yproj; 
+    delete[] qsum; 
+    delete[] pixev;
+    delete[] xh; 
+    delete[] yh; 
+    delete[] xprojt; 
+    delete[] yproj;
+    delete[] iproj; 
+    delete[] jproj; 
+    delete[] i2d; 
+    delete[] j2d;
 }
 
 

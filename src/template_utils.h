@@ -60,7 +60,13 @@ Double_t vavilov(Double_t *v, Double_t *par)
 }
 
 
-Double_t chisquare(Double_t *v, Double_t *par)
+Double_t chisquare0(Double_t *v, Double_t *par)
+{
+   Double_t fitval = par[0]*ROOT::Math::chisquared_pdf(par[2]*v[0], par[1]);
+   return fitval;
+}
+
+Double_t chisquare1(Double_t *v, Double_t *par)
 {
    Double_t fitval = par[0]*ROOT::Math::chisquared_pdf(par[2]*v[0], par[1]);
    return fitval;

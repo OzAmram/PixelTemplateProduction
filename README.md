@@ -1,7 +1,8 @@
+### Pixel Template Production
+Code for production of pixel templates for CMS
 
-Code for production of pixel templates
+Everything is run standalone from cmssw but uses some of its code
 
-This is done stand alone from cmssw but shares some of the same code
-The script *fetch_cmssw_code.sh* grabs the latest version of all the needed pixel code from the cmssw github
+The script **fetch_cmssw_code.sh** grabs the latest version of all the needed pixel code from the [cmssw github](https://github.com/cms-sw/cmssw)
 
 In order to compile properly you must have [vdt](https://github.com/dpiparo/vdt) installed to /usr/local/
