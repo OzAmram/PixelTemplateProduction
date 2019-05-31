@@ -74,14 +74,24 @@ Double_t chisquare1(Double_t *v, Double_t *par)
    return fitval;
 }
 
-void get_label(FILE *ifp, char label[160]){
-    memset(label, ' ', sizeof(char) * 160);
+void get_label(FILE *ifp, char *label, unsigned int size){
+    memset(label, ' ', sizeof(char) * size);
     bool got_label = false;
     while(!got_label){
-        fgets(label, 160, ifp);
+        fgets(label, size, ifp);
         if(label[0] != '\n') got_label = true;
     }
     return;
+}
+
+void read_cluster(FILE *ifp, float pixin[TXSIZE][TYSIZE]){
+  for (int i=0; i < TXSIZE; ++i) {
+      for(int  j=0; j < TYSIZE; j++){
+
+     fscanf(ifp, " %f ", &pixin[i][j]);
+    }
+  }
+  return;
 }
 
 
