@@ -40,19 +40,19 @@ int main(int argc, char *argv[])
     static bool fpix;
     float pixin[TXSIZE][TYSIZE];
     bool ydouble[TYSIZE], xdouble[TXSIZE];
-    float ztemp[TYSIZE][9], ptemp[TXSIZE][9], xpar[5][4];
+    float ztemp[TYSIZE][9], ptemp[TXSIZE][9], xpar[2][5], ypar[2][5];
     float dummy[T2YSIZE];
     float sxmax, symax, sxmaxx, symaxx, cosx, cosy, cosz;
     static float thick, xsize, ysize, noise, zcen, gain_frac, q100_frac, common_frac, readout_noise, qscale, qperbit;
     static float qavg, qxyavg, clslnx, clslny, fbin[3] = {1.5f, 1.0f, 0.85f};
-	static float xhit, yhit, xrec, yrec, sigmax, sigmay, signal, cotalpha, cotbeta, qclust, locBz, locBx, probxy, probQ, pixmax;
+	static float xhit, yhit, xrec, yrec, sigmax, sigmay, signal, cotalpha, cotbeta, qclust, locBz, locBx,  pixmax;
 	static float pixmaxy, pixmaxx;
     static int nfile, neh, nevent, tempID, nbad, non_linear, icol, ndcol, numrun; 
     int  id,NTyx,NTxx,IDtype;
     static float Bfield,Vbias,temp,fluenc;
 	static vector<int> nbin(5,0);
     float deltay;
-    int i, j, k, l, ierr, qbin, qb, jmin, jmax, imin, imax, numadd, idcol, edgeflagx, edgeflagy, npixels;
+    int i, j, k, l, ierr, qbin, qb, jmin, jmax, imin, imax, numadd, idcol;
     int mrow = TXSIZE, mcol = TYSIZE;
     const int TXSHIFT = (TXSIZE - T2XSIZE)/2;
 	double dx, dy, tote, bade, adc;
@@ -244,26 +244,19 @@ int main(int argc, char *argv[])
 	   
 	   symaxx = fmax*symax;
 	   
+       //why flip?
 	   for(i = 1; i > -1; --i) {
-          fscanf(ifp,"%f %f %f %f %f", &xpar[0][i], &xpar[1][i], &xpar[2][i], &xpar[3][i], &xpar[4][i]);
+          fscanf(ifp,"%f %f %f %f %f", &xpar[i][0], &xpar[i][1], &xpar[i][2], &xpar[i][3], &xpar[i][4]);
        }
        
 	   for (k=0; k < 9; ++k) {
-// Skip labels   
-          for(i=0; i<160; ++i) {label[i] = ' ';}
-loop1:    i = 0;
-          for (i=0; (c=getc(ifp)) != '\n'; ++i) {
-             if(i < 159) {label[i] = c;}
-          }
-	      if(i > 158) {i=158;}
-	      if(i == 0) goto loop1;
-	      label[i+1] ='\0';
+           
+          // Skip labels   
+          get_label(ifp, label);
           printf("%d %s\n", k, label);
-		  fscanf(ifp,
-			"%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
-			&ztemp[0][k],&ztemp[1][k],&ztemp[2][k],&ztemp[3][k],&ztemp[4][k],&ztemp[5][k],&ztemp[6][k],&ztemp[7][k],&ztemp[8][k],&ztemp[9][k],
-&ztemp[10][k],&ztemp[11][k],&ztemp[12][k],&ztemp[13][k],&ztemp[14][k],&ztemp[15][k],&ztemp[16][k],&ztemp[17][k],&ztemp[18][k], 
-			&ztemp[19][k],&ztemp[20][k]);
+          for(int i=0; i<TYSIZE; i++){
+		    fscanf(ifp, " %f ", &ztemp[i][k]);
+          }
 	   }
 	   fclose(ifp);
 	   
@@ -329,24 +322,16 @@ secondz: clslny = pzlast-pzfrst;
 	   sxmaxx = fmax*sxmax;
 	   
 	   for(i = 3; i > 1; --i) {
-          fscanf(ifp,"%f %f %f %f %f", &xpar[0][i], &xpar[1][i], &xpar[2][i], &xpar[3][i], &xpar[4][i]);
+          fscanf(ifp,"%f %f %f %f %f", &ypar[i][0], &ypar[i][1], &ypar[i][2], &ypar[i][3], &ypar[i][4]);
        }
        
 	   for (k=0; k < 9; ++k) {
-// Skip labels   
-          for(i=0; i<160; ++i) {label[i] = ' ';}
-loop2:    i = 0;
-          for (i=0; (c=getc(ifp)) != '\n'; ++i) {
-             if(i < 159) {label[i] = c;}
-          }
-	      if(i > 158) {i=158;}
-	      if(i == 0) goto loop2;
-	      label[i+1] ='\0';
+        // Skip labels   
+          get_label(ifp, label);
           printf("%s\n", label);
-		  fscanf(ifp,
-			"%f %f %f %f %f %f %f %f %f %f %f %f %f", 			   
-		&ptemp[0][k],&ptemp[1][k],&ptemp[2][k],&ptemp[3][k],&ptemp[4][k],&ptemp[5][k],&ptemp[6][k],&ptemp[7][k],
-		&ptemp[8][k],&ptemp[9][k],&ptemp[10][k],&ptemp[11][k],&ptemp[12][k]);
+          for(int i=0; i<TXSIZE; i++){
+		    fscanf(ifp, " %f ", &ptemp[i][k]);
+          }
 	   }
 	   fclose(ifp);
 	   
@@ -393,13 +378,13 @@ secondp: clslnx = pplast-ppfrst;
        
 //  Read in template information
     
-       sprintf(infile,"./zptemp_%5.5d.txt",ifile);
+       sprintf(infile,"./ztemp_%5.5d.txt",ifile);
 
 //  Open input file and read header info 
 
 	   ifp = fopen(infile, "r");
        if (ifp==NULL) {
-         printf("no zp-template file %s \n", infile);
+         printf("no z-template file %s \n", infile);
          return 0;
        }
        
@@ -411,7 +396,10 @@ secondp: clslnx = pplast-ppfrst;
        slice->runnum = ifile;
        
 	   for(i = 0; i < 2; ++i) {
-	      for(j=0; j<5; ++j) {slice->xypar[i][j] = xpar[j][i];}
+	      for(j=0; j<5; ++j) {
+              slice->xpar[i][j] = xpar[i][j];
+              slice->ypar[i][j] = ypar[i][j];
+          }
        }
        
        slice->clslenx = clslnx;
@@ -426,34 +414,23 @@ secondp: clslnx = pplast-ppfrst;
        slice->cotalpha = cosy/cosz;
        slice->cotbeta = cosx/cosz;
 
-       fscanf(ifp,"%f %f %d %d %d %d", &qxyavg, &pixmax, &imin, &imax, &jmin, &jmax);
-	   printf("qxyavg/pixmax/imin/imax/jmin/jmax = %f/%f/%d/%d/%d/%d \n", qxyavg, pixmax, imin, imax, jmin, jmax);
+       fscanf(ifp,"%f  %f  %f", &qavg, &symax, &pixmaxy);
+	   printf("qavg/sxmax/pixmaxy = %f/%f/%f \n", qavg, symax, pixmax);
 	   
-	   slice->qavg = qxyavg;
+	   slice->qavg = qavg;
 	   slice->pixmax = pixmax;
-	   slice->sxymax = symax;
+	   slice->sxmax = sxmax;
+	   slice->symax = symax;
        
-       slice->iymin = TYSIZE - imax;
-       slice->iymax = TYSIZE - imin;
-       slice->jxmin = TXSIZE - jmax - TXSHIFT;
-       slice->jxmax = TXSIZE - jmin - TXSHIFT;
        
 	   for(i = 1; i > -1; --i) {
-          fscanf(ifp,"%f %f %f %f %f", &slice->lanpar[i][0], &slice->lanpar[i][1], &slice->lanpar[i][2], 
-          &slice->lanpar[i][3], &slice->lanpar[i][4]);
+          fscanf(ifp,"%f %f %f %f %f", &dummy[0], &dummy[1], &dummy[2], &dummy[3], &dummy[4]);
        }
        
        for(l=6; l>-1; --l) {
           for(k=6; k>-1; --k) {
-// Skip labels   
-             for(i=0; i<160; ++i) {label[i] = ' ';}
-loop3:       i = 0;
-             for (i=0; (c=getc(ifp)) != '\n'; ++i) {
-                if(i < 159) {label[i] = c;}
-             }
-	         if(i > 158) {i=158;}
-	         if(i == 0) goto loop3;
-	         label[i+1] ='\0';
+            // Skip labels   
+             get_label(ifp, label);
              printf("%s\n", label);
              for(j=0; j<TXSHIFT; ++j) {
 		        fscanf(ifp,"%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
@@ -721,13 +698,11 @@ loop3:       i = 0;
 		
 // No dead columns or module edges
 
-		edgeflagy = 0;
-		edgeflagx = 0;
 
 	   
 //        if(fabs(cotbeta) < 2.1) continue;
 // Do the template analysis on the cluster 
-       SiPixelTemplateReco2D::ClusMatrix clusterPayload{&cluster[0][0], xdouble, ydouble, mrow,mcol};
+       SiPixelTemplateReco::ClusMatrix clusterPayload{&cluster[0][0], xdouble, ydouble, mrow,mcol};
 	   locBx = 1.;
        if(cotbeta < 0.) locBx = -1.;
        locBz = locBx;
@@ -735,8 +710,9 @@ loop3:       i = 0;
 	          
 //  Sideload this template slice
        
+       int speed = -2;
        templ.sideload(slice, IDtype, locBx, locBz, lorwdy, lorwdx, q50, fbin, xsize, ysize, thick);
-       ierr = PixelTempReco2D(tempID, cotalpha, cotbeta, locBz, locBx, edgeflagy, edgeflagx, clusterPayload, templ, yrec, sigmay, xrec, sigmax, probxy, probQ, qbin, deltay, npixels);
+       ierr = PixelTempReco(tempID, cotalpha, cotbeta, locBz, locBx,  clusterPayload, templ, yrec, sigmay, xrec, sigmax, qbin, speed);
        if(ierr != 0) {
 	      ++nbad; 
 //	      printf("reconstruction failed with error %d \n", ierr);
@@ -754,9 +730,6 @@ loop3:       i = 0;
             if(sigmax > 0.f) hp[15]->Fill(dx/sigmax);
             hp[11+qbin]->Fill(dx);
             if(sigmax > 0.f) hp[16+qbin]->Fill(dx/sigmax);
-			hp[22]->Fill((double)probxy);
-			hp[24]->Fill((double)npixels);
-			hp[23]->Fill((double)(probxy/npixels));
             
 	    }
 		
@@ -830,6 +803,7 @@ loop3:       i = 0;
     c1->Clear();
 // Write this template entry to the output file
 
+    /*
     fprintf(ofp,"%d %8.6f %8.6f %8.6f \n", ifile, -cosy, -cosx, -cosz);
     rnelec /=float(nevent);
     fprintf(ofp,"%7.1f %5.1f %5.1f %d %d %d %d \n", rnelec, pixmax, symax, slice->iymin, slice->iymax, slice->jxmin, slice->jxmax);
@@ -860,6 +834,7 @@ loop3:       i = 0;
             offsetx[2],offsetx[3],offsety[0],offsety[1],offsety[2],offsety[3]);
     fprintf(ofp,"%3.1f %3.1f %3.1lf %3.1lf %6.3lf %6.3f %6.3f %4.2f %4.2f %3.1f\n", clslny,clslnx,par[1],par[2],par[3],scalex,scaley,delyavg,delysig,1.);
     fprintf(ofp,"%4.2f %4.2f %4.2f %4.2f %4.2f %4.2f %4.2f %4.2f %3.1f %3.1f\n", scalx[0],scalx[1],scalx[2],scalx[3],scaly[0],scaly[1],scaly[2],scaly[3],1.,qavg);
+    */
  }
 // Close output file   
    

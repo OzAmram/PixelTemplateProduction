@@ -1,7 +1,7 @@
 root_flags= `root-config --cflags --ldflags --libs --glibs`
 compiler_flags=-std=c++11 -Wall -O0 -g
 includes= -I. -I../cmssw_code/ -I/usr/local/include
-execs= gen_zp_template gen_zp_template2d gen_xy_template gen_xy_template2d
+execs= gen_zp_template gen_zp_template2d gen_xy_template #gen_xy_template2d
 
 makeAll: $(execs)
 

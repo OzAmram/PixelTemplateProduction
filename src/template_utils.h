@@ -15,9 +15,11 @@
 #include <sys/time.h>
 
 #define SI_PIXEL_TEMPLATE_STANDALONE
+#include "../cmssw_code/SiPixelTemplate.cc"
 #include "../cmssw_code/SiPixelTemplate2D.cc"
 static int theVerboseLevel = {0};
 #include "../cmssw_code/VVIObjF.cc"
+#include "../cmssw_code/SiPixelTemplateReco.cc"
 #include "../cmssw_code/SiPixelTemplateReco2D.cc"
 
 
@@ -70,6 +72,16 @@ Double_t chisquare1(Double_t *v, Double_t *par)
 {
    Double_t fitval = par[0]*ROOT::Math::chisquared_pdf(par[2]*v[0], par[1]);
    return fitval;
+}
+
+void get_label(FILE *ifp, char label[160]){
+    memset(label, ' ', sizeof(char) * 160);
+    bool got_label = false;
+    while(!got_label){
+        fgets(label, 160, ifp);
+        if(label[0] != '\n') got_label = true;
+    }
+    return;
 }
 
 

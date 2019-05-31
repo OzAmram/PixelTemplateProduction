@@ -24,6 +24,7 @@ wget ${base}${branch}CondFormats/SiPixelTransient/src/SiPixelTemplate.cc
 wget ${base}${branch}CondFormats/SiPixelTransient/src/SiPixelTemplate2D.cc
 
 wget ${base}${branch}CondFormats/SiPixelTransient/interface/SiPixelGenError.h
+wget ${base}${branch}CondFormats/SiPixelTransient/interface/SimplePixel.h
 wget ${base}${branch}CondFormats/SiPixelTransient/interface/SiPixelTemplate.h
 wget ${base}${branch}CondFormats/SiPixelTransient/interface/SiPixelTemplate2D.h
 wget ${base}${branch}CondFormats/SiPixelTransient/interface/SiPixelTemplateDefs.h
