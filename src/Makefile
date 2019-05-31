@@ -1,21 +1,22 @@
 root_flags= `root-config --cflags --ldflags --libs --glibs`
 compiler_flags=-std=c++11 -Wall -O0 -g
-includes= -I. -I../cmssw_code/ -I/usr/local/include
+vdt_dir=/usr/local/include
+includes= -I. -I../cmssw_code/ -I$(vdt_dir)
 execs= gen_zp_template gen_zp_template2d gen_xy_template #gen_xy_template2d
 
 makeAll: $(execs)
 
 
-gen_zp_template: gen_zp_template.cc
+gen_zp_template: gen_zp_template.cc template_utils.h
 	g++ gen_zp_template.cc -o gen_zp_template $(compiler_flags)  $(root_flags) $(includes)
 
-gen_zp_template2d: gen_zp_template2d.cc
+gen_zp_template2d: gen_zp_template2d.cc template_utils.h
 	g++ gen_zp_template2d.cc -o gen_zp_template2d $(compiler_flags)  $(root_flags) $(includes)
 
-gen_xy_template: gen_xy_templateqd4_2t.cc
+gen_xy_template: gen_xy_templateqd4_2t.cc template_utils.h
 	g++ gen_xy_templateqd4_2t.cc   -o gen_xy_template $(compiler_flags) $(root_flags) $(includes)
 
-gen_xy_template2d: gen_xy_template2d_2t.cc
+gen_xy_template2d: gen_xy_template2d_2t.cc template_utils.h
 	g++ gen_xy_template2d_2t.cc  -o gen_xy_template2d $(compiler_flags) $(root_flags) $(includes)
 
 .PHONY: clean

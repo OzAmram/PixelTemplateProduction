@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
     static float qavg,  clslnx, clslny, fbin[3] = {1.5f, 1.0f, 0.85f};
     static float xhit, yhit, xrec, yrec, sigmax, sigmay, probx, proby, probQ,  signal, cotalpha, cotbeta, qclust, locBz, locBx,  pixmax;
     static float pixmaxy, pixmaxx;
-    static int nfile, neh, nevent, tempID, nbad, non_linear, icol, ndcol, numrun; 
+    static int startfile, neh, nevent, tempID, nbad, non_linear, icol, ndcol, numrun; 
     int  id,NTyx,NTxx,IDtype;
     static float Bfield,Vbias,temp,fluenc;
     static vector<int> nbin(5,0);
@@ -67,6 +67,7 @@ int main(int argc, char *argv[])
     static double vcal = 47.;	
     static double vcaloffst = 60.;
     const float fmax = 0.5f;
+    int write_temp_header, use_l1_offset;
 
     const int nvers = 21;
     const int NTy = 0;
@@ -110,12 +111,19 @@ int main(int argc, char *argv[])
     }
 
 
-    fscanf(ifp,"%d %d %f %f %f %f %f %f %f %d", &nfile, &numrun, &noise, &q100, 
+    fscanf(ifp,"%d %d %f %f %f %f %f %f %f %d", &startfile, &numrun, &noise, &q100, 
             &q101, &q100_frac, &common_frac, &gain_frac, &readout_noise, &non_linear);
     fclose(ifp);
     printf("processing %d files starting from %d, noise = %f, threshold0 = %f, threshold1 = %f," 
             "rms threshold frac = %f, common_frac = %f, gain fraction = %f, readout noise = %f, nonlinear_resp = %d \n", 
-            numrun, nfile, noise, q100, q101, q100_frac, common_frac, gain_frac, readout_noise, non_linear);
+            numrun, startfile, noise, q100, q101, q100_frac, common_frac, gain_frac, readout_noise, non_linear);
+
+
+    fscanf(ifp, " %d %d ", &use_l1_offset, &write_temp_header);
+    fscanf(ifp, " %d %d %d %d %f %f %f %f %f",  &id, &NTyx, &NTxx, &IDtype, &Bfield, &Vbias, &temp, &fluenc, &qscale);
+    printf("Using params: Use_l1_offset=%d, write_temp_header=%d, ID=%d NTyx=%d NTxx=%d Dtype=%d Bfield=%.2f Bias Voltage = %.1f temparature = %.0f fluence = %.2f q-scale = %.4f \n",
+            use_l1_offset, write_temp_header, id, NTyx, NTxx, IDtype, Bfield, Vbias, temp, fluenc, qscale);
+
 
     //  Calculate 50% of threshold in q units and enc noise in adc units
 
@@ -125,7 +133,7 @@ int main(int argc, char *argv[])
 
     //  Open template output file
 
-    sprintf(infile,"template_summary_zp%5.5d.out",nfile);
+    sprintf(infile,"template_summary_zp%5.5d.out",startfile);
     /*
     ofp = fopen(infile, "w");
     if (ofp==NULL) {
@@ -136,7 +144,7 @@ int main(int argc, char *argv[])
 
     //  Open Lorentz summary file and read stored quantities
 
-    sprintf(infile,"lorentz_widths_new%5.5d.out",nfile);
+    sprintf(infile,"lorentz_widths_new%5.5d.out",startfile);
     ifp = fopen(infile, "r");
     if (ifp==NULL) {
         printf("couldn't find Lorentz summary file/n");
@@ -151,10 +159,6 @@ int main(int argc, char *argv[])
     lorwdx = -lorwdx;
     lorbsx = -lorbsx;
 
-    printf("Use L1 vcal/offset? (1=yes) \n");
-    int use_l1_offset;
-    scanf("%d", &use_l1_offset);
-    printf("ans = %d \n", use_l1_offset);
     if(use_l1_offset) {
         printf("using L1 parameters \n");
         vcal = 50.;	
@@ -222,9 +226,9 @@ int main(int argc, char *argv[])
 
     // Loop over angle pair runs
 
-    int lfile = nfile+numrun;
+    int lfile = startfile+numrun;
 
-    for(int ifile = nfile; ifile < lfile; ++ifile) {
+    for(int ifile = startfile; ifile < lfile; ++ifile) {
 
         //  Read in 1D z template information first
 
@@ -303,11 +307,10 @@ firstz: ;
 secondz: clslny = pzlast-pzfrst;
          if(clslny < 0.f) clslny = 0.f;
 
-         //  Read in 1D p template information first
+         //  Read in 1D p template information
 
          sprintf(infile,"./ptemp_%5.5d.txt",ifile);
 
-         //  Open input file and read header info 
 
          ifp = fopen(infile, "r");
          if (ifp==NULL) {
@@ -461,28 +464,18 @@ secondp: clslnx = pplast-ppfrst;
          tote = 0.;
          bade = 0.;
 
-         if(ifile == nfile) {
-             printf("Write template header info? (1=yes) \n");
-             int write_temp_header;
-             scanf("%d", &write_temp_header);
-             printf("ans = %d \n", write_temp_header);
-             if(write_temp_header) {
-                 //fprintf(ofp,"%s\n", header);
-                 printf("Enter ID, NTyx(55/7), NTxx(5/7), Dtype (0/2/3/4/5), Bfield, Bias Voltage, temperature, fluence, q-scale \n");
-                 scanf("%d %d %d %d %f %f %f %f %f",&id, &NTyx, &NTxx, &IDtype, &Bfield, &Vbias, &temp, &fluenc, &qscale);
-                 printf("Using params: ID=%d NTyx=%d NTxx=%d Dtype=%d Bfield=%.2f Bias Voltage = %.1f temparature = %.0f fluence = %.2f q-scale = %.4f \n",
-                         id, NTyx, NTxx, IDtype, Bfield, Vbias, temp, fluenc, qscale);
+         if(write_temp_header && ifile==startfile) {
 
 
-                 /*
-                 fprintf(ofp,"%d %d %4.2f %d %d %d %d %5.1f %5.1f %4.2f %5.3f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %f %4.2f %4.2f %4.2f \n",
-                         id,nvers,Bfield,NTy,NTyx,NTxx,IDtype,Vbias, temp,fluenc,qscale,q50,lorwdy,
-                         lorwdx,ysize,xsize,thick,q51,lorbsy,lorbsx,1.5f,1.0f,0.85f);
-                         */
-             }
-         } else {
-             for(int i=0; i<26; ++i) { hp[i]->Reset();}
-         }  
+             /*
+             fprintf(ofp,"%s", header);
+             fprintf(ofp,"%d %d %4.2f %d %d %d %d %5.1f %5.1f %4.2f %5.3f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %f %4.2f %4.2f %4.2f \n",
+                     id,nvers,Bfield,NTy,NTyx,NTxx,IDtype,Vbias, temp,fluenc,qscale,q50,lorwdy,
+                     lorwdx,ysize,xsize,thick,q51,lorbsy,lorbsx,1.5f,1.0f,0.85f);
+                     */
+         }
+
+         for(int i=0; i<26; ++i) { hp[i]->Reset();}
 
          qperbit = pixmax/(pow(2.,(double)(numbits)-1.));
 
