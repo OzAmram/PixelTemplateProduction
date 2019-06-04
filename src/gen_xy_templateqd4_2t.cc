@@ -797,12 +797,12 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
 
     delete[] xproj;
     delete[] yproj; 
-    delete[] qsum; 
+    delete[] xprojt; 
+    delete[] yprojt; 
     delete[] pixev;
+    delete[] qsum; 
     delete[] xh; 
     delete[] yh; 
-    delete[] xprojt; 
-    delete[] yproj;
     delete[] iproj; 
     delete[] jproj; 
     delete[] i2d; 
