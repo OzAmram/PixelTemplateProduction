@@ -94,6 +94,8 @@ int main(int argc, char *argv[]){
     //check if f2 is finished as well (can lazy evaluate the conditional) 
     l2 = fgets(b2, 180, f2);
             
+    fclose(f1);
+    fclose(f2);
    
     if(l1 == NULL && l2 == NULL)
         printf("End of both files reached. \n"); 

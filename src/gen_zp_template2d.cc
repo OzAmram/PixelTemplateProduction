@@ -252,7 +252,7 @@ int main(int argc, char *argv[])
         symaxx = fmax*symax;
 
         for(int i = 1; i > -1; --i) {
-            fscanf(ifp,"%f %f %f %f %f", &xpar[i][0], &xpar[i][1], &xpar[i][3], &xpar[i][4], &xpar[i][5]);
+            fscanf(ifp,"%f %f %f %f %f", &xpar[i][0], &xpar[i][1], &xpar[i][2], &xpar[i][3], &xpar[i][4]);
         }
 
         for (int k=0; k < 9; ++k) {
@@ -502,7 +502,7 @@ secondp: clslnx = pplast-ppfrst;
          bade = 0.;
 
          if(write_temp_header && ifile==startfile) {
-             fprintf(ofp,"%s\n", header);
+             fprintf(ofp,"%s", header);
              printf("Using params: ID=%d NTyx=%d NTxx=%d Dtype=%d Bfield=%.2f Bias Voltage = %.1f temparature = %.0f fluence = %.2f q-scale = %.4f \n",
                      id, NTyx, NTxx, IDtype, Bfield, Vbias, temp, fluenc, qscale);
 

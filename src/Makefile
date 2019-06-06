@@ -14,6 +14,9 @@ gen_zp_template: gen_zp_template.cc template_utils.h
 gen_zp_template2d: gen_zp_template2d.cc template_utils.h
 	g++ gen_zp_template2d.cc -o $(bin_dir)/gen_zp_template2d $(compiler_flags)  $(root_flags) $(includes)
 
+gen_zp_template2d_old: gen_zp_template2d_2018_2t.cxx
+	g++ gen_zp_template2d_2018_2t.cxx -o $(bin_dir)/gen_zp_template2d_old $(compiler_flags)  $(root_flags) $(includes)
+
 gen_xy_template: gen_xy_templateqd4_2t.cc template_utils.h
 	g++ gen_xy_templateqd4_2t.cc   -o $(bin_dir)/gen_xy_template $(compiler_flags) $(root_flags) $(includes)
 
