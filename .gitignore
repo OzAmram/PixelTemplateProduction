@@ -5,4 +5,5 @@
 *.swp
 *.un~
 cmssw_code/*
+bin/*
 
