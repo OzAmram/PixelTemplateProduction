@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
     static float xhit, yhit, xrec, yrec, sigmax, sigmay, probx, proby, probQ,  signal, cotalpha, cotbeta, qclust, locBz, locBx,  pixmax;
     static float pixmaxy, pixmaxx;
     static int startfile, neh, nevent, tempID, nbad, non_linear, icol, ndcol, numrun; 
-    int  id,NTyx,NTxx,IDtype;
+    int  id,NTy, NTyx,NTxx,IDtype;
     static float Bfield,Vbias,temp,fluenc;
     static vector<int> nbin(5,0);
     float deltay;
@@ -70,7 +70,6 @@ int main(int argc, char *argv[])
     int write_temp_header, use_l1_offset;
 
     const int nvers = 21;
-    const int NTy = 0;
 
     float qin;
     static char infile[120], label[160], header[120], outfile0[120], outfile1[120], outfile2[120];
@@ -81,7 +80,7 @@ int main(int argc, char *argv[])
     bool bclust[TXSIZE][TYSIZE];
     std::pair<int, int> pixel, max;
 
-    FILE *ifp, *ofp;
+    FILE *output_file;
 
     struct timeval now0, now1;
     struct timezone timz;
@@ -104,27 +103,27 @@ int main(int argc, char *argv[])
 
     //  Read which data and inputs to use (use c file i/o which is much faster than c++ i/o) 
 
-    ifp = fopen("pix_2t.proc", "r");
-    if (ifp==NULL) {
+    FILE *config_file = fopen("pix_2t.proc", "r");
+    if (config_file==NULL) {
         printf("no pixel initialization file found/n");
         return 0;
     }
 
 
     char extra[80];
-    fscanf(ifp,"%d %d %f %f %f %f %f %f %f %d %f %s", &startfile, &numrun, &noise, &q100, 
+    fscanf(config_file,"%d %d %f %f %f %f %f %f %f %d %f %s", &startfile, &numrun, &noise, &q100, 
             &q101, &q100_frac, &common_frac, &gain_frac, &readout_noise, &non_linear, &qscale, &extra[0]);
     printf("processing %d files starting from %d, noise = %f, threshold0 = %f, threshold1 = %f," 
             "rms threshold frac = %f, common_frac = %f, gain fraction = %f, readout noise = %f, nonlinear_resp = %d \n", 
             numrun, startfile, noise, q100, q101, q100_frac, common_frac, gain_frac, readout_noise, non_linear);
 
 
-    fscanf(ifp, " %d %d ", &use_l1_offset, &write_temp_header);
-    fscanf(ifp, " %d %d %d %d %f %f %f %f %f",  &id, &NTyx, &NTxx, &IDtype, &Bfield, &Vbias, &temp, &fluenc, &qscale);
-    printf("Using params: Use_l1_offset=%d, write_temp_header=%d, ID=%d NTyx=%d NTxx=%d Dtype=%d Bfield=%.2f Bias Voltage = %.1f temparature = %.0f fluence = %.2f q-scale = %.4f \n",
-            use_l1_offset, write_temp_header, id, NTyx, NTxx, IDtype, Bfield, Vbias, temp, fluenc, qscale);
+    fscanf(config_file, " %d %d ", &use_l1_offset, &write_temp_header);
+    fscanf(config_file, " %d %d %d %d %d %f %f %f %f %f",  &id, &NTy, &NTyx,&NTxx, &IDtype, &Bfield, &Vbias, &temp, &fluenc, &qscale);
+    printf("Using params: Use_l1_offset=%d, write_temp_header=%d, ID=%d NTy=%d NTyx=%d NTxx=%d Dtype=%d Bfield=%.2f Bias Voltage = %.1f temparature = %.0f fluence = %.2f q-scale = %.4f \n",
+            use_l1_offset, write_temp_header, id, NTy, NTyx, NTxx, IDtype, Bfield, Vbias, temp, fluenc, qscale);
 
-    fclose(ifp);
+    fclose(config_file);
 
     //  Calculate 50% of threshold in q units and enc noise in adc units
 
@@ -136,8 +135,8 @@ int main(int argc, char *argv[])
 
     sprintf(infile,"template_summary_zp%5.5d.out",startfile);
     /*
-       ofp = fopen(infile, "w");
-       if (ofp==NULL) {
+       output_file = fopen(infile, "w");
+       if (output_file==NULL) {
        printf("couldn't open template output file/n");
        return 0;
        }
@@ -146,14 +145,14 @@ int main(int argc, char *argv[])
     //  Open Lorentz summary file and read stored quantities
 
     sprintf(infile,"lorentz_widths_new%5.5d.out",startfile);
-    ifp = fopen(infile, "r");
-    if (ifp==NULL) {
+    FILE *lorw_file = fopen(infile, "r");
+    if (lorw_file==NULL) {
         printf("couldn't find Lorentz summary file/n");
         return 0;
     }
     float lorwdy, lorbsy, lorwdx, lorbsx;
-    fscanf(ifp,"%f %f %f %f", &lorwdy, &lorbsy, &lorwdx, &lorbsx);
-    fclose(ifp);
+    fscanf(lorw_file,"%f %f %f %f", &lorwdy, &lorbsy, &lorwdx, &lorbsx);
+    fclose(lorw_file);
     //  Flip the signs to convert from pixelav to cmssw conventions
     lorwdy = -lorwdy;
     lorbsy = -lorbsy;
@@ -237,35 +236,35 @@ int main(int argc, char *argv[])
 
         //  Open input file and read header info 
 
-        ifp = fopen(infile, "r");
-        if (ifp==NULL) {
+        FILE *ztemp_file = fopen(infile, "r");
+        if (ztemp_file==NULL) {
             printf("no z-template file %s \n", infile);
             return 0;
         }
 
-        fscanf(ifp,"%f  %f  %f", &cosx, &cosy, &cosz);
+        fscanf(ztemp_file,"%f  %f  %f", &cosx, &cosy, &cosz);
         //	   printf("cosx/cosy/cosz = %f/%f/%f \n", cosx, cosy, cosz);
 
-        fscanf(ifp,"%f  %f  %f", &qavg, &symax, &pixmaxy);
+        fscanf(ztemp_file,"%f  %f  %f", &qavg, &symax, &pixmaxy);
         printf("qavg/symax/pixmaxy = %f/%f/%f \n", qavg, symax, pixmaxy);
 
         symaxx = fmax*symax;
 
         //why flip?
         for(int i = 1; i > -1; --i) {
-            fscanf(ifp,"%f %f %f %f %f", &xpar[i][0], &xpar[i][1], &xpar[i][2], &xpar[i][3], &xpar[i][4]);
+            fscanf(ztemp_file,"%f %f %f %f %f", &xpar[i][0], &xpar[i][1], &xpar[i][2], &xpar[i][3], &xpar[i][4]);
         }
 
         for (int k=0; k < 9; ++k) {
 
             // Skip labels   
-            get_label(ifp, label, 160);
+            get_label(ztemp_file, label, 160);
             printf("%d %s\n", k, label);
             for(int i=0; i<TYSIZE; i++){
-                fscanf(ifp, " %f ", &ztemp[k][i]);
+                fscanf(ztemp_file, " %f ", &ztemp[k][i]);
             }
         }
-        fclose(ifp);
+        fclose(ztemp_file);
 
         // Calculate the mean cluster size in pixels
 
@@ -313,34 +312,34 @@ secondz: clslny = pzlast-pzfrst;
          sprintf(infile,"./ptemp_%5.5d.txt",ifile);
 
 
-         ifp = fopen(infile, "r");
-         if (ifp==NULL) {
+         FILE *ptemp_file = fopen(infile, "r");
+         if (ptemp_file==NULL) {
              printf("no p-template file %s \n", infile);
              return 0;
          }
 
-         fscanf(ifp,"%f  %f  %f", &cosx, &cosy, &cosz);
+         fscanf(ptemp_file,"%f  %f  %f", &cosx, &cosy, &cosz);
          //	   printf("cosx/cosy/cosz = %f/%f/%f \n", cosx, cosy, cosz);
 
-         fscanf(ifp,"%f  %f  %f", &qavg, &sxmax, &pixmaxx);
+         fscanf(ptemp_file,"%f  %f  %f", &qavg, &sxmax, &pixmaxx);
          printf("qavg/sxmax/pixmaxx = %f/%f/%f \n", qavg, sxmax, pixmaxx);
 
 
          sxmaxx = fmax*sxmax;
 
-         for(int i = 3; i > 1; --i) {
-             fscanf(ifp,"%f %f %f %f %f", &ypar[i][0], &ypar[i][1], &ypar[i][2], &ypar[i][3], &ypar[i][4]);
+         for(int i = 1; i > -1; --i) {
+             fscanf(ptemp_file,"%f %f %f %f %f", &ypar[i][0], &ypar[i][1], &ypar[i][2], &ypar[i][3], &ypar[i][4]);
          }
 
          for (int k=0; k < 9; ++k) {
              // Skip labels   
-             get_label(ifp, label, 160);
+             get_label(ptemp_file, label, 160);
              printf("%s\n", label);
              for(int i=0; i<TXSIZE; i++){
-                 fscanf(ifp, " %f ", &ptemp[k][i]);
+                 fscanf(ptemp_file, " %f ", &ptemp[k][i]);
              }
          }
-         fclose(ifp);
+         fclose(ptemp_file);
 
          // Calculate the mean cluster size in pixels
 
@@ -386,7 +385,6 @@ secondp: clslnx = pplast-ppfrst;
 
          //  Read in template information
 
-         sprintf(infile,"./ztemp_%5.5d.txt",ifile);
 
          //  Open input file and read header info 
 
@@ -433,7 +431,6 @@ secondp: clslnx = pplast-ppfrst;
              }
          }
 
-         fclose(ifp);
 
          //  Create an input filename for this run 
 
@@ -444,19 +441,20 @@ secondp: clslnx = pplast-ppfrst;
 
          //  Open input file and read header info 
 
-         ifp = fopen(infile, "r");
-         if (ifp==NULL) {
+         FILE *events_file = fopen(infile, "r");
+         if (events_file==NULL) {
              printf("no pixel data file found: %s \n", infile);
              return 0;
          }
 
          // Read-in a header string first and print it    
 
-         get_label(ifp, header, 80);
+         printf("tring to get header \n");
+         get_label(events_file, header, 80);
          printf("Header: %s\n", header);
 
 
-         fscanf(ifp,"%f  %f  %f", &ysize, &xsize, &thick);
+         fscanf(events_file,"%f  %f  %f", &ysize, &xsize, &thick);
          zcen = thick/2.;
          printf("xsize/ysize/thick = %f/%f/%f \n", xsize, ysize, thick);
          fpix = false;
@@ -471,8 +469,8 @@ secondp: clslnx = pplast-ppfrst;
 
 
              /*
-                fprintf(ofp,"%s", header);
-                fprintf(ofp,"%d %d %4.2f %d %d %d %d %5.1f %5.1f %4.2f %5.3f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %f %4.2f %4.2f %4.2f \n",
+                fprintf(output_file,"%s", header);
+                fprintf(output_file,"%d %d %4.2f %d %d %d %d %5.1f %5.1f %4.2f %5.3f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %f %4.2f %4.2f %4.2f \n",
                 id,nvers,Bfield,NTy,NTyx,NTxx,IDtype,Vbias, temp,fluenc,qscale,q50,lorwdy,
                 lorwdx,ysize,xsize,thick,q51,lorbsy,lorbsx,1.5f,1.0f,0.85f);
                 */
@@ -489,10 +487,10 @@ secondp: clslnx = pplast-ppfrst;
 
          // Loop until end of input file 
 
-         while(fscanf(ifp,"%f %f %f %f %f %f %d", &pvec[0], &pvec[1], &pvec[2], &pvec[3], &pvec[4], &pvec[5], &neh) != EOF) {
+         while(fscanf(events_file,"%f %f %f %f %f %f %d", &pvec[0], &pvec[1], &pvec[2], &pvec[3], &pvec[4], &pvec[5], &neh) != EOF) {
 
              // read the input cluster 
-             read_cluster(ifp, pixin);
+             read_cluster(events_file, pixin);
              ++nevent;
 
              //	   if(nevent > 100) break;
@@ -581,12 +579,13 @@ secondp: clslnx = pplast-ppfrst;
                  pixlst_copy = pixlst;
                  numadd = 0;
                  for ( auto pixIter = pixlst_copy.begin(); pixIter != pixlst_copy.end(); ++pixIter ) {
+                     //max's are +2 because we are doing <max in the loop
                      jmin = pixIter->first-1; 
-                     jmax = jmin+3;
+                     jmax = pixIter->first+2;
+                     imin = pixIter->second-1;
+                     imax = pixIter->second+2;
                      if(jmin < 0) {jmin = 0;}
                      if(jmax > TXSIZE) {jmax = TXSIZE;}
-                     imin = pixIter->second-1;
-                     imax = imin+3;
                      if(imin < 0) {imin = 0;}
                      if(imax > TYSIZE) {imax = TYSIZE;}
                      for(int j=jmin; j<jmax; ++j) {
@@ -657,7 +656,7 @@ secondp: clslnx = pplast-ppfrst;
 
              //  Sideload this template slice
 
-             int speed = -2;
+             int speed = 0;
              templ.sideload(slice, IDtype, locBx, locBz, lorwdy, lorwdx, q50, fbin, xsize, ysize, thick);
              ierr = PixelTempReco1D(tempID, cotalpha, cotbeta, locBz, locBx,  clusterPayload, templ, yrec, sigmay, proby, xrec, sigmax, probx,  qbin, speed, probQ);
              if(ierr != 0) {
@@ -682,7 +681,7 @@ secondp: clslnx = pplast-ppfrst;
 
          }
 
-         fclose(ifp);
+         fclose(events_file);
          printf(" low q failures = %d, malformed clusters = %d \n", nbin[4], nbad);	   
 
          /*
@@ -751,21 +750,21 @@ secondp: clslnx = pplast-ppfrst;
          // Write this template entry to the output file
 
          /*
-            fprintf(ofp,"%d %8.6f %8.6f %8.6f \n", ifile, -cosy, -cosx, -cosz);
+            fprintf(output_file,"%d %8.6f %8.6f %8.6f \n", ifile, -cosy, -cosx, -cosz);
             rnelec /=float(nevent);
-            fprintf(ofp,"%7.1f %5.1f %5.1f %d %d %d %d \n", rnelec, pixmax, symax, slice->iymin, slice->iymax, slice->jxmin, slice->jxmax);
+            fprintf(output_file,"%7.1f %5.1f %5.1f %d %d %d %d \n", rnelec, pixmax, symax, slice->iymin, slice->iymax, slice->jxmin, slice->jxmax);
             for(i = 0; i < 2; ++i) {
-            fprintf(ofp,"%e %e %e %e %e \n", slice->xypar[i][0], slice->xypar[i][1], slice->xypar[i][2], 
+            fprintf(output_file,"%e %e %e %e %e \n", slice->xypar[i][0], slice->xypar[i][1], slice->xypar[i][2], 
             slice->xypar[i][3], slice->xypar[i][4]);
             }
             for(i = 0; i < 2; ++i) {
-            fprintf(ofp,"%e %e %e %e %e \n", slice->lanpar[i][0], slice->lanpar[i][1], slice->lanpar[i][2], 
+            fprintf(output_file,"%e %e %e %e %e \n", slice->lanpar[i][0], slice->lanpar[i][1], slice->lanpar[i][2], 
             slice->lanpar[i][3], slice->lanpar[i][4]);
             }
             for(l=0; l<7; ++l) {
             for(k=0; k<7; ++k) {
             for(j=0; j<T2XSIZE; ++j) {
-            fprintf(ofp," %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d \n", 
+            fprintf(output_file," %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d \n", 
             slice->xytemp[k][l][0][j],slice->xytemp[k][l][1][j],slice->xytemp[k][l][2][j],
             slice->xytemp[k][l][3][j],slice->xytemp[k][l][4][j],slice->xytemp[k][l][5][j],
             slice->xytemp[k][l][6][j],slice->xytemp[k][l][7][j],slice->xytemp[k][l][8][j],
@@ -777,15 +776,15 @@ secondp: clslnx = pplast-ppfrst;
             }
             }
 
-            fprintf(ofp,"%7.5lf %7.5lf %3.1f %3.1f %3.1f %3.1f %3.1f %3.1f %3.1f %3.1f\n", cp11,cp12,offsetx[0],offsetx[1],
+            fprintf(output_file,"%7.5lf %7.5lf %3.1f %3.1f %3.1f %3.1f %3.1f %3.1f %3.1f %3.1f\n", cp11,cp12,offsetx[0],offsetx[1],
             offsetx[2],offsetx[3],offsety[0],offsety[1],offsety[2],offsety[3]);
-            fprintf(ofp,"%3.1f %3.1f %3.1lf %3.1lf %6.3lf %6.3f %6.3f %4.2f %4.2f %3.1f\n", clslny,clslnx,par[1],par[2],par[3],scalex,scaley,delyavg,delysig,1.);
-            fprintf(ofp,"%4.2f %4.2f %4.2f %4.2f %4.2f %4.2f %4.2f %4.2f %3.1f %3.1f\n", scalx[0],scalx[1],scalx[2],scalx[3],scaly[0],scaly[1],scaly[2],scaly[3],1.,qavg);
+            fprintf(output_file,"%3.1f %3.1f %3.1lf %3.1lf %6.3lf %6.3f %6.3f %4.2f %4.2f %3.1f\n", clslny,clslnx,par[1],par[2],par[3],scalex,scaley,delyavg,delysig,1.);
+            fprintf(output_file,"%4.2f %4.2f %4.2f %4.2f %4.2f %4.2f %4.2f %4.2f %3.1f %3.1f\n", scalx[0],scalx[1],scalx[2],scalx[3],scaly[0],scaly[1],scaly[2],scaly[3],1.,qavg);
             */
     }
     // Close output file   
 
-    //fclose(ofp);  
+    //fclose(output_file);  
 
     /*  Determine current time */
 
