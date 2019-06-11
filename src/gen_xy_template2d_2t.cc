@@ -95,12 +95,12 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
 
     //define RMS of noise
     double rten = 10.;
+    double thr = q100;
+    double thr10 = 0.1*thr;
 
     //search for best measured one-pixel offsets
     float lorxw1 = 0.;
     float loryw1 = 0.;
-    int nx1max=0;
-    int ny1max=0;
     float dx1sig=1.10;
     float dy1sig=1.10;
     float cotamn=1.10;
@@ -235,153 +235,105 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
             //to avoid long tails (charge is truncated in reco anyway)
             if(qsum[n] < qavg){
 
-
-                //fill 2d 4x4 2d template for average charge determination
+                //fill 2d 7x7 2d template for average charge determination
                 int k = i2d[n];
                 int l = j2d[n];
                 nxytry[k][l] +=1;
 
-                for(int i=0; i < Nx; i++){
-                    for(int j=0; j < Ny; j++){
-                        xytemp[i][j][k][l] += pixev[i*(Ny *nevents) + j*nevents + n];
+		for(int i=0; i < Nx; i++){
+		  for(int j=0; j < Ny; j++){
+		    xytemp[i][j][k][l] += pixev[i*(Ny *nevents) + j*nevents + n]; // pixev(i,j,n)?                                                                                                     
+		    xytmp2[i][j][k][l] += pixev[i*(Ny *nevents) + j*nevents + n]**2;
 
+		    // 0th bin of new pixel same as last bin of previous pixel 
+		    // im so confused here...
+                    if(k==0 && i>0){
+		      xytemp[i][j][6][l] += pixev[(i-1)*(Ny *nevents) + j*nevents + n];
+		      xytmp2[i][j][6][l] += pixev[(i-1)*(Ny *nevents) + j*nevents + n]**2;
+ 		    }
+                    else if(k==6 && i>0){
+		      xytemp[i-1][j][0][l] += pixev[i*(Ny *nevents) + j*nevents + n];
+                      xytmp2[i-1][j][0][l] += pixev[i*(Ny *nevents) + j*nevents + n]**2;
+		    }
+
+                    if(l==0 && j>0){
+                      xytemp[i][j][k][6] += pixev[i*(Ny *nevents) + (j-1)*nevents + n];
+                      xytmp2[i][j][k][6] += pixev[i*(Ny *nevents) + (j-1)*nevents + n]**2;
                     }
+                    else if(l==6 && j>0){
+                      xytemp[i][j-1][k][0] += pixev[i*(Ny *nevents) + j*nevents + n];
+                      xytmp2[i][j-1][k][0] += pixev[i*(Ny *nevents) + j*nevents + n]**2;
+                    }
+
+                    if((k==0 && l==0) && (i>0 && j>0)){
+		      xytemp[i][j][6][6] += pixev[(i-1)*(Ny *nevents) + (j-1)*nevents + n];
+                      xytmp2[i][j][6][6] += pixev[(i-1)*(Ny *nevents) + (j-1)*nevents + n]**2;
+		    }
+		    else if((k==6 && l==6) && (i>0 && j>0)){
+		      xytemp[i-1][j-1][0][0] += pixev[i*(Ny *nevents) + j*nevents + n];
+                      xytmp2[i-1][j-1][0][0] += pixev[i*(Ny *nevents) + j*nevents + n]**2;
+                    }
+                    else if((k==0 && l==6) && (i>0 && j>0)){
+                      xytemp[i][j-1][0][0] +=pixev[(i-1)*(Ny *nevents) + j*nevents + n];
+                      xytmp2[i][j-1][0][0] +=pixev[(i-1)*(Ny *nevents) + j*nevents + n]**2;
+		    }
+                    else if((k==6 && l==0) && (i>0 && j>0)){
+                      xytemp[i-1][j][0][0] +=pixev[i*(Ny *nevents) + (j-1)*nevents + n];
+                      xytmp2[i-1][j][0][0] +=pixev[i*(Ny *nevents) + (j-1)*nevents + n]**2;
+                    }
+
+		  }
                 }
 
-                //fill 1d projection templates, x first
-                
-                //hit position bin
-                k = iproj[n];
-
-                if(k < 0 || k > 8){
+                if(k < 0 || k > 6){
                     printf("Problem with event %i, index (k) is =%i \n", n, k);
                 }
-                else if(k==0 || k==8){
-                    //these bins always get filled together
-                    nxntry[0] += 1;
-                    nxntry[8] +=1;
-                }
                 else{
-                    nxntry[k] +=1;
+                    nxytry[k][l] +=1;
                 }
-                for(int i=0; i<Nx; i++){
-                    xtemp2[i][k] += xproj[i*nevents+n]*xproj[i*nevents+n];
-                    
-                    //0th bin of new pixel same as last bin of previous pixel
-                    if(k==0 && i>0){
-                        xtemp2[i][8] += xproj[(i-1)*nevents+n] * xproj[(i-1)*nevents+n];
-                    }
-                    else if(k==8 && i>0){
-                        xtemp2[i-1][0] += xproj[i*nevents+n] * xproj[i*nevents+n];
-                    }
-                }
-
-                //do y projections
-                
-                //y hit position bin
-                l = jproj[n];
-
 
                 if(l < 0 || l > 8){
                     printf("Problem with event %i, index (l) is =%i \n", n, l);
                 }
-                else if(l==0 || l==8){
-                    nyntry[0] += 1;
-                    nyntry[8] +=1;
-                }
                 else{
-                    nyntry[l] +=1;
+		  nxytry[k][l] +=1; //why is it adding again!!!
                 }
-                for(int j=0; j<Ny; j++){
-                    ytemp[j][l] += yproj[j*nevents+n];
-                    ytemp2[j][l] += yproj[j*nevents+n]*yproj[j*nevents+n];
-                    
-                    //0th bin of new pixel same as last bin of previous pixel
-                    if(l==0 && j>0){
 
-                        ytemp[j][8] += yproj[(j-1)*nevents+n];
-                        ytemp2[j][8] += yproj[(j-1)*nevents+n] * yproj[(j-1)*nevents+n];
-                    }
-                    else if(l==8 && j>0){
-                        ytemp[j-1][0] += yproj[j*nevents+n];
-                        ytemp2[j-1][0] += yproj[j*nevents+n] * yproj[j*nevents+n];
-                    }
-                }
             } 
         }//end loop over events
 
         /*
          * print number of template entries (debug)
+	 */
         for(int i=0; i<9; i++){
-            printf("%i ", nxntry[i]);
+            printf("number of template entries %i ", nxytry[i]);
         }
         printf("\n");
-        */
 
-
-        //find maximum average pixel signal in 4x4 grid
+	//renorm the distributions, find the maximum average pixel signal in 7x7 grid
         float pixmax = 0.;
-
+	int imin = Nx;
+	int imax = 1;
+	int jmin = Ny;
+	int jmax = 1;
         for(int i =0; i<Nx; i++){
             for(int j =0; j<Ny; j++){
-                for(int k =0; k<4; k++){
-                    for(int l =0; l<4; l++){
+                for(int k =0; k<7; k++){
+                    for(int l =0; l<7; l++){
                         float sigxy = xytemp[i][j][k][l] / float(nxytry[k][l]);
+			xytemp[i][j][k][l] = sigxy
                         if(sigxy > pixmax) pixmax = sigxy;
+                        xytmp2[i][j][k][l] = xytmp2[i][j][k][l] / float(nxytry[k][l]) - sigxy**2; // is -sigxy**2  correct here?
+			if(sigxy > thr10) {
+			  if(i < imin) imin=i;
+                          if(i > imax) imax=i;
+			  if(j < jmin) jmin=j;
+                          if(j > jmax) jmax=j;
+			}
                     }
                 }
             }
         }
-
-        if(mx1 > 10){
-            sx1 /= float(mx1);
-            sx12 /= float(mx1);
-            sx12 = sqrt((sx12 - sx1*sx1)/mx1);
-        }
-        printf("Number of 1 x-clusters %i, dx %7.2f +/- %7.2f \n", mx1, sx1, sx12);
-
-        //save single pixel info for smallest angle run (used for lorentz drift
-        //estimate)
-        if(mx1 > 10 && fabs(cotb) < cotbmn){
-            lorxw1 = sx1;
-            dx1sig = sx12;
-            nx1max = mx1;
-            cotbmn = fabs(cotb);
-        }
-
-        if(my1 > 10){
-            sy1 /= float(my1);
-            sy12 /= float(my1);
-            sy12 = sqrt((sy12 - sy1*sy1)/float(my1));
-        }
-        printf("Number of 1 y-clusters %i, dy %7.2f +/- %7.2f \n", my1, sy1, sy12);
-
-        //save single pixel info for smallest angle run and most single
-        //clusters (used for lorentz drift estimate)
-        if(my1 > 10 && fabs(cota) < cotamn && my1 > ny1max){
-            loryw1 = sy1;
-            dy1sig = sy12;
-            ny1max = my1;
-            cotamn = fabs(cota);
-        }
-
-
-        //calculate average and variance of charge
-        for(int k=0; k < 9; k++){
-            for(int i=0; i<Nx; i++){
-                xtemp[i][k] /= float(nxntry[k]);
-                xtemp2[i][k] = xtemp2[i][k]/float(nxntry[k]) - xtemp[i][k]*xtemp[i][k];
-                xtemp[i][k] = std::max(0., xtemp[i][k]);
-            }
-        }
-        for(int l=0; l < 9; l++){
-            for(int j=0; j<Ny; j++){
-                ytemp[j][l] /= float(nyntry[l]);
-                ytemp2[j][l] = ytemp2[j][l]/float(nyntry[l]) - ytemp[j][l]*ytemp[j][l];
-                ytemp[j][l] = std::max(0., ytemp[j][l]);
-            }
-        }
-
 
         //analyze variance of charge vs charge for entry and exit sides of cluster
         char plot_title[100];
@@ -597,23 +549,21 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
         char file_out[100];
 
         //x template file
-        sprintf(file_out, "ztemp_%i.txt", iFile);
+        sprintf(file_out, "zptemp_%i.txt", iFile);
         FILE *ztemp_file = fopen(file_out, "w+");
         fprintf(ztemp_file, "%9.6f %9.6f %9.6f \n", cosx, cosy, cosz);
+	qavg,pixmax,imin,imax,jmin,jmax
+	  fprintf(ztemp_file, "%8.1f %8.1f %i %i %i %i\n", qavg,pixmax,imin,imax,jmin,jmax); // format i?
+	  for(int k=2; k <4; k++){
+	    for(int p=0; p<nprm; p++){
+	      fprintf(ztemp_file, "%15.8E ", xpar[p][k]);
+	      spar[p][k] = xpar[p][k];
+	    }
+	    fprintf(ztemp_file, "\n");
+	  }
+	spxmax = sxmax;
+	storep = true;
 
-        if(clslnx > (0.8*xsize) || clslny > (0.4*ysize)){
-            fprintf(ztemp_file, "%8.1f %8.1f %8.1f \n", qavg, sxmax, pixmax);
-
-            for(int k=0; k <2; k++){
-                for(int p=0; p<nprm; p++){
-                    fprintf(ztemp_file, "%15.8E ", xpar[p][k]);
-                    spar[p][k] = xpar[p][k];
-                }
-                fprintf(ztemp_file, "\n");
-            }
-            spxmax = sxmax;
-            storep = true;
-        }
         // If the cluster length is smaller than a pixel, there aren't enough points for a reliable
         // fit.  Use the one from the previous file
         else if(storep){
