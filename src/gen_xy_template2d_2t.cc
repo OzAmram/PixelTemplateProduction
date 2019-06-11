@@ -48,7 +48,7 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
 
     double  pixelt[Nx][Ny],  pixel[Nx][Ny],
     xsum[Nx], ysum[Ny],
-    xpar[nprm][4], spar[nprm][4],
+    xpar[nprm][4],
     xytemp[Nx][Ny][7][7], xytmp2[Nx][Ny][7][7]; 
 
     int nxytry[7][7];
@@ -64,12 +64,8 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
     int *i2d = new int[nevents];
     int *j2d = new int[nevents];
 
-    bool storep = false;
-
-
     //size of pixel (in pixelav coordinates)
     float xsize, ysize, zsize;
-
 
     //define middle of dimension ranges
     const int NHx = Nx/2;
@@ -99,14 +95,8 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
     double thr10 = 0.1*thr;
 
     //search for best measured one-pixel offsets
-    float lorxw1 = 0.;
-    float loryw1 = 0.;
-    float dx1sig=1.10;
-    float dy1sig=1.10;
     float cotamn=1.10;
     float cotbmn=1.10;
-
-
 
     char fname[100];
     char header[120];
@@ -550,110 +540,38 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
 
         //x template file
         sprintf(file_out, "zptemp_%i.txt", iFile);
-        FILE *ztemp_file = fopen(file_out, "w+");
-        fprintf(ztemp_file, "%9.6f %9.6f %9.6f \n", cosx, cosy, cosz);
-	qavg,pixmax,imin,imax,jmin,jmax
-	  fprintf(ztemp_file, "%8.1f %8.1f %i %i %i %i\n", qavg,pixmax,imin,imax,jmin,jmax); // format i?
-	  for(int k=2; k <4; k++){
-	    for(int p=0; p<nprm; p++){
-	      fprintf(ztemp_file, "%15.8E ", xpar[p][k]);
-	      spar[p][k] = xpar[p][k];
-	    }
-	    fprintf(ztemp_file, "\n");
+        FILE *zptemp_file = fopen(file_out, "w+");
+        fprintf(zptemp_file, "%9.6f %9.6f %9.6f \n", cosx, cosy, cosz);
+	fprintf(zptemp_file, "%8.1f %8.1f %2i %2i %2i %2i\n", qavg,pixmax,imin,imax,jmin,jmax); 
+	for(int k=2; k <4; k++){
+	  for(int p=0; p<nprm; p++){
+	    fprintf(zptemp_file, "%15.8E ", xpar[p][k]);
 	  }
-	spxmax = sxmax;
-	storep = true;
-
-        // If the cluster length is smaller than a pixel, there aren't enough points for a reliable
-        // fit.  Use the one from the previous file
-        else if(storep){
-            fprintf(ztemp_file, "%8.1f %8.1f %8.1f \n", qavg, spxmax, pixmax);
-            for(int k=0; k <2; k++){
-                for(int p=0; p<nprm; p++){
-                    fprintf(ztemp_file,"%15.8E ", spar[p][k]);
-                }
-                fprintf(ztemp_file, "\n");
-            }
-
-        }
-        //we are the first file so there are no previous to reference
-        else{
-            fprintf(ztemp_file, "%8.1f %8.1f %8.1f \n", qavg, sxmax, pixmax);
-            for(int k=0; k <2; k++){
-                for(int p=0; p<nprm; p++){
-                    fprintf(ztemp_file, "%15.8E ", xpar[p][k]);
-                }
-                fprintf(ztemp_file, "\n");
-            }
-        }
-
-
-
-        for(int k = 0; k<9; k++){
-            float xcenter = ((k+1)*0.125 - 0.625) *xsize;
-            fprintf(ztemp_file, "bin %2i,  xcenter = %8.2f  um \n", k+1, xcenter);
+	  fprintf(zptemp_file, "\n");
+	}
+	
+	for(int l=0; l <7; l++){
+	  for(int k=0; k <7; k++){
+            float ycenter = ((l+1)*0.166667 - 0.166667) *ysize;
+	    float xcenter = ((k+1)*0.166667 - 0.666667) *xsize;
+            fprintf(zptemp_file, "biny %2i,  ycenter = %8.2f um, binx %2i, xcenter = %8.2f um \n", l+1, ycenter, k+1, xcenter);
             for(int i=0; i<Nx; i++){
-                fprintf(ztemp_file, "%8.1f ", xtemp[i][k] );
+	      for(int j=0; j<Ny; j++){
+		fprintf(zptemp_file, "%8.1f ", xytemp[i][j][k][l] );
+	      }
             }
-            fprintf(ztemp_file, "\n");
-        }
+	  }
+	  fprintf(zptemp_file, "\n"); // where new line should go?
+	}
 
-        fclose(ztemp_file);
-
-        //y template file
-        sprintf(file_out, "ptemp_%i.txt", iFile);
-        FILE *ptemp_file = fopen(file_out, "w+");
-        fprintf(ptemp_file, "%9.6f %9.6f %9.6f \n", cosx, cosy, cosz);
-        fprintf(ptemp_file, "%8.1f %8.1f %8.1f \n", qavg, symax, pixmax);
-
-        for(int k=0; k <2; k++){
-            for(int p=0; p<nprm; p++){
-                fprintf(ptemp_file, "%15.8E ", xpar[p][k]);
-            }
-            fprintf(ptemp_file, "\n");
-        }
-
-        for(int l = 0; l<9; l++){
-            float ycenter = ((l+1)*0.125 - 0.625) *ysize;
-            fprintf(ptemp_file, "bin %2i  ycenter = %8.2f  um \n", l+1, ycenter);
-            for(int j=0; j<Ny; j++){
-                fprintf(ptemp_file, "%8.1f ", ytemp[j][l] );
-            }
-            fprintf(ptemp_file, "\n");
-        }
-
-        fclose(ptemp_file);
-
+        fclose(zptemp_file);
 
     } //end loop over files
 
-
-    //output lorentz widths
-    char  lorz_out[100];
-    sprintf(lorz_out, "lorentz_widths_xy%i.out", file_start);
-    FILE *f_lor_width = fopen(lorz_out, "w+");
-    fprintf(f_lor_width,  "%9.2f %9.2f %5i %7.4f"
-            "%9.2f %9.2f %5i %7.4f",
-            2.*lorxw1, 2.*dx1sig, nx1max, cotbmn,
-            2.*loryw1, 2.*dy1sig, ny1max, cotamn);
-    fclose(f_lor_width);
-
-    sprintf(lorz_out, "lorentz_widths_new%i.out", file_start);
-    FILE *f_lor_new = fopen(lorz_out, "w+");
-    fprintf(f_lor_new, "%8.2f %8.2f %8.2f %8.2f \n", 2.*lorxw1, lorxw1, 2.*loryw1, loryw1);
-    fclose(f_lor_new);
-
-
-    delete[] xproj;
-    delete[] yproj; 
-    delete[] xprojt; 
-    delete[] yprojt; 
     delete[] pixev;
     delete[] qsum; 
     delete[] xh; 
     delete[] yh; 
-    delete[] iproj; 
-    delete[] jproj; 
     delete[] i2d; 
     delete[] j2d;
 }
