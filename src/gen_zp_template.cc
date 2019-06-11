@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
     static float xhit, yhit, xrec, yrec, sigmax, sigmay, probx, proby, probQ,  signal, cotalpha, cotbeta, qclust, locBz, locBx,  pixmax;
     static float pixmaxy, pixmaxx;
     static int startfile, neh, nevent, tempID, nbad, non_linear, icol, ndcol, numrun; 
-    int  id,NTyx,NTxx,IDtype;
+    int  id,NTy, NTyx,NTxx,IDtype;
     static float Bfield,Vbias,temp,fluenc;
     static vector<int> nbin(5,0);
     float deltay;
@@ -70,7 +70,6 @@ int main(int argc, char *argv[])
     int write_temp_header, use_l1_offset;
 
     const int nvers = 21;
-    const int NTy = 0;
 
     float qin;
     static char infile[120], label[160], header[120], outfile0[120], outfile1[120], outfile2[120];
@@ -120,9 +119,9 @@ int main(int argc, char *argv[])
 
 
     fscanf(config_file, " %d %d ", &use_l1_offset, &write_temp_header);
-    fscanf(config_file, " %d %d %d %d %f %f %f %f %f",  &id, &NTyx, &NTxx, &IDtype, &Bfield, &Vbias, &temp, &fluenc, &qscale);
-    printf("Using params: Use_l1_offset=%d, write_temp_header=%d, ID=%d NTyx=%d NTxx=%d Dtype=%d Bfield=%.2f Bias Voltage = %.1f temparature = %.0f fluence = %.2f q-scale = %.4f \n",
-            use_l1_offset, write_temp_header, id, NTyx, NTxx, IDtype, Bfield, Vbias, temp, fluenc, qscale);
+    fscanf(config_file, " %d %d %d %d %d %f %f %f %f %f",  &id, &NTy, &NTyx,&NTxx, &IDtype, &Bfield, &Vbias, &temp, &fluenc, &qscale);
+    printf("Using params: Use_l1_offset=%d, write_temp_header=%d, ID=%d NTy=%d NTyx=%d NTxx=%d Dtype=%d Bfield=%.2f Bias Voltage = %.1f temparature = %.0f fluence = %.2f q-scale = %.4f \n",
+            use_l1_offset, write_temp_header, id, NTy, NTyx, NTxx, IDtype, Bfield, Vbias, temp, fluenc, qscale);
 
     fclose(config_file);
 
