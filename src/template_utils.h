@@ -77,9 +77,11 @@ Double_t chisquare1(Double_t *v, Double_t *par)
 void get_label(FILE *ifp, char *label, unsigned int size){
     memset(label, ' ', sizeof(char) * size);
     bool got_label = false;
+    int i =0;
     while(!got_label){
         fgets(label, size, ifp);
         if(label[0] != '\n') got_label = true;
+        i++;
     }
     return;
 }
