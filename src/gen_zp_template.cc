@@ -40,14 +40,20 @@ int main(int argc, char *argv[])
     static bool fpix;
     float pixin[TXSIZE][TYSIZE];
     bool ydouble[TYSIZE], xdouble[TXSIZE];
-    float ztemp[9][TYSIZE], ptemp[9][TXSIZE], xpar[2][5], ypar[2][5];
+    float xtemp[9][TYSIZE], ytemp[9][TXSIZE], xpar[2][5], ypar[2][5];
+    float ztemp[41][BYSIZE], ptemp[41][BXSIZE];
     float sxmax, symax, sxmaxx, symaxx, cosx, cosy, cosz;
     static float thick, xsize, ysize, noise, zcen, gain_frac, q100_frac, common_frac, readout_noise, qscale, qperbit;
     static float qavg,  clslnx, clslny, fbin[3] = {1.5f, 1.0f, 0.85f};
     static float xhit, yhit, xrec, yrec, sigmax, sigmay, probx, proby, probQ,  signal, cotalpha, cotbeta, qclust, locBz, locBx,  pixmax;
     static float pixmaxy, pixmaxx;
-    static int startfile, neh, nevent, tempID, nbad, non_linear, icol, ndcol, numrun; 
+    static int startfile, neh, nevent, tempID, nbad, ngood, non_linear, icol, ndcol, numrun; 
     int  id,NTy, NTyx,NTxx,IDtype;
+
+    int imsort[60];
+    float qmsort[60];
+
+
     static float Bfield,Vbias,temp,fluenc;
     static vector<int> nbin(5,0);
     float deltay;
@@ -58,6 +64,10 @@ int main(int argc, char *argv[])
     float scaley, scalex, scalx[4], scaly[4], delyavg, delysig, offsetx[4], offsety[4];
     static int numbits;
     static float q100, q101, q50, q51, q10, qmax; 
+
+
+
+
     const double gain = 3.19;
     const double ped = 16.46;
     const double p0 = 0.01218;
@@ -228,7 +238,7 @@ int main(int argc, char *argv[])
 
     int lfile = startfile+numrun;
 
-    for(int ifile = startfile; ifile < lfile; ++ifile) {
+    for(int ifile = startfile+40; ifile < lfile; ++ifile) {
 
         //  Read in 1D z template information first
 
@@ -261,7 +271,7 @@ int main(int argc, char *argv[])
             get_label(ztemp_file, label, 160);
             printf("%d %s\n", k, label);
             for(int i=0; i<TYSIZE; i++){
-                fscanf(ztemp_file, " %f ", &ztemp[k][i]);
+                fscanf(ztemp_file, " %f ", &xtemp[k][i]);
             }
         }
         fclose(ztemp_file);
@@ -271,11 +281,11 @@ int main(int argc, char *argv[])
         float pzfrst=0.f, pzlast=0.f;
         for(int i=0; i<TYSIZE; ++i) {
             for (int k=6; k > -1; --k) {
-                if(ztemp[k][i] > symaxx) {
-                    float dzsig = ztemp[k][i] - ztemp[k+1][i];
+                if(xtemp[k][i] > symaxx) {
+                    float dzsig = xtemp[k][i] - xtemp[k+1][i];
                     float frac;
                     if(dzsig > 0.f) {
-                        frac = (ztemp[k][i] - symaxx)/dzsig;
+                        frac = (xtemp[k][i] - symaxx)/dzsig;
                         if(frac > 1.f) frac = 1.f;
                         if(frac < 0.f) frac = 0.f;
                     } else {
@@ -289,11 +299,11 @@ int main(int argc, char *argv[])
 firstz: ;
         for(int i=TYSIZE-1; i>-1; --i) {
             for (int k=1; k < 9; ++k) {
-                if(ztemp[k][i] > symaxx) {
-                    float dzsig = ztemp[k][i] - ztemp[k-1][i];
+                if(xtemp[k][i] > symaxx) {
+                    float dzsig = xtemp[k][i] - xtemp[k-1][i];
                     float frac;
                     if(dzsig > 0.f) {
-                        frac = (ztemp[k][i] - symaxx)/dzsig;
+                        frac = (xtemp[k][i] - symaxx)/dzsig;
                         if(frac > 1.f) frac = 1.f;
                         if(frac < 0.f) frac = 0.f;
                     } else {
@@ -336,7 +346,7 @@ secondz: clslny = pzlast-pzfrst;
              get_label(ptemp_file, label, 160);
              printf("%s\n", label);
              for(int i=0; i<TXSIZE; i++){
-                 fscanf(ptemp_file, " %f ", &ptemp[k][i]);
+                 fscanf(ptemp_file, " %f ", &ytemp[k][i]);
              }
          }
          fclose(ptemp_file);
@@ -347,11 +357,11 @@ secondz: clslny = pzlast-pzfrst;
          float ppfrst=0.f, pplast=0.f;
          for(int i=0; i<TXSIZE; ++i) {
              for (int k=7; k > -1; --k) {
-                 if(ptemp[k][i] > sxmaxx) {
-                     float dpsig = ptemp[k][i] - ptemp[k+1][i];
+                 if(ytemp[k][i] > sxmaxx) {
+                     float dpsig = ytemp[k][i] - ytemp[k+1][i];
                      float frac;
                      if(dpsig > 0.f) {
-                         frac = (ptemp[k][i] - sxmaxx)/dpsig;
+                         frac = (ytemp[k][i] - sxmaxx)/dpsig;
                          if(frac > 1.f) frac = 1.f;
                          if(frac < 0.f) frac = 0.f;
                      } else {
@@ -365,11 +375,11 @@ secondz: clslny = pzlast-pzfrst;
 firstp: ;
         for(int i=TXSIZE-1; i>-1; --i) {
             for (int k=1; k < 9; ++k) {
-                if(ptemp[k][i] > sxmaxx) {
-                    float dpsig = ptemp[k][i] - ptemp[k-1][i];
+                if(ytemp[k][i] > sxmaxx) {
+                    float dpsig = ytemp[k][i] - ytemp[k-1][i];
                     float frac;
                     if(dpsig > 0.f) {
-                        frac = (ptemp[k][i] - sxmaxx)/dpsig;
+                        frac = (ytemp[k][i] - sxmaxx)/dpsig;
                         if(frac > 1.f) frac = 1.f;
                         if(frac < 0.f) frac = 0.f;
                     } else {
@@ -383,7 +393,73 @@ firstp: ;
 secondp: clslnx = pplast-ppfrst;
          if(clslnx < 0.f) clslnx = 0.f;
 
-         //  Read in template information
+
+
+
+        /*
+        //make extended (41 entry) templates that contain shifted versions of nominal
+        //template
+        memset(ztemp, 0., sizeof(ztemp));
+        memset(ptemp, 0., sizeof(ptemp));
+
+        for(int k=0; k < 9; k++){
+            
+            //five versions of the template, shifted by up to two pixels over
+            //Remember k=0 and k=8 are just one pixel shifts of each other
+            for(int i=0; i<TXSIZE; i++){
+
+                ztemp[k+16][i+2] = xtemp[k][i];
+
+                if(k<8){
+                    ztemp[k+8][i+1] = xtemp[i][k];
+                    ztemp[k][i] = xtemp[i][k];
+                }
+                if(k>0){
+                    ztemp[k+24][i+3] = xtemp[i][k];
+                    ztemp[k+32][i+4] = xtemp[i][k];
+                }
+            }
+        }
+
+        for(int k=0; k < 9; k++){
+            
+            //five versions of the template, shifted by up to two pixels over
+            //Remember k=0 and k=8 are just one pixel shifts of each other
+            for(int i=0; i<TYSIZE; i++){
+
+                ptemp[k+16][i+2] = ytemp[k][i];
+
+                if(k<8){
+                    ptemp[k+8][i+1] = ytemp[i][k];
+                    ptemp[k][i] = ytemp[i][k];
+                }
+                if(k>0){
+                    ptemp[k+24][i+3] = ytemp[i][k];
+                    ptemp[k+32][i+4] = ytemp[i][k];
+                }
+            }
+        }
+
+        printf("ztemp:\n");
+        for(int k=0; k < 41; k++){
+            for(int i=0; i< BXSIZE; i++){
+                printf(" %.1f ", ztemp[k][i]);
+            }
+            printf("\n");
+        }
+        printf("ptemp:\n");
+        for(int k=0; k < 41; k++){
+            for(int i=0; i< BYSIZE; i++){
+                printf(" %.1f ", ptemp[k][i]);
+            }
+            printf("\n");
+        }
+        */
+
+
+
+
+
 
 
          //  Open input file and read header info 
@@ -406,6 +482,17 @@ secondp: clslnx = pplast-ppfrst;
          slice->clslenx = clslnx;
          slice->clsleny = clslny;
 
+         //for now hard code
+         slice->sxone = 30.;
+         slice->dxone = 10.;
+         slice->sxtwo = 30.;
+         slice->dxtwo = 10.;
+
+         slice->syone = 30.;
+         slice->dyone = 10.;
+         slice->sytwo = 30.;
+         slice->dytwo = 10.;
+
 
          slice->costrk[0] = -cosy;
          slice->costrk[1] = -cosx;
@@ -424,10 +511,10 @@ secondp: clslnx = pplast-ppfrst;
          //fill templates into slice
          for(int k = 0; k < 9; k++){
              for(int i=0; i<TXSIZE; i++){
-                 slice->xtemp[k][i] = ptemp[k][i];
+                 slice->xtemp[k][i] = xtemp[k][i];
              }
              for(int j=0; j<TYSIZE; j++){
-                 slice->ytemp[k][j] = ztemp[k][j];
+                 slice->ytemp[k][j] = ytemp[k][j];
              }
          }
 
@@ -449,7 +536,6 @@ secondp: clslnx = pplast-ppfrst;
 
          // Read-in a header string first and print it    
 
-         printf("tring to get header \n");
          get_label(events_file, header, 80);
          printf("Header: %s\n", header);
 
@@ -462,6 +548,7 @@ secondp: clslnx = pplast-ppfrst;
 
          nevent=0;
          nbad = 0;
+         ngood = 0;
          tote = 0.;
          bade = 0.;
 
@@ -618,6 +705,14 @@ secondp: clslnx = pplast-ppfrst;
                      if(i > imax) imax = i;
                  }
              }
+             printf("cluster : \n");
+             for(int i=0; i<mrow; i++){
+                 for(int j=0; j<mcol; j++){
+                     printf(" %.1f ", cluster[i][j]);
+                 }
+             printf("\n");
+             }
+             printf("\n");
 
              hp[25]->Fill((double)qclust, 1.);
 
@@ -661,17 +756,18 @@ secondp: clslnx = pplast-ppfrst;
              ierr = PixelTempReco1D(tempID, cotalpha, cotbeta, locBz, locBx,  clusterPayload, templ, yrec, sigmay, proby, xrec, sigmax, probx,  qbin, speed, probQ);
              if(ierr != 0) {
                  ++nbad; 
-                 //	      printf("reconstruction failed with error %d \n", ierr);
+                 printf("reconstruction failed with error %d \n", ierr);
              } else {
+                 ngood++;
                  qb = qbin;
                  ++nbin[qb];
                  dy = yrec - (TYSIZE/2)*ysize - yhit;
                  hp[0]->Fill(dy);
                  if(sigmay > 0.f) hp[5]->Fill(dy/sigmay);
-                 hp[20]->Fill((double)deltay);
-                 hp[1+qbin]->Fill(dy, 1.);
+                 hp[1+qbin]->Fill(dy);
                  if(sigmay > 0.f) hp[6+qbin]->Fill(dy/sigmay);
                  dx = xrec - (TXSIZE/2)*xsize - xhit;
+                 printf(" %.3f %.3f \n", dy,dx);
                  hp[10]->Fill(dx);
                  if(sigmax > 0.f) hp[15]->Fill(dx/sigmax);
                  hp[11+qbin]->Fill(dx);
@@ -682,7 +778,7 @@ secondp: clslnx = pplast-ppfrst;
          }
 
          fclose(events_file);
-         printf(" low q failures = %d, malformed clusters = %d \n", nbin[4], nbad);	   
+         printf(" low q failures = %d, malformed clusters = %d, successful fits = %d \n", nbin[4], nbad, ngood);	   
 
          /*
           * Histograms plotting
