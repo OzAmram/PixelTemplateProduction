@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
 
     FILE *config_file = fopen("pix_2t.proc", "r");
     if (config_file==NULL) {
-        printf("no pixel initialization file found/n");
+        printf("no pixel initialization file found \n");
         return 0;
     }
 

@@ -40,8 +40,7 @@ int main(int argc, char *argv[])
     static bool fpix;
     float pixin[TXSIZE][TYSIZE];
     bool ydouble[TYSIZE], xdouble[TXSIZE];
-    float xtemp[9][TYSIZE], ytemp[9][TXSIZE], xpar[2][5], ypar[2][5];
-    float ztemp[41][BYSIZE], ptemp[41][BXSIZE];
+    float ytemp[9][TYSIZE], xtemp[9][TXSIZE], xpar[2][5], ypar[2][5];
     float sxmax, symax, sxmaxx, symaxx, cosx, cosy, cosz;
     static float thick, xsize, ysize, noise, zcen, gain_frac, q100_frac, common_frac, readout_noise, qscale, qperbit;
     static float qavg,  clslnx, clslny, fbin[3] = {1.5f, 1.0f, 0.85f};
@@ -115,7 +114,7 @@ int main(int argc, char *argv[])
 
     FILE *config_file = fopen("pix_2t.proc", "r");
     if (config_file==NULL) {
-        printf("no pixel initialization file found/n");
+        printf("no pixel initialization file found \n");
         return 0;
     }
 
@@ -238,7 +237,7 @@ int main(int argc, char *argv[])
 
     int lfile = startfile+numrun;
 
-    for(int ifile = startfile+40; ifile < lfile; ++ifile) {
+    for(int ifile = startfile; ifile < lfile; ++ifile) {
 
         //  Read in 1D z template information first
 
@@ -260,9 +259,9 @@ int main(int argc, char *argv[])
 
         symaxx = fmax*symax;
 
-        //why flip?
+        //flip to match cmssw coords
         for(int i = 1; i > -1; --i) {
-            fscanf(ztemp_file,"%f %f %f %f %f", &xpar[i][0], &xpar[i][1], &xpar[i][2], &xpar[i][3], &xpar[i][4]);
+            fscanf(ztemp_file,"%f %f %f %f %f", &ypar[i][0], &ypar[i][1], &ypar[i][2], &ypar[i][3], &ypar[i][4]);
         }
 
         for (int k=0; k < 9; ++k) {
@@ -270,10 +269,12 @@ int main(int argc, char *argv[])
             // Skip labels   
             get_label(ztemp_file, label, 160);
             printf("%d %s\n", k, label);
+            //read in template
             for(int i=0; i<TYSIZE; i++){
-                fscanf(ztemp_file, " %f ", &xtemp[k][i]);
+                fscanf(ztemp_file, " %f ", &ytemp[k][i]);
             }
         }
+       
         fclose(ztemp_file);
 
         // Calculate the mean cluster size in pixels
@@ -281,11 +282,11 @@ int main(int argc, char *argv[])
         float pzfrst=0.f, pzlast=0.f;
         for(int i=0; i<TYSIZE; ++i) {
             for (int k=6; k > -1; --k) {
-                if(xtemp[k][i] > symaxx) {
-                    float dzsig = xtemp[k][i] - xtemp[k+1][i];
+                if(ytemp[k][i] > symaxx) {
+                    float dzsig = ytemp[k][i] - ytemp[k+1][i];
                     float frac;
                     if(dzsig > 0.f) {
-                        frac = (xtemp[k][i] - symaxx)/dzsig;
+                        frac = (ytemp[k][i] - symaxx)/dzsig;
                         if(frac > 1.f) frac = 1.f;
                         if(frac < 0.f) frac = 0.f;
                     } else {
@@ -299,11 +300,11 @@ int main(int argc, char *argv[])
 firstz: ;
         for(int i=TYSIZE-1; i>-1; --i) {
             for (int k=1; k < 9; ++k) {
-                if(xtemp[k][i] > symaxx) {
-                    float dzsig = xtemp[k][i] - xtemp[k-1][i];
+                if(ytemp[k][i] > symaxx) {
+                    float dzsig = ytemp[k][i] - ytemp[k-1][i];
                     float frac;
                     if(dzsig > 0.f) {
-                        frac = (xtemp[k][i] - symaxx)/dzsig;
+                        frac = (ytemp[k][i] - symaxx)/dzsig;
                         if(frac > 1.f) frac = 1.f;
                         if(frac < 0.f) frac = 0.f;
                     } else {
@@ -338,30 +339,32 @@ secondz: clslny = pzlast-pzfrst;
          sxmaxx = fmax*sxmax;
 
          for(int i = 1; i > -1; --i) {
-             fscanf(ptemp_file,"%f %f %f %f %f", &ypar[i][0], &ypar[i][1], &ypar[i][2], &ypar[i][3], &ypar[i][4]);
+             fscanf(ptemp_file,"%f %f %f %f %f", &xpar[i][0], &xpar[i][1], &xpar[i][2], &xpar[i][3], &xpar[i][4]);
          }
 
          for (int k=0; k < 9; ++k) {
              // Skip labels   
              get_label(ptemp_file, label, 160);
              printf("%s\n", label);
+             //read in template
              for(int i=0; i<TXSIZE; i++){
-                 fscanf(ptemp_file, " %f ", &ytemp[k][i]);
+                 fscanf(ptemp_file, " %f ", &xtemp[k][i]);
              }
          }
          fclose(ptemp_file);
 
          // Calculate the mean cluster size in pixels
 
-         //very unclear what this part of the code is doing!
+         // Calculates something like a full-width half max for the cluster
+         // length
          float ppfrst=0.f, pplast=0.f;
          for(int i=0; i<TXSIZE; ++i) {
              for (int k=7; k > -1; --k) {
-                 if(ytemp[k][i] > sxmaxx) {
-                     float dpsig = ytemp[k][i] - ytemp[k+1][i];
+                 if(xtemp[k][i] > sxmaxx) {
+                     float dpsig = xtemp[k][i] - xtemp[k+1][i];
                      float frac;
                      if(dpsig > 0.f) {
-                         frac = (ytemp[k][i] - sxmaxx)/dpsig;
+                         frac = (xtemp[k][i] - sxmaxx)/dpsig;
                          if(frac > 1.f) frac = 1.f;
                          if(frac < 0.f) frac = 0.f;
                      } else {
@@ -375,11 +378,11 @@ secondz: clslny = pzlast-pzfrst;
 firstp: ;
         for(int i=TXSIZE-1; i>-1; --i) {
             for (int k=1; k < 9; ++k) {
-                if(ytemp[k][i] > sxmaxx) {
-                    float dpsig = ytemp[k][i] - ytemp[k-1][i];
+                if(xtemp[k][i] > sxmaxx) {
+                    float dpsig = xtemp[k][i] - xtemp[k-1][i];
                     float frac;
                     if(dpsig > 0.f) {
-                        frac = (ytemp[k][i] - sxmaxx)/dpsig;
+                        frac = (xtemp[k][i] - sxmaxx)/dpsig;
                         if(frac > 1.f) frac = 1.f;
                         if(frac < 0.f) frac = 0.f;
                     } else {
@@ -392,69 +395,6 @@ firstp: ;
         }
 secondp: clslnx = pplast-ppfrst;
          if(clslnx < 0.f) clslnx = 0.f;
-
-
-
-
-        /*
-        //make extended (41 entry) templates that contain shifted versions of nominal
-        //template
-        memset(ztemp, 0., sizeof(ztemp));
-        memset(ptemp, 0., sizeof(ptemp));
-
-        for(int k=0; k < 9; k++){
-            
-            //five versions of the template, shifted by up to two pixels over
-            //Remember k=0 and k=8 are just one pixel shifts of each other
-            for(int i=0; i<TXSIZE; i++){
-
-                ztemp[k+16][i+2] = xtemp[k][i];
-
-                if(k<8){
-                    ztemp[k+8][i+1] = xtemp[i][k];
-                    ztemp[k][i] = xtemp[i][k];
-                }
-                if(k>0){
-                    ztemp[k+24][i+3] = xtemp[i][k];
-                    ztemp[k+32][i+4] = xtemp[i][k];
-                }
-            }
-        }
-
-        for(int k=0; k < 9; k++){
-            
-            //five versions of the template, shifted by up to two pixels over
-            //Remember k=0 and k=8 are just one pixel shifts of each other
-            for(int i=0; i<TYSIZE; i++){
-
-                ptemp[k+16][i+2] = ytemp[k][i];
-
-                if(k<8){
-                    ptemp[k+8][i+1] = ytemp[i][k];
-                    ptemp[k][i] = ytemp[i][k];
-                }
-                if(k>0){
-                    ptemp[k+24][i+3] = ytemp[i][k];
-                    ptemp[k+32][i+4] = ytemp[i][k];
-                }
-            }
-        }
-
-        printf("ztemp:\n");
-        for(int k=0; k < 41; k++){
-            for(int i=0; i< BXSIZE; i++){
-                printf(" %.1f ", ztemp[k][i]);
-            }
-            printf("\n");
-        }
-        printf("ptemp:\n");
-        for(int k=0; k < 41; k++){
-            for(int i=0; i< BYSIZE; i++){
-                printf(" %.1f ", ptemp[k][i]);
-            }
-            printf("\n");
-        }
-        */
 
 
 
@@ -484,14 +424,14 @@ secondp: clslnx = pplast-ppfrst;
 
          //for now hard code
          slice->sxone = 30.;
-         slice->dxone = 10.;
+         slice->dxone = 0.;
          slice->sxtwo = 30.;
-         slice->dxtwo = 10.;
+         slice->dxtwo = 0.;
 
          slice->syone = 30.;
-         slice->dyone = 10.;
+         slice->dyone = 0.;
          slice->sytwo = 30.;
-         slice->dytwo = 10.;
+         slice->dytwo = 0.;
 
 
          slice->costrk[0] = -cosy;
@@ -510,11 +450,13 @@ secondp: clslnx = pplast-ppfrst;
 
          //fill templates into slice
          for(int k = 0; k < 9; k++){
+             //read in templates reversed because of coordinate difference
+             //between cmssw and pixelav
              for(int i=0; i<TXSIZE; i++){
-                 slice->xtemp[k][i] = xtemp[k][i];
+                 slice->xtemp[k][TXSIZE - 1 - i] = xtemp[k][i];
              }
              for(int j=0; j<TYSIZE; j++){
-                 slice->ytemp[k][j] = ytemp[k][j];
+                 slice->ytemp[k][TYSIZE - 1 - j] = ytemp[k][j];
              }
          }
 
@@ -705,15 +647,6 @@ secondp: clslnx = pplast-ppfrst;
                      if(i > imax) imax = i;
                  }
              }
-             printf("cluster : \n");
-             for(int i=0; i<mrow; i++){
-                 for(int j=0; j<mcol; j++){
-                     printf(" %.1f ", cluster[i][j]);
-                 }
-             printf("\n");
-             }
-             printf("\n");
-
              hp[25]->Fill((double)qclust, 1.);
 
              rnelec += qclust;
@@ -758,6 +691,8 @@ secondp: clslnx = pplast-ppfrst;
                  ++nbad; 
                  printf("reconstruction failed with error %d \n", ierr);
              } else {
+                 int k= int(xhit/xsize * 8. + 4.5);
+                 int l= int(yhit/ysize * 8. + 4.5);
                  ngood++;
                  qb = qbin;
                  ++nbin[qb];
@@ -767,7 +702,8 @@ secondp: clslnx = pplast-ppfrst;
                  hp[1+qbin]->Fill(dy);
                  if(sigmay > 0.f) hp[6+qbin]->Fill(dy/sigmay);
                  dx = xrec - (TXSIZE/2)*xsize - xhit;
-                 printf(" %.3f %.3f \n", dy,dx);
+                 //printf("Hit bins %i %i \n", k,l);
+                 //printf(" %.3f %.3f \n", dx,dy);
                  hp[10]->Fill(dx);
                  if(sigmax > 0.f) hp[15]->Fill(dx/sigmax);
                  hp[11+qbin]->Fill(dx);
