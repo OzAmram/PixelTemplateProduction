@@ -87,7 +87,7 @@ void get_label(FILE *ifp, char *label, unsigned int size){
 }
 
 void read_cluster(FILE *ifp, float pixin[TXSIZE][TYSIZE]){
-  for (int i=0; i < TXSIZE; ++i) {
+  for (int i=0; i < TXSIZE; i++) {
       for(int  j=0; j < TYSIZE; j++){
 
      fscanf(ifp, " %f ", &pixin[i][j]);
