@@ -21,6 +21,7 @@ static int theVerboseLevel = {0};
 #include "../cmssw_code/VVIObjF.cc"
 #include "../cmssw_code/SiPixelTemplateReco.cc"
 #include "../cmssw_code/SiPixelTemplateReco2D.cc"
+#include "../cmssw_code/SiPixelUtils.cc"
 
 
 using namespace std;
@@ -95,6 +96,42 @@ void read_cluster(FILE *ifp, float pixin[TXSIZE][TYSIZE]){
   }
   return;
 }
+
+//see https://stackoverflow.com/questions/936687/how-do-i-declare-a-2d-array-in-c-using-new
+float** setup_2d_array(int size1, int size2){
+    float **a = new float*[size1];
+    for(int i=0; i< size1; i++){
+        a[i] = new float[size2];
+        
+    }
+    return a;
+}
+
+void delete_2d_array(float **a, int size1, int size2 ){
+    for(int i=0; i< size1; i++){
+        delete[] a[i];
+    }
+}
+float*** setup_3d_array(int size1, int size2, int size3){
+    float ***a = new float**[size1];
+    for(int i=0; i< size1; i++){
+        a[i] = new float*[size2];
+        for(int j=0; j<size2; j++){
+            a[i][j] = new float[size3];
+        }
+    }
+    return a;
+}
+
+void delete_3d_array(float ***a, int size1, int size2, int size3){
+    for(int i=0; i< size1; i++){
+        for(int j=0; j<size2; j++){
+            delete[] a[i][j];
+        }
+        delete[] a[i];
+    }
+}
+
 
 
 // ***************************************************************** 
