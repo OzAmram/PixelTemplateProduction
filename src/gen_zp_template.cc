@@ -514,6 +514,21 @@ secondp: clslnx = pplast-ppfrst;
 
 
              }
+             
+             // Simulate the second, higher threshold in single double col hits
+             for(int j=0; j<TXSIZE; ++j) {
+                 for(int i=0; i<TYSIZE; ++i) {
+                     if(clusts[n][j][i] > 0.) {
+                         idcol = (i+icol)/2;
+                         if(ndhit[idcol] == 1) {
+                             // Apply higher threshold on single hits in double columns
+                             if(rclust[j][i] < q101*(1.+wgauss[i]*q100_frac)) {
+                                 clusts[n][j][i] = 0.;
+                             }
+                         }
+                     }
+                 }
+             }
 
             //do x double  row projections
             for(int j=0; j<TXSIZE/2; j++){
@@ -596,24 +611,6 @@ secondp: clslnx = pplast-ppfrst;
                      }
                  }
              }
-
-
-             // Simulate the second, higher threshold in single double col hits
-
-             for(int j=0; j<TXSIZE; ++j) {
-                 for(int i=0; i<TYSIZE; ++i) {
-                     if(clusts[n][j][i] > 0.) {
-                         idcol = (i+icol)/2;
-                         if(ndhit[idcol] == 1) {
-                             // Apply higher threshold on single hits in double columns
-                             if(rclust[j][i] < q101*(1.+wgauss[i]*q100_frac)) {
-                                 clusts[n][j][i] = 0.;
-                             }
-                         }
-                     }
-                 }
-             }
-
 
 
          }
@@ -861,14 +858,20 @@ secondp: clslnx = pplast-ppfrst;
              //read in templates reversed because of coordinate difference
              //between cmssw and pixelav
              for(int i=0; i<TXSIZE; i++){
-                 slice->xtemp[k][TXSIZE - 1 - i] = xtemp[k][i];
+                 slice->xtemp[9-k-1][TXSIZE - 1 - i] = xtemp[k][i];
              }
              for(int j=0; j<TYSIZE; j++){
-                 slice->ytemp[k][TYSIZE - 1 - j] = ytemp[k][j];
+                 slice->ytemp[9-k-1][TYSIZE - 1 - j] = ytemp[k][j];
              }
          }
 
 
+         locBx = 1.;
+         if(cotbeta < 0.) locBx = -1.;
+         locBz = locBx;
+         if(cotalpha < 0.) locBz = -locBx;
+
+         templ.sideload(slice, IDtype, locBx, locBz, lorwdy, lorwdx, q50, fbin, xsize, ysize, thick);
 
 
          nbad = 0;
@@ -1015,8 +1018,8 @@ secondp: clslnx = pplast-ppfrst;
              //charges of first and last
              float Q_f_x = xsum[xstart];
              float Q_l_x = xsum[xend];
-             float Q_f_y = xsum[ystart];
-             float Q_l_y = xsum[yend];
+             float Q_f_y = ysum[ystart];
+             float Q_l_y = ysum[yend];
 
              //edges of cluster
              //
@@ -1082,37 +1085,35 @@ secondp: clslnx = pplast-ppfrst;
              //        if(fabs(cotbeta) < 2.1) continue;
              // Do the template analysis on the cluster 
              SiPixelTemplateReco::ClusMatrix clusterPayload{&cluster[0][0], xdouble, ydouble, mrow,mcol};
-             locBx = 1.;
-             if(cotbeta < 0.) locBx = -1.;
-             locBz = locBx;
-             if(cotalpha < 0.) locBz = -locBx;
 
              //  Sideload this template slice
 
              int speed = 0;
-             templ.sideload(slice, IDtype, locBx, locBz, lorwdy, lorwdx, q50, fbin, xsize, ysize, thick);
              ierr = PixelTempReco1D(tempID, cotalpha, cotbeta, locBz, locBx,  clusterPayload, templ, yrec, sigmay, proby, xrec, sigmax, probx,  qbin, speed, probQ);
              if(ierr != 0) {
                  ++nbad; 
                  printf("reconstruction failed with error %d \n", ierr);
              } else {
-                 int k= int(xhit[n]/xsize * 8. + 4.5);
-                 int l= int(yhit[n]/ysize * 8. + 4.5);
                  ngood++;
                  qb = qbin;
                  ++nbin[qb];
                  dy = yrec - (TYSIZE/2)*ysize - yhit[n];
+                 dx = xrec - (TXSIZE/2)*xsize - xhit[n];
                  hp[0]->Fill(dy);
                  if(sigmay > 0.f) hp[5]->Fill(dy/sigmay);
                  hp[1+qbin]->Fill(dy);
                  if(sigmay > 0.f) hp[6+qbin]->Fill(dy/sigmay);
-                 dx = xrec - (TXSIZE/2)*xsize - xhit[n];
-                 //printf("Hit bins %i %i \n", k,l);
-                 //printf(" %.3f %.3f \n", dx,dy);
                  hp[10]->Fill(dx);
                  if(sigmax > 0.f) hp[15]->Fill(dx/sigmax);
                  hp[11+qbin]->Fill(dx);
                  if(sigmax > 0.f) hp[16+qbin]->Fill(dx/sigmax);
+
+                 /*
+                 int k= int(xhit[n]/xsize * 8. + 4.5);
+                 int l= int(yhit[n]/ysize * 8. + 4.5);
+                 printf("Hit bins %i %i \n", k,l);
+                 printf(" dx dy %.3f %.3f \n", dx,dy);
+                 */
 
              }
 
@@ -1126,6 +1127,9 @@ secondp: clslnx = pplast-ppfrst;
 
 
          for(int i=0; i<20; ++i) {hp[i]->Fit("gaus");}
+         hp[26]->Fit("gauss");
+         hp[27]->Fit("gauss");
+         
 
          scaley = hp[5]->GetRMS();
          scalex = hp[15]->GetRMS();   

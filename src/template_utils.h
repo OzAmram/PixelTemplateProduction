@@ -102,6 +102,10 @@ float** setup_2d_array(int size1, int size2){
     float **a = new float*[size1];
     for(int i=0; i< size1; i++){
         a[i] = new float[size2];
+
+        for(int j=0; j<size2; j++){
+            a[i][j] = 0.;
+        }
         
     }
     return a;
@@ -118,6 +122,10 @@ float*** setup_3d_array(int size1, int size2, int size3){
         a[i] = new float*[size2];
         for(int j=0; j<size2; j++){
             a[i][j] = new float[size3];
+
+            for(int k=0; k<size3; k++){
+                a[i][j][k] = 0.;
+            }
         }
     }
     return a;
