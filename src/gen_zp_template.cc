@@ -871,6 +871,16 @@ secondp: clslnx = pplast-ppfrst;
          locBz = locBx;
          if(cotalpha < 0.) locBz = -locBx;
 
+         bool flip_x = false;
+         bool flip_y = false;
+
+         if(locBx*locBz < 0.f) {
+            flip_x = true;
+         }
+         if(locBx < 0.f) {
+            flip_y = true;
+         }
+
          templ.sideload(slice, IDtype, locBx, locBz, lorwdy, lorwdx, q50, fbin, xsize, ysize, thick);
 
 
@@ -1031,7 +1041,7 @@ secondp: clslnx = pplast-ppfrst;
              float e_l_y  = (yend+1) *ysize;
 
              int size_x = xend-xstart + 1;
-             int size_y = xend-xstart + 1;
+             int size_y = yend-ystart + 1;
 
              bool isBigPix = false;
 
@@ -1062,6 +1072,15 @@ secondp: clslnx = pplast-ppfrst;
 
              hp[26]->Fill(dx_gen);
              hp[27]->Fill(dy_gen);
+
+             /*
+             if(size_x ==1){
+                 hp[1]->Fill(dx_gen);
+             }
+             if(size_y ==1){
+                 hp[2]->Fill(dy_gen);
+             }
+             */
 
 
 
@@ -1100,10 +1119,11 @@ secondp: clslnx = pplast-ppfrst;
                  dy = yrec - (TYSIZE/2)*ysize - yhit[n];
                  dx = xrec - (TXSIZE/2)*xsize - xhit[n];
                  hp[0]->Fill(dy);
+                 hp[10]->Fill(dx);
+
                  if(sigmay > 0.f) hp[5]->Fill(dy/sigmay);
                  hp[1+qbin]->Fill(dy);
                  if(sigmay > 0.f) hp[6+qbin]->Fill(dy/sigmay);
-                 hp[10]->Fill(dx);
                  if(sigmax > 0.f) hp[15]->Fill(dx/sigmax);
                  hp[11+qbin]->Fill(dx);
                  if(sigmax > 0.f) hp[16+qbin]->Fill(dx/sigmax);
@@ -1127,8 +1147,8 @@ secondp: clslnx = pplast-ppfrst;
 
 
          for(int i=0; i<20; ++i) {hp[i]->Fit("gaus");}
-         hp[26]->Fit("gauss");
-         hp[27]->Fit("gauss");
+         hp[26]->Fit("gaus");
+         hp[27]->Fit("gaus");
          
 
          scaley = hp[5]->GetRMS();
