@@ -43,21 +43,27 @@ int main(int argc, char *argv[])
     float ytemp[9][TYSIZE], xtemp[9][TXSIZE], xpar[2][5], ypar[2][5];
     float sxmax, symax, sxmaxx, symaxx, cosx, cosy, cosz;
     static float thick, xsize, ysize, noise, zcen, gain_frac, q100_frac, common_frac, readout_noise, qscale, qperbit;
-    static float qavg,  clslnx, clslny, fbin[3] = {1.5f, 1.0f, 0.85f};
-    static float xrec, yrec, sigmax, sigmay, probx, proby, probQ,  signal, qclust, locBz, locBx,  pixmax;
+    static float qavg_raw,  clslnx, clslny; 
+    static float xrec, yrec, sigmax, sigmay, probx, proby, probQ,  signal, locBz, locBx,  pixmax;
     static float pixmaxy, pixmaxx;
     static int startfile, neh, tempID, nbad, ngood, non_linear, icol, ndcol, numrun; 
     int  id,NTy, NTyx,NTxx,IDtype;
 
 
-    int imsort[60];
-    float qmsort[60];
+
+    std::multiset<float> qmsort;
+    static float fbin[] = {1.5, 1.0, 0.85}; //bins of charge in Q_cluster / Q_avg
 
     const int nevents = 30000;
 
     float xhit[nevents], yhit[nevents], cotalpha, cotbeta;
 
-    float ***clusts = setup_3d_array(nevents, TXSIZE, TYSIZE);
+    float  qsmear[nevents], qmerge[nevents], npix[nevents], xfrac[nevents][3], yfrac[nevents][3],
+    qtotal[nevents];
+
+    int nelec[nevents];
+
+    float ***cluster = setup_3d_array(nevents, TXSIZE, TYSIZE); //Cluster as found by seeding + clustering algo
     float **xsum1 = setup_2d_array(nevents, TXSIZE/2);
     float **xsum2 = setup_2d_array(nevents, TXSIZE/2);
 
@@ -92,14 +98,13 @@ int main(int argc, char *argv[])
 
     float qin;
     static char infile[120], label[160], header[120], outfile0[120], outfile1[120], outfile2[120];
-    int triplg(std::vector<float>&);
     //	int random(void);
 
-    float cluster[TXSIZE][TYSIZE], clust[TXSIZE][TYSIZE], rclust[TXSIZE][TYSIZE], sigraw[TXSIZE+2][TYSIZE+2];
+    float clust[TXSIZE][TYSIZE], rclust[TXSIZE][TYSIZE], sigraw[TXSIZE+2][TYSIZE+2];
     bool bclust[TXSIZE][TYSIZE];
     std::pair<int, int> pixel, max;
 
-    FILE *output_file;
+    FILE *temp_output_file, *generr_output_file;
 
     struct timeval now0, now1;
     struct timezone timz;
@@ -153,13 +158,18 @@ int main(int argc, char *argv[])
     //  Open template output file
 
     sprintf(infile,"template_summary_zp%5.5d.out",startfile);
-    /*
-       output_file = fopen(infile, "w");
-       if (output_file==NULL) {
-       printf("couldn't open template output file/n");
-       return 0;
-       }
-       */
+    temp_output_file = fopen(infile, "w");
+    if (temp_output_file==NULL) {
+        printf("couldn't open template output file/n");
+        return 0;
+    }
+
+    sprintf(infile,"generror_summary_zp%5.5d.out",startfile);
+    generr_output_file = fopen(infile, "w");
+    if (generr_output_file==NULL) {
+        printf("couldn't open generr output file/n");
+        return 0;
+    }
 
     //  Open Lorentz summary file and read stored quantities
 
@@ -186,49 +196,87 @@ int main(int argc, char *argv[])
 
     // Define the histograms to be used at each angle pair
 
-    double  halfys=400.;
-    double  halfxs=200.;
-    int nx=200;	
+    double halfxs=300.;
+    int nx=120;
+    double halfys=300.;
+    int ny=120;
+    double chiymx=48.;
+    double chixmx=150.;
+
+
+    const int y_temp_idx =0;
+    const int x_temp_idx =10;
+    const int y_generic_idx =20;
+    const int x_generic_idx =30;
+    const int charge_idx = 40;
+
+    const int n_hists = 60;
+
+
     gStyle->SetOptFit(101);
     gStyle->SetHistLineWidth(2);
-    static vector<TH1F*> hp(28);
-    hp[0] = new TH1F("h101","dy_temp (all sig); #Deltay (#mum)",nx,-halfys,halfys);
-    hp[1] = new TH1F("h102","dy_temp (signal @> 1.5mn); #Deltay (#mum)",nx,-halfys,halfys);      
-    hp[2] = new TH1F("h103","dy_temp (1.5mn @> signal @> 1.0mn); #Deltay (#mum)",nx,-halfys,halfys);      
-    hp[3] = new TH1F("h104","dy_temp (1.0mn @> signal @> 0.85mn); #Deltay (#mum)",nx,-halfys,halfys);     
-    hp[4] = new TH1F("h105","dy_temp (0.85mn @> signal); #Deltay (#mum)",nx,-halfys,halfys);      
-    hp[5] = new TH1F("h201","pully_temp (all sig); #Deltay/rmsy",100,-10.,10.);
-    hp[6] = new TH1F("h202","pully_temp (signal @> 1.5mn); #Deltay/rmsy",100,-10.,10.);
-    hp[7] = new TH1F("h203","pully_temp (1.5mn @> signal @> 1.0mn); #Deltay/rmsy",100,-10.,10.);
-    hp[8] = new TH1F("h204","pully_temp (1.0mn @> signal @> 0.85mn); #Deltay/rmsy",100,-10.,10.);
-    hp[9] = new TH1F("h205","pully_temp (0.85mn @> signal); #Deltay/rmsy",100,-10.,10.);
-    hp[10] = new TH1F("h106","dx_temp (all sig); #Deltax (#mum)",nx,-halfxs,halfxs);
-    hp[11] = new TH1F("h107","dx_temp (signal @> 1.5mn); #Deltax (#mum)",nx,-halfxs,halfxs);      
-    hp[12] = new TH1F("h108","dx_temp (1.5mn @> signal @> 1.0mn); #Deltax (#mum)",nx,-halfxs,halfxs);      
-    hp[13] = new TH1F("h109","dx_temp (1.0mn @> signal @> 0.85mn); #Deltax (#mum)",nx,-halfxs,halfxs);      
-    hp[14] = new TH1F("h110","dx_temp (0.85mn @> signal); #Deltax (#mum)",nx,-halfxs,halfxs);  
-    hp[15] = new TH1F("h206","pullx_temp (all sig); #Deltax/rmsx",100,-10.,10.);  
-    hp[16] = new TH1F("h207","pullx_temp (signal @> 1.5mn); #Deltax/rmsx",100,-10.,10.);  
-    hp[17] = new TH1F("h208","pullx_temp (1.5mn @> signal @> 1.0mn); #Deltax/rmsx",100,-10.,10.);  
-    hp[18] = new TH1F("h209","pullx_temp (1.0mn @> signal @> 0.85mn); #Deltax/rmsx",100,-10.,10.);  
-    hp[19] = new TH1F("h210","pullx_temp (0.85mn @> signal); #Deltax/rmsx",100,-10.,10.);  
-    hp[20] = new TH1F("h401","deltay [template - cluster]; #Deltay (pixels)",nx,-6.,6.);
-    hp[21] = new TH1F("h405","deltax [template - cluster]; #Deltax (pixels)",nx,-6.,6.);
-    hp[22] = new TH1F("h501","chisq [all]",400,0.,200.);
-    hp[23] = new TH1F("h502","chisq/pixel",200,0.,50.);
-    hp[24] = new TH1F("h503","npixels",50,-0.5,49.5);	
-    hp[25] = new TH1F("h115","Cluster Charge; Q_clus (e)",250,0.,500000.);
-    hp[26] = new TH1F("h126","dx_generic (all sig); #Deltax (#mum)",nx,-halfxs,halfxs);
-    hp[27] = new TH1F("h128","dy_generic (all sig); #Deltay (#mum)",nx,-halfys,halfys);
+    static vector<TH1F*> hp(n_hists);
+    hp[y_temp_idx + 0] = new TH1F("h101","dy_temp (all sig); #Deltay (#mum)",ny,-halfys,halfys);
+    hp[y_temp_idx + 1] = new TH1F("h102","dy_temp (signal @> 1.5mn); #Deltay (#mum)",ny,-halfys,halfys);      
+    hp[y_temp_idx + 2] = new TH1F("h103","dy_temp (1.5mn @> signal @> 1.0mn); #Deltay (#mum)",ny,-halfys,halfys);      
+    hp[y_temp_idx + 3] = new TH1F("h104","dy_temp (1.0mn @> signal @> 0.85mn); #Deltay (#mum)",ny,-halfys,halfys);     
+    hp[y_temp_idx + 4] = new TH1F("h105","dy_temp (0.85mn @> signal); #Deltay (#mum)",ny,-halfys,halfys);      
+    hp[y_temp_idx + 5] = new TH1F("h106","chi2y_temp (single pix)",ny,0.,chiymx);
+        hp[y_temp_idx + 6] = new TH1F("h107","chi2y_temp (signal @> 1.5mn)",ny,0.,chiymx);
+        hp[y_temp_idx + 7] = new TH1F("h108","chi2y_temp (1.5mn @> signal @> 1.0mn)",ny, 0., chiymx);
+        hp[y_temp_idx + 8] = new TH1F("h109","chi2y_temp (1.0mn @> signal @> 0.85mn)",ny,0., chiymx);
+        hp[y_temp_idx + 9]= new TH1F("h110","chi2y_temp (0.85mn @> signal)",ny,0.,chiymx);
+
+        hp[x_temp_idx + 0] = new TH1F("h201","dx_temp (all sig); #Deltax (#mum)",nx,-halfxs,halfxs);
+    hp[x_temp_idx + 1] = new TH1F("h202","dx_temp (signal @> 1.5mn); #Deltax (#mum)",nx,-halfxs,halfxs);      
+    hp[x_temp_idx + 2] = new TH1F("h203","dx_temp (1.5mn @> signal @> 1.0mn); #Deltax (#mum)",nx,-halfxs,halfxs);      
+    hp[x_temp_idx + 3] = new TH1F("h204","dx_temp (1.0mn @> signal @> 0.85mn); #Deltax (#mum)",nx,-halfxs,halfxs);     
+    hp[x_temp_idx + 4] = new TH1F("h205","dx_temp (0.85mn @> signal); #Deltax (#mum)",nx,-halfxs,halfxs);      
+    hp[x_temp_idx + 5] = new TH1F("h206","chi2x_temp (single pix)",nx,0.,chixmx);
+        hp[x_temp_idx + 6] = new TH1F("h207","chi2x_temp (signal @> 1.5mn)",nx,0.,chixmx);
+        hp[x_temp_idx + 7] = new TH1F("h208","chi2x_temp (1.5mn @> signal @> 1.0mn)",nx, 0., chixmx);
+        hp[x_temp_idx + 8] = new TH1F("h209","chi2x_temp (1.0mn @> signal @> 0.85mn)",nx,0., chixmx);
+        hp[x_temp_idx + 9]= new TH1F("h210","chi2x_temp (0.85mn @> signal)",nx,0.,chixmx);
+
+        hp[y_generic_idx + 0] = new TH1F("h301","dy_generic (all sig); #Deltay (#mum)",ny,-halfys,halfys);
+    hp[y_generic_idx + 1] = new TH1F("h302","dy_generic (signal @> 1.5mn); #Deltay (#mum)",ny,-halfys,halfys);      
+    hp[y_generic_idx + 2] = new TH1F("h303","dy_generic (1.5mn @> signal @> 1.0mn); #Deltay (#mum)",ny,-halfys,halfys);      
+    hp[y_generic_idx + 3] = new TH1F("h304","dy_generic (1.0mn @> signal @> 0.85mn); #Deltay (#mum)",ny,-halfys,halfys);     
+    hp[y_generic_idx + 4] = new TH1F("h305","dy_generic (0.85mn @> signal); #Deltay (#mum)",ny,-halfys,halfys);      
+
+    hp[x_generic_idx + 0] = new TH1F("h401","dx_generic (all sig); #Deltax (#mum)",nx,-halfxs,halfxs);
+    hp[x_generic_idx + 1] = new TH1F("h402","dx_generic (signal @> 1.5mn); #Deltax (#mum)",nx,-halfxs,halfxs);      
+    hp[x_generic_idx + 2] = new TH1F("h403","dx_generic (1.5mn @> signal @> 1.0mn); #Deltax (#mum)",nx,-halfxs,halfxs);      
+    hp[x_generic_idx + 3] = new TH1F("h404","dx_generic (1.0mn @> signal @> 0.85mn); #Deltax (#mum)",nx,-halfxs,halfxs);     
+    hp[x_generic_idx + 4] = new TH1F("h405","dx_generic (0.85mn @> signal); #Deltax (#mum)",nx,-halfxs,halfxs);      
+
+
+    hp[charge_idx + 0] = new TH1F("h100","Number generated e",150,0.,5000000.);	
+    hp[charge_idx + 1] = new TH1F ("h500","Cluster Charge",250,0.,500000.);
+        hp[charge_idx + 2] = new TH1F ("h501","npix(signal @> 1.5mn)",40,0.5,40.5);
+        hp[charge_idx + 3] = new TH1F ("h502","npix(1.5mn @> signal @> 1.0mn)",40,0.5,40.5);
+        hp[charge_idx + 4] = new TH1F ("h503","npix(1.0mn @> signal @> 0.85mn)",40,0.5,40.5);
+        hp[charge_idx + 5] = new TH1F ("h504","npix(0.85mn @> signal)",40,0.5,40.5);
+        hp[charge_idx + 6] = new TH1F ("h505","2 Cluster Merged Charge",500,0.,1000000.);
+        hp[charge_idx + 7] = new TH1F ("h506","chi2y_2cls (signal @> 1.5mn)",nx,0.,chiymx);
+        hp[charge_idx + 8] = new TH1F ("h507","chi2y_2cls (1.5mn @> signal @> 1.0mn)",nx,0.,  chiymx);
+        hp[charge_idx + 9] = new TH1F ("h508","chi2y_2cls (1.0mn @> signal @> 0.85mn)",nx,0., chiymx);
+        hp[charge_idx + 10] = new TH1F ("h509","chi2y_2cls (0.85mn @> signal)",nx,0.,chiymx);
+        hp[charge_idx + 11] = new TH1F ("h510","chi2x_2cls (signal @> 1.5mn)",nx,0.,chiymx);
+        hp[charge_idx + 12] = new TH1F ("h511","chi2x_2cls (1.5mn @> signal @> 1.0mn)",nx,0., chiymx);
+        hp[charge_idx + 13] = new TH1F ("h512","chi2x_2cls (1.0mn @> signal @> 0.85mn)",nx,0.,   chiymx);
+        hp[charge_idx + 14] = new TH1F ("h513","chi2x_2cls (0.85mn @> signal)",nx,0.,chiymx);
+        hp[charge_idx + 15] = new TH1F ("h606","measured Q/generated Q",300,0.,1.5);
 
 
 
-    // Set style for the the histograms	
+        // Set style for the the histograms	
 
-    for(int i=0; i<hp.size(); ++i) {
-        hp[i]->SetLineColor(2);
-        hp[i]->SetFillColor(38);
-    }
+        for(int i=0; i<hp.size(); ++i) {
+            if(hp[i] == NULL) continue;
+            hp[i]->SetLineColor(2);
+            hp[i]->SetFillColor(38);
+        }
 
     std::vector<std::pair<int, int> > pixlst;
 
@@ -266,8 +314,8 @@ int main(int argc, char *argv[])
         fscanf(ztemp_file,"%f  %f  %f", &cosy, &cosx, &cosz);
         //	   printf("cosx/cosy/cosz = %f/%f/%f \n", cosx, cosy, cosz);
 
-        fscanf(ztemp_file,"%f  %f  %f", &qavg, &symax, &pixmaxy);
-        printf("qavg/symax/pixmaxy = %f/%f/%f \n", qavg, symax, pixmaxy);
+        fscanf(ztemp_file,"%f  %f  %f", &qavg_raw, &symax, &pixmaxy);
+        printf("qavg_raw/symax/pixmaxy = %f/%f/%f \n", qavg_raw, symax, pixmaxy);
 
         symaxx = fmax*symax;
 
@@ -344,8 +392,8 @@ secondz: clslny = pzlast-pzfrst;
          fscanf(ptemp_file,"%f  %f  %f", &cosy, &cosx, &cosz);
          //	   printf("cosx/cosy/cosz = %f/%f/%f \n", cosx, cosy, cosz);
 
-         fscanf(ptemp_file,"%f  %f  %f", &qavg, &sxmax, &pixmaxx);
-         printf("qavg/sxmax/pixmaxx = %f/%f/%f \n", qavg, sxmax, pixmaxx);
+         fscanf(ptemp_file,"%f  %f  %f", &qavg_raw, &sxmax, &pixmaxx);
+         printf("qavg_raw/sxmax/pixmaxx = %f/%f/%f \n", qavg_raw, sxmax, pixmaxx);
 
 
          sxmaxx = fmax*sxmax;
@@ -440,15 +488,18 @@ secondp: clslnx = pplast-ppfrst;
          fpix = false;
          if(thick > 285.) {fpix = true;}
 
+         float qavg = 0.f; //average charge after threshholding effects
+
          // loop over all events once to get single pixel avgs.
          int read_events = 0;
+         qmsort.clear();
 
 
          for(int n=0; n<nevents; n++){
 
              float x1,y1,z1;
              //x and y flipped order in input files
-             if(fscanf(events_file,"%f %f %f %f %f %f %d", &y1, &x1, &z1, &cosy, &cosx, &cosz, &neh) == EOF){
+             if(fscanf(events_file,"%f %f %f %f %f %f %d", &y1, &x1, &z1, &cosy, &cosx, &cosz, &nelec[n]) == EOF){
                  printf("File %s ended early!! \n\n", infile);
                  break;
              }
@@ -475,10 +526,13 @@ secondp: clslnx = pplast-ppfrst;
              //sigraw is zero padded to allow overflow in double col
              //projections
              memset(sigraw, 0., sizeof(sigraw));
+             memset(clust, 0., sizeof(clust));
 
              // Add noise and analog response to cluster, reformat for flipped barrel coordinate system 
 
+
              triplg(vgauss);
+             qsmear[n] = 1.+vgauss[0]*common_frac;
              pixlst.clear();
              for(int i=0; i<ndcol; ++i) {ndhit[i] = 0;}
              icol = 0;
@@ -495,7 +549,7 @@ secondp: clslnx = pplast-ppfrst;
                      qin = (10.*pixin[j][i] + xgauss[i]*noise);
                      rclust[TXSIZE-1-j][TYSIZE-1-i] = qin;
                      if(qin < q100*(1.+wgauss[i]*q100_frac)) {
-                         clusts[n][TXSIZE-1-j][TYSIZE-1-i] = 0.;
+                         clust[TXSIZE-1-j][TYSIZE-1-i] = 0.;
                      } else {
                          idcol = (TYSIZE-1-i+icol)/2;
                          ++ndhit[idcol];
@@ -508,35 +562,122 @@ secondp: clslnx = pplast-ppfrst;
                              //						 signal = ((float)((1.+gain_frac*ygauss[i])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i]*readout_noise)/qscale;		
                              signal = ((float)((1.+gain_frac*ygauss[i])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i]*readout_noise);							 
                          }	 
-                         clusts[n][TXSIZE-1-j][TYSIZE-1-i] = (1.+vgauss[0]*common_frac)*signal;
+                         clust[TXSIZE-1-j][TYSIZE-1-i] = qsmear[n]*signal;
                      }
                  }
 
 
              }
-             
+
              // Simulate the second, higher threshold in single double col hits
              for(int j=0; j<TXSIZE; ++j) {
                  for(int i=0; i<TYSIZE; ++i) {
-                     if(clusts[n][j][i] > 0.) {
+                     if(clust[j][i] > 0.) {
                          idcol = (i+icol)/2;
                          if(ndhit[idcol] == 1) {
                              // Apply higher threshold on single hits in double columns
                              if(rclust[j][i] < q101*(1.+wgauss[i]*q100_frac)) {
-                                 clusts[n][j][i] = 0.;
+                                 clust[j][i] = 0.;
                              }
                          }
                      }
                  }
              }
 
-            //do x double  row projections
-            for(int j=0; j<TXSIZE/2; j++){
-                xsum1[n][j] = xsum2[n][j] = 0.;
-                for(int i=0; i<TYSIZE; i++){
-                    int j1 = 2*j;
-                    int j2 = 2*j+1;
-                    
+
+
+             // Simulate the seed finding
+
+             qmax = 0.;
+             for(int i=0; i<TXSIZE; ++i) {
+                 for(int j=0; j<TYSIZE; ++j) {
+                     if(clust[i][j] > qmax) {
+                         qmax = clust[i][j];
+                         max.first = i; max.second = j;
+
+                     }
+                 }
+             }
+
+             //if(qmax < 1500.) continue;
+
+
+             // Simulate clustering around maximum signal (seed)
+
+             pixlst.clear();
+             pixlst.push_back(max);
+             memset(bclust, false, sizeof(bclust));
+             bclust[max.first][max.second] = true;
+
+             std::vector<std::pair<int, int> > pixlst_copy;
+
+
+
+             numadd = 1;
+             //iterively find all non zero pixels near our seed
+             while(numadd > 0){
+                 //use copy of vector to avoid modifying vector as we loop through it
+                 pixlst_copy = pixlst;
+                 numadd = 0;
+                 for ( auto pixIter = pixlst_copy.begin(); pixIter != pixlst_copy.end(); ++pixIter ) {
+                     //max's are +2 because we are doing <max in the loop
+                     imin = pixIter->first-1; 
+                     imax = pixIter->first+2;
+                     jmin = pixIter->second-1;
+                     jmax = pixIter->second+2;
+                     if(imin < 0) {imin = 0;}
+                     if(imax > TXSIZE) {imax = TXSIZE;}
+                     if(jmin < 0) {jmin = 0;}
+                     if(jmax > TYSIZE) {jmax = TYSIZE;}
+                     for(int i=imin; i<imax; ++i) {
+                         for(int j=jmin; j<jmax; ++j) {
+                             if(clust[i][j] > 0.) {
+                                 if(!bclust[i][j]) {
+                                     bclust[i][j] = true;
+                                     pixel.first = i; pixel.second = j;
+                                     pixlst.push_back(pixel);
+                                     ++numadd;
+                                 }
+                             }
+                         }
+                     }
+                 }
+             }
+
+             float qmeas=0.;
+             jmin = TYSIZE;
+             imax = 0;
+             for (auto pixIter = pixlst.begin() ; pixIter != pixlst.end(); ++pixIter ) {
+                 int i = pixIter->first; 
+                 int j = pixIter->second;
+                 cluster[n][i][j] = clust[i][j];
+                 qmeas += clust[i][j];
+             }
+             qtotal[n] = qmeas;
+
+
+             //keep 60 smallest charges
+             if(qmsort.size() < 60){
+                 qmsort.insert(qmeas);
+             }
+             else if(qmeas < *(qmsort.end())){
+                 qmsort.erase(qmsort.end());
+                 qmsort.insert(qmeas);
+             }
+
+
+             qavg += qmeas;
+
+
+
+
+             //do x double  row projections
+             for(int j=0; j<TXSIZE/2; j++){
+                 xsum1[n][j] = xsum2[n][j] = 0.;
+                 for(int i=0; i<TYSIZE; i++){
+                     int j1 = 2*j;
+                     int j2 = 2*j+1;
+
                      //sigraw padded with extra 0's to allow overflow
                      qin = 10. * (sigraw[j1][i] + sigraw[j1+1][i]);
                      qin += xgauss[i]*noise;
@@ -550,7 +691,7 @@ secondp: clslnx = pplast-ppfrst;
                              //						 signal = ((float)((1.+gain_frac*ygauss[i])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i]*readout_noise)/qscale;		
                              signal = ((float)((1.+gain_frac*ygauss[i])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i]*readout_noise);							 
                          }	 
-                         xsum1[n][j] += (1.+vgauss[0]*common_frac)*signal;
+                         xsum1[n][j] += qsmear[n]*signal;
                      }
 
                      qin = 10. * (sigraw[j2][i] + sigraw[j2+1][i]);
@@ -565,15 +706,15 @@ secondp: clslnx = pplast-ppfrst;
                              //						 signal = ((float)((1.+gain_frac*ygauss[i])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i]*readout_noise)/qscale;		
                              signal = ((float)((1.+gain_frac*ygauss[i])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i]*readout_noise);							 
                          }	 
-                         xsum2[n][j] += (1.+vgauss[0]*common_frac)*signal;
+                         xsum2[n][j] += qsmear[n]*signal;
                      }
-                }
-            }
+                 }
+             }
 
 
              //do y double col projections 
              for(int i=0; i<TYSIZE/2; ++i) {
-                ysum1[n][i] = ysum2[n][i] = 0.;
+                 ysum1[n][i] = ysum2[n][i] = 0.;
                  for(int j=0; j<TXSIZE; j++){
                      int i1 = 2*i;
                      int i2 = 2*i+1;
@@ -591,7 +732,7 @@ secondp: clslnx = pplast-ppfrst;
                              //						 signal = ((float)((1.+gain_frac*ygauss[i])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i]*readout_noise)/qscale;		
                              signal = ((float)((1.+gain_frac*ygauss[i1])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i1]*readout_noise);							 
                          }	 
-                         ysum1[n][i] += (1.+vgauss[0]*common_frac)*signal;
+                         ysum1[n][i] += qsmear[n]*signal;
                      }
 
                      //sigraw padded with extra 0's to allow overflow
@@ -607,13 +748,15 @@ secondp: clslnx = pplast-ppfrst;
                              //						 signal = ((float)((1.+gain_frac*ygauss[i])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i]*readout_noise)/qscale;		
                              signal = ((float)((1.+gain_frac*ygauss[i2])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i2]*readout_noise);							 
                          }	 
-                         ysum2[n][i] += (1.+vgauss[0]*common_frac)*signal;
+                         ysum2[n][i] += qsmear[n]*signal;
                      }
                  }
              }
 
 
          }
+
+         qavg /= read_events;
          fclose(events_file);
 
          int nxone=0;
@@ -641,11 +784,10 @@ secondp: clslnx = pplast-ppfrst;
              memset(xsum, 0., sizeof(xsum));
              memset(ysum, 0., sizeof(ysum));
              //printf("Clust %i: \n", n);
-             for(int j=0; j<TXSIZE; j++){
-                 for(int i=0; i<TYSIZE; i++){
-                     //printf("%.1f ", clusts[idx]);
-                     xsum[j] += clusts[n][j][i];
-                     ysum[i] += clusts[n][j][i];
+             for(int i=0; i<TXSIZE; i++){
+                 for(int j=0; j<TYSIZE; j++){
+                     xsum[i] += cluster[n][i][j];
+                     ysum[j] += cluster[n][i][j];
                  }
                  //printf("\n");
              }
@@ -716,7 +858,7 @@ secondp: clslnx = pplast-ppfrst;
                  dyone += deltay;
                  syone += deltay*deltay;
              }
-             
+
              //do the same for double sized single pixel clusters
              if(xw1 ==1){
                  nxtwo++;
@@ -875,10 +1017,10 @@ secondp: clslnx = pplast-ppfrst;
          bool flip_y = false;
 
          if(locBx*locBz < 0.f) {
-            flip_x = true;
+             flip_x = true;
          }
          if(locBx < 0.f) {
-            flip_y = true;
+             flip_y = true;
          }
 
          templ.sideload(slice, IDtype, locBx, locBz, lorwdy, lorwdx, q50, fbin, xsize, ysize, thick);
@@ -892,102 +1034,29 @@ secondp: clslnx = pplast-ppfrst;
          if(write_temp_header && ifile==startfile) {
 
 
-             /*
-                fprintf(output_file,"%s", header);
-                fprintf(output_file,"%d %d %4.2f %d %d %d %d %5.1f %5.1f %4.2f %5.3f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %f %4.2f %4.2f %4.2f \n",
-                id,nvers,Bfield,NTy,NTyx,NTxx,IDtype,Vbias, temp,fluenc,qscale,q50,lorwdy,
-                lorwdx,ysize,xsize,thick,q51,lorbsy,lorbsx,1.5f,1.0f,0.85f);
-                */
+             fprintf(temp_output_file,"%s", header);
+             fprintf(temp_output_file,"%d %d %4.2f %d %d %d %d %5.1f %5.1f %4.2f %5.3f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %f %4.2f %4.2f %4.2f \n",
+                     id,nvers,Bfield,NTy,NTyx,NTxx,IDtype,Vbias, temp,fluenc,qscale,q50,lorwdy,
+                     lorwdx,ysize,xsize,thick,q51,lorbsy,lorbsx,fbin[0], fbin[1], fbin[2]);
+
+             fprintf(generr_output_file,"%s", header);
+             fprintf(generr_output_file,"%d %d %4.2f %d %d %d %d %5.1f %5.1f %4.2f %5.3f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %f %4.2f %4.2f %4.2f \n",
+                     id,nvers,Bfield,NTy,NTyx,NTxx,IDtype,Vbias, temp,fluenc,qscale,q50,lorwdy,
+                     lorwdx,ysize,xsize,thick,q51,lorbsy,lorbsx,fbin[0], fbin[1], fbin[2]);
          }
 
-         for(int i=0; i<hp.size(); ++i) { hp[i]->Reset();}
+         for(int i=0; i<hp.size(); ++i) { 
+             if(hp[i] == NULL) continue;
+             //hp[i]->Reset();
+         }
 
          qperbit = pixmax/(pow(2.,(double)(numbits)-1.));
 
-         float rnelec = 0.f;
 
 
          // Loop over all clusters and apply generic and 1d reco
          for(int n=0; n<read_events; n++){
 
-             float **clust = clusts[n];
-
-             // Simulate the seed finding
-
-             qmax = 0.;
-             for(int i=0; i<TXSIZE; ++i) {
-                 for(int j=0; j<TYSIZE; ++j) {
-                     if(clust[i][j] > qmax) {
-                         qmax = clust[i][j];
-                         max.first = i; max.second = j;
-
-                     }
-                 }
-             }
-
-             if(qmax < 1500.) continue;
-
-
-             // Simulate clustering around maximum signal (seed)
-
-             pixlst.clear();
-             pixlst.push_back(max);
-             memset(bclust, false, sizeof(bclust));
-             bclust[max.first][max.second] = true;
-
-             std::vector<std::pair<int, int> > pixlst_copy;
-
-
-
-             numadd = 1;
-             //iterively find all non zero pixels near our seed
-             while(numadd > 0){
-                 //use copy of vector to avoid modifying vector as we loop through it
-                 pixlst_copy = pixlst;
-                 numadd = 0;
-                 for ( auto pixIter = pixlst_copy.begin(); pixIter != pixlst_copy.end(); ++pixIter ) {
-                     //max's are +2 because we are doing <max in the loop
-                     imin = pixIter->first-1; 
-                     imax = pixIter->first+2;
-                     jmin = pixIter->second-1;
-                     jmax = pixIter->second+2;
-                     if(imin < 0) {imin = 0;}
-                     if(imax > TXSIZE) {imax = TXSIZE;}
-                     if(jmin < 0) {jmin = 0;}
-                     if(jmax > TYSIZE) {jmax = TYSIZE;}
-                     for(int i=imin; i<imax; ++i) {
-                         for(int j=jmin; j<jmax; ++j) {
-                             if(clust[i][j] > 0.) {
-                                 if(!bclust[i][j]) {
-                                     bclust[i][j] = true;
-                                     pixel.first = i; pixel.second = j;
-                                     pixlst.push_back(pixel);
-                                     ++numadd;
-                                 }
-                             }
-                         }
-                     }
-                 }
-             }
-             //only add pixels we 'found' when clustering to final cluster
-             memset(cluster, 0., sizeof(cluster));
-
-             qclust=0.;
-             jmin = TYSIZE;
-             imax = 0;
-             for (auto pixIter = pixlst.begin() ; pixIter != pixlst.end(); ++pixIter ) {
-                 int i = pixIter->first; 
-                 int j = pixIter->second;
-                 cluster[i][j] = clust[i][j];
-                 qclust += clust[i][j];
-                 if(cluster[i][j] > 0.f) {
-                     if(j < jmin) jmin = i;
-                     if(j > jmax) jmax = i;
-                 }
-             }
-             hp[25]->Fill((double)qclust, 1.);
-
-             rnelec += qclust;
 
 
              // Do generic reco on the cluster
@@ -998,8 +1067,8 @@ secondp: clslnx = pplast-ppfrst;
              memset(ysum, 0., sizeof(ysum));
              for(int j=0; j<TXSIZE; j++){
                  for(int i=0; i<TYSIZE; i++){
-                     xsum[j] += cluster[j][i];
-                     ysum[i] += cluster[j][i];
+                     xsum[j] += cluster[n][j][i];
+                     ysum[i] += cluster[n][j][i];
                  }
              }
 
@@ -1070,17 +1139,7 @@ secondp: clslnx = pplast-ppfrst;
 
 
 
-             hp[26]->Fill(dx_gen);
-             hp[27]->Fill(dy_gen);
 
-             /*
-             if(size_x ==1){
-                 hp[1]->Fill(dx_gen);
-             }
-             if(size_y ==1){
-                 hp[2]->Fill(dy_gen);
-             }
-             */
 
 
 
@@ -1099,11 +1158,20 @@ secondp: clslnx = pplast-ppfrst;
              }
 
 
+             float cluster_local[TXSIZE][TYSIZE];
+             memset(cluster_local, 0., sizeof(cluster_local));
+             for(int i=0; i<TXSIZE; i++){
+                 for(int j=0; j<TYSIZE; j++){
+                     cluster_local[i][j] = cluster[n][i][j];
+                 }
+             }
+
+
 
 
              //        if(fabs(cotbeta) < 2.1) continue;
              // Do the template analysis on the cluster 
-             SiPixelTemplateReco::ClusMatrix clusterPayload{&cluster[0][0], xdouble, ydouble, mrow,mcol};
+             SiPixelTemplateReco::ClusMatrix clusterPayload{&cluster_local[0][0], xdouble, ydouble, mrow,mcol};
 
              //  Sideload this template slice
 
@@ -1118,39 +1186,52 @@ secondp: clslnx = pplast-ppfrst;
                  ++nbin[qb];
                  dy = yrec - (TYSIZE/2)*ysize - yhit[n];
                  dx = xrec - (TXSIZE/2)*xsize - xhit[n];
-                 hp[0]->Fill(dy);
-                 hp[10]->Fill(dx);
 
-                 if(sigmay > 0.f) hp[5]->Fill(dy/sigmay);
-                 hp[1+qbin]->Fill(dy);
-                 if(sigmay > 0.f) hp[6+qbin]->Fill(dy/sigmay);
-                 if(sigmax > 0.f) hp[15]->Fill(dx/sigmax);
-                 hp[11+qbin]->Fill(dx);
-                 if(sigmax > 0.f) hp[16+qbin]->Fill(dx/sigmax);
+
+                 //Fill template reco and generic reco residuals
+                 hp[y_temp_idx]->Fill(dy);
+                 hp[y_temp_idx+1+qbin]->Fill(dy);
+
+                 hp[x_temp_idx]->Fill(dx);
+                 hp[x_temp_idx+1+qbin]->Fill(dx);
+
+                 hp[y_generic_idx]->Fill(dy_gen);
+                 hp[y_generic_idx+1 +qbin]->Fill(dy_gen);
+
+                 hp[x_generic_idx]->Fill(dx_gen);
+                 hp[x_generic_idx+1 +qbin]->Fill(dx_gen);
+
+                 // fill Chisq from template fit here
+
 
                  /*
-                 int k= int(xhit[n]/xsize * 8. + 4.5);
-                 int l= int(yhit[n]/ysize * 8. + 4.5);
-                 printf("Hit bins %i %i \n", k,l);
-                 printf(" dx dy %.3f %.3f \n", dx,dy);
-                 */
+                    int k= int(xhit[n]/xsize * 8. + 4.5);
+                    int l= int(yhit[n]/ysize * 8. + 4.5);
+                    printf("Hit bins %i %i \n", k,l);
+                    printf(" dx dy %.3f %.3f \n", dx,dy);
+                    */
 
              }
 
          }
 
-         printf(" low q failures = %d, malformed clusters = %d, successful fits = %d, total read events %d \n", nbin[4], nbad, ngood, read_events);	   
+         printf(" low q failures = %d, failed fits = %d, successful fits = %d, total read events %d \n", nbin[4], nbad, ngood, read_events);	   
 
          /*
           * Histograms plotting
           */
 
 
-         for(int i=0; i<20; ++i) {hp[i]->Fit("gaus");}
-         hp[26]->Fit("gaus");
-         hp[27]->Fit("gaus");
-         
+         for(int i=0; i<5; ++i) {
+             hp[y_temp_idx + i]->Fit("gaus");
+             hp[x_temp_idx + i]->Fit("gaus");
+             hp[y_generic_idx + i]->Fit("gaus");
+             hp[x_generic_idx + i]->Fit("gaus");
 
+         }
+
+
+         /*
          scaley = hp[5]->GetRMS();
          scalex = hp[15]->GetRMS();   
          delyavg = (float)hp[20]->GetMean();
@@ -1192,6 +1273,7 @@ secondp: clslnx = pplast-ppfrst;
          hp[25]->Fit("vavilov");
          Double_t par[4];
          vfunc->GetParameters(par);
+         */
 
          //  Create an output filename for this run 
 
@@ -1201,17 +1283,85 @@ secondp: clslnx = pplast-ppfrst;
          c1->Clear();
          c1->Print(outfile0);
          for(int i=0; i<hp.size(); ++i) {
+             if(hp[i] == NULL) continue;
              hp[i]->Draw();
              c1->Print(outfile1);
              c1->Clear();
          }
          c1->Print(outfile2);
          c1->Clear();
-         // Write this template entry to the output file
-    }
-    // Close output file   
 
-    //fclose(output_file);  
+
+
+         // Write this template entry to the output file
+         //
+         fprintf(temp_output_file, "%i %.6f %.6f %.6f \n", ifile, slice->costrk[0], slice->costrk[1], slice->costrk[2]);
+
+         fprintf(temp_output_file, "%.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f \n",
+                 qavg, pixmax, symax, dyone, syone, sxmax, dyone, syone);
+         //grab 30th smallest charge
+         auto it = std::next(qmsort.begin(), 29);
+         float qmin30 = *it;
+         fprintf(temp_output_file, "%.8f %.8f %.8f %.8f %.8f %.8f %.8f \n",
+                 dytwo, sytwo, dxtwo, sytwo, qmin30, clslny, clslnx );
+
+         //y charge variance fit
+         for(int i=0; i<2; i++){
+             for(int j=0; j<5; j++){
+                 fprintf(temp_output_file, "%.8f ", slice->ypar[i][j]);
+             }
+             printf("\n");
+         }
+         //y template
+         for(int k = 0; k < 9; k++){
+             for(int j=0; j<TYSIZE; j++){
+                 fprintf(temp_output_file, "%.8f ", slice->ytemp[k][j]);
+             }
+             printf("\n");
+         }
+
+         //x charge variance fit
+         for(int i=0; i<2; i++){
+             for(int j=0; j<5; j++){
+                 fprintf(temp_output_file, "%.8f ", slice->ypar[i][j]);
+             }
+             printf("\n");
+         }
+         //x template
+         for(int k = 0; k < 9; k++){
+             for(int j=0; j<TYSIZE; j++){
+                 fprintf(temp_output_file, "%.8f ", slice->ytemp[k][j]);
+             }
+             printf("\n");
+         }
+
+
+         //fitted stuff
+
+
+
+         //output to gen_errors
+
+         fprintf(generr_output_file, "%i %.6f %.6f %.6f \n", ifile, slice->costrk[0], slice->costrk[1], slice->costrk[2]);
+
+         fprintf(temp_output_file, "%.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f \n",
+                 qavg, pixmax, symax, dyone, syone, sxmax, dyone, syone);
+         //grab 60th smallest charge
+         it = std::next(qmsort.begin(), 59);
+         float qmin60 = *it;
+
+         fprintf(temp_output_file, "%.8f %.8f %.8f %.8f %.8f %.8f \n",
+                 dytwo, sytwo, dxtwo, sytwo, qmin30, qmin60);
+
+
+         //more fitted stuff
+
+
+    }
+    // Close output files
+
+    fclose(temp_output_file);  
+    fclose(generr_output_file);  
 
     /*  Determine current time */
 
@@ -1222,7 +1372,7 @@ secondp: clslnx = pplast-ppfrst;
     deltat += (double)deltas;
     printf("ellapsed time = %f seconds \n", deltat);
 
-    delete_3d_array(clusts, nevents, TXSIZE, TYSIZE);
+    delete_3d_array(cluster, nevents, TXSIZE, TYSIZE);
     delete_2d_array(xsum1, nevents, TXSIZE/2);
     delete_2d_array(xsum2, nevents, TXSIZE/2);
     delete_2d_array(ysum1, nevents, TYSIZE/2);
