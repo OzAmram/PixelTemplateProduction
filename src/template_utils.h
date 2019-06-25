@@ -12,6 +12,7 @@
 #include <iomanip>
 #include <sstream>
 #include <fstream>
+#include <set>
 #include <sys/time.h>
 
 #define SI_PIXEL_TEMPLATE_STANDALONE
@@ -122,13 +123,37 @@ float*** setup_3d_array(int size1, int size2, int size3){
         for(int j=0; j<size2; j++){
             a[i][j] = new float[size3];
 
+        }
+    }
+    for(int i=0; i< size1; i++){
+        for(int j=0; j<size2; j++){
             for(int k=0; k<size3; k++){
                 a[i][j][k] = 0.;
             }
         }
     }
+
     return a;
 }
+
+void zero_3d_array(float ***a, int size1, int size2, int size3){
+    for(int i=0; i< size1; i++){
+        for(int j=0; j<size2; j++){
+            for(int k=0; k<size3; k++){
+                a[i][j][k] = 0.;
+            }
+        }
+    }
+}
+
+void zero_2d_array(float **a, int size1, int size2){
+    for(int i=0; i< size1; i++){
+        for(int j=0; j<size2; j++){
+            a[i][j] = 0.;
+        }
+    }
+}
+
 
 void delete_3d_array(float ***a, int size1, int size2, int size3){
     for(int i=0; i< size1; i++){
@@ -137,6 +162,7 @@ void delete_3d_array(float ***a, int size1, int size2, int size3){
         }
         delete[] a[i];
     }
+    delete[] a;
 }
 
 
