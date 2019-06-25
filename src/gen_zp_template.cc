@@ -1128,12 +1128,11 @@ secondp: clslnx = pplast-ppfrst;
                  hp[11+qbin]->Fill(dx);
                  if(sigmax > 0.f) hp[16+qbin]->Fill(dx/sigmax);
 
-                 /*
                  int k= int(xhit[n]/xsize * 8. + 4.5);
                  int l= int(yhit[n]/ysize * 8. + 4.5);
                  printf("Hit bins %i %i \n", k,l);
-                 printf(" dx dy %.3f %.3f \n", dx,dy);
-                 */
+                 printf("template dx dy %.3f %.3f \n", dx,dy);
+                 printf("generic dx dy %.3f %.3f \n", dx_gen,dy_gen);
 
              }
 

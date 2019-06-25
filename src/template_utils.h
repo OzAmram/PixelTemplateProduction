@@ -17,7 +17,6 @@
 #define SI_PIXEL_TEMPLATE_STANDALONE
 #include "../cmssw_code/SiPixelTemplate.cc"
 #include "../cmssw_code/SiPixelTemplate2D.cc"
-static int theVerboseLevel = {0};
 #include "../cmssw_code/VVIObjF.cc"
 #include "../cmssw_code/SiPixelTemplateReco.cc"
 #include "../cmssw_code/SiPixelTemplateReco2D.cc"
