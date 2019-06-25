@@ -1140,10 +1140,6 @@ secondp: clslnx = pplast-ppfrst;
 
 
 
-
-
-
-
              // Do the template reco on the cluster 
 
 
@@ -1204,12 +1200,11 @@ secondp: clslnx = pplast-ppfrst;
                  // fill Chisq from template fit here
 
 
-                 /*
                     int k= int(xhit[n]/xsize * 8. + 4.5);
                     int l= int(yhit[n]/ysize * 8. + 4.5);
                     printf("Hit bins %i %i \n", k,l);
-                    printf(" dx dy %.3f %.3f \n", dx,dy);
-                    */
+                    printf("Template: dx dy %.3f %.3f \n", dx,dy);
+                    printf("Generic: dx dy %.3f %.3f \n", dx_gen,dy_gen);
 
              }
 
