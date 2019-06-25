@@ -1054,12 +1054,12 @@ secondp: clslnx = pplast-ppfrst;
 
 
              fprintf(temp_output_file,"%s", header);
-             fprintf(temp_output_file,"%d %d %4.2f %d %d %d %d %5.1f %5.1f %4.2f %5.3f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %f %4.2f %4.2f %4.2f \n",
+             fprintf(temp_output_file,"%d %d %4.2f %d %d %d %d %5.4f %5.4f %4.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %f %4.4f %4.4f %4.4f \n",
                      id,nvers,Bfield,NTy,NTyx,NTxx,IDtype,Vbias, temp,fluenc,qscale,q50,lorwdy,
                      lorwdx,ysize,xsize,thick,q51,lorbsy,lorbsx,fbin[0], fbin[1], fbin[2]);
 
              fprintf(generr_output_file,"%s", header);
-             fprintf(generr_output_file,"%d %d %4.2f %d %d %d %d %5.1f %5.1f %4.2f %5.3f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %f %4.2f %4.2f %4.2f \n",
+             fprintf(temp_output_file,"%d %d %4.2f %d %d %d %d %5.4f %5.4f %4.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %f %4.4f %4.4f %4.4f \n",
                      id,nvers,Bfield,NTy,NTyx,NTxx,IDtype,Vbias, temp,fluenc,qscale,q50,lorwdy,
                      lorwdx,ysize,xsize,thick,q51,lorbsy,lorbsx,fbin[0], fbin[1], fbin[2]);
          }
@@ -1314,9 +1314,9 @@ secondp: clslnx = pplast-ppfrst;
 
          // Write this template entry to the output file
          //
-         fprintf(temp_output_file, "%i %.6f %.6f %.6f \n", ifile, slice->costrk[0], slice->costrk[1], slice->costrk[2]);
+         fprintf(temp_output_file, "%i %8.6f %8.6f %8.6f \n", ifile, slice->costrk[0], slice->costrk[1], slice->costrk[2]);
 
-         fprintf(temp_output_file, "%.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f \n",
+         fprintf(temp_output_file, "%.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f \n",
                  qavg, pixmax, symax, dyone, syone, sxmax, dyone, syone);
          //grab 30th smallest charge
          auto it = std::next(qmsort.begin(), 29);
@@ -1325,37 +1325,37 @@ secondp: clslnx = pplast-ppfrst;
          it = std::next(qmsort.begin(), 59);
          float qmin60 = *it;
 
-         fprintf(temp_output_file, "%.8f %.8f %.8f %.8f %.8f %.8f %.8f \n",
+         fprintf(temp_output_file, "%.2f %.2f %.2f %.2f %.2f %.2f %.2f \n",
                  dytwo, sytwo, dxtwo, sytwo, qmin30, clslny, clslnx );
 
          //y charge variance fit
          for(int i=0; i<2; i++){
              for(int j=0; j<5; j++){
-                 fprintf(temp_output_file, "%.8f ", slice->ypar[i][j]);
+                 fprintf(temp_output_file, "%15.8E ", slice->ypar[i][j]);
              }
-             printf("\n");
+             fprintf(temp_output_file, "\n");
          }
          //y template
          for(int k = 0; k < 9; k++){
              for(int j=0; j<TYSIZE; j++){
-                 fprintf(temp_output_file, "%.8f ", slice->ytemp[k][j]);
+                 fprintf(temp_output_file, "%8.1f ", slice->ytemp[k][j]);
              }
-             printf("\n");
+             fprintf(temp_output_file, "\n");
          }
 
          //x charge variance fit
          for(int i=0; i<2; i++){
              for(int j=0; j<5; j++){
-                 fprintf(temp_output_file, "%.8f ", slice->ypar[i][j]);
+                 fprintf(temp_output_file, "%15.8E ", slice->ypar[i][j]);
              }
-             printf("\n");
+             fprintf(temp_output_file, "\n");
          }
          //x template
          for(int k = 0; k < 9; k++){
              for(int j=0; j<TYSIZE; j++){
-                 fprintf(temp_output_file, "%.8f ", slice->ytemp[k][j]);
+                 fprintf(temp_output_file, "%8.1f ", slice->ytemp[k][j]);
              }
-             printf("\n");
+             fprintf(temp_output_file, "\n");
          }
 
 
@@ -1377,12 +1377,12 @@ secondp: clslnx = pplast-ppfrst;
 
          //output to gen_errors
 
-         fprintf(generr_output_file, "%i %.6f %.6f %.6f \n", ifile, slice->costrk[0], slice->costrk[1], slice->costrk[2]);
+         fprintf(generr_output_file, "%i %8.6f %8.6f %8.6f \n", ifile, slice->costrk[0], slice->costrk[1], slice->costrk[2]);
 
-         fprintf(temp_output_file, "%.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f \n",
+         fprintf(temp_output_file, "%.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f \n",
                  qavg, pixmax, symax, dyone, syone, sxmax, dyone, syone);
 
-         fprintf(temp_output_file, "%.8f %.8f %.8f %.8f %.8f %.8f \n",
+         fprintf(temp_output_file, "%.2f %.2f %.2f %.2f %.2f %.2f \n",
                  dytwo, sytwo, dxtwo, sytwo, qmin30, qmin60);
 
 
