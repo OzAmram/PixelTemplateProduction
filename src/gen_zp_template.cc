@@ -39,16 +39,14 @@ int main(int argc, char *argv[])
     std::vector<float> pvec(6), wgauss(TYSIZE), vgauss(TYSIZE), xgauss(TYSIZE), ygauss(TYSIZE), zgauss(TYSIZE);
     static bool fpix;
     float pixin[TXSIZE][TYSIZE];
-    bool ydouble[TYSIZE], xdouble[TXSIZE];
     float ytemp[9][TYSIZE], xtemp[9][TXSIZE], xpar[2][5], ypar[2][5];
     float sxmax, symax, sxmaxx, symaxx, cosx, cosy, cosz;
     static float thick, xsize, ysize, noise, zcen, gain_frac, q100_frac, common_frac, readout_noise, qscale, qperbit;
     static float qavg_raw,  clslnx, clslny; 
     static float xrec, yrec, sigmax, sigmay, probx, proby, probQ,  signal, locBz, locBx,  pixmax;
     static float pixmaxy, pixmaxx;
-    static int startfile, neh, tempID, nbad, ngood, non_linear, icol, ndcol, numrun; 
+    static int startfile,  nbad, ngood, non_linear, numrun; 
     int  id,NTy, NTyx,NTxx,IDtype;
-
 
 
     std::multiset<float> qmsort;
@@ -64,19 +62,15 @@ int main(int argc, char *argv[])
     int nelec[nevents];
 
     float ***cluster = setup_3d_array(nevents, TXSIZE, TYSIZE); //Cluster as found by seeding + clustering algo
-    float **xsum1 = setup_2d_array(nevents, TXSIZE/2);
-    float **xsum2 = setup_2d_array(nevents, TXSIZE/2);
+    float **xsum1 = setup_2d_array(nevents, TXSIZE);
+    float **xsum2 = setup_2d_array(nevents, TXSIZE);
 
-    float **ysum1 = setup_2d_array(nevents, TYSIZE/2);
-    float **ysum2 = setup_2d_array(nevents, TYSIZE/2);
+    float **ysum1 = setup_2d_array(nevents, TYSIZE);
+    float **ysum2 = setup_2d_array(nevents, TYSIZE);
     static float Bfield,Vbias,temp,fluenc;
-    static vector<int> nbin(5,0);
-    float deltay;
-    int  ierr, qbin, qb, jmin, jmax, imin, imax, numadd, idcol;
-    int mrow = TXSIZE, mcol = TYSIZE;
+    float nqbin[5];
     const int TXSHIFT = (TXSIZE - T2XSIZE)/2;
     double dx, dy, tote, bade, adc;
-    float scaley, scalex, scalx[4], scaly[4], delyavg, delysig, offsetx[4], offsety[4];
     static int numbits;
     static float q100, q101, q50, q51, q10, qmax; 
 
@@ -222,23 +216,23 @@ int main(int argc, char *argv[])
     hp[y_temp_idx + 3] = new TH1F("h104","dy_temp (1.0mn @> signal @> 0.85mn); #Deltay (#mum)",ny,-halfys,halfys);     
     hp[y_temp_idx + 4] = new TH1F("h105","dy_temp (0.85mn @> signal); #Deltay (#mum)",ny,-halfys,halfys);      
     hp[y_temp_idx + 5] = new TH1F("h106","chi2y_temp (single pix)",ny,0.,chiymx);
-        hp[y_temp_idx + 6] = new TH1F("h107","chi2y_temp (signal @> 1.5mn)",ny,0.,chiymx);
-        hp[y_temp_idx + 7] = new TH1F("h108","chi2y_temp (1.5mn @> signal @> 1.0mn)",ny, 0., chiymx);
-        hp[y_temp_idx + 8] = new TH1F("h109","chi2y_temp (1.0mn @> signal @> 0.85mn)",ny,0., chiymx);
-        hp[y_temp_idx + 9]= new TH1F("h110","chi2y_temp (0.85mn @> signal)",ny,0.,chiymx);
+    hp[y_temp_idx + 6] = new TH1F("h107","chi2y_temp (signal @> 1.5mn)",ny,0.,chiymx);
+    hp[y_temp_idx + 7] = new TH1F("h108","chi2y_temp (1.5mn @> signal @> 1.0mn)",ny, 0., chiymx);
+    hp[y_temp_idx + 8] = new TH1F("h109","chi2y_temp (1.0mn @> signal @> 0.85mn)",ny,0., chiymx);
+    hp[y_temp_idx + 9]= new TH1F("h110","chi2y_temp (0.85mn @> signal)",ny,0.,chiymx);
 
-        hp[x_temp_idx + 0] = new TH1F("h201","dx_temp (all sig); #Deltax (#mum)",nx,-halfxs,halfxs);
+    hp[x_temp_idx + 0] = new TH1F("h201","dx_temp (all sig); #Deltax (#mum)",nx,-halfxs,halfxs);
     hp[x_temp_idx + 1] = new TH1F("h202","dx_temp (signal @> 1.5mn); #Deltax (#mum)",nx,-halfxs,halfxs);      
     hp[x_temp_idx + 2] = new TH1F("h203","dx_temp (1.5mn @> signal @> 1.0mn); #Deltax (#mum)",nx,-halfxs,halfxs);      
     hp[x_temp_idx + 3] = new TH1F("h204","dx_temp (1.0mn @> signal @> 0.85mn); #Deltax (#mum)",nx,-halfxs,halfxs);     
     hp[x_temp_idx + 4] = new TH1F("h205","dx_temp (0.85mn @> signal); #Deltax (#mum)",nx,-halfxs,halfxs);      
     hp[x_temp_idx + 5] = new TH1F("h206","chi2x_temp (single pix)",nx,0.,chixmx);
-        hp[x_temp_idx + 6] = new TH1F("h207","chi2x_temp (signal @> 1.5mn)",nx,0.,chixmx);
-        hp[x_temp_idx + 7] = new TH1F("h208","chi2x_temp (1.5mn @> signal @> 1.0mn)",nx, 0., chixmx);
-        hp[x_temp_idx + 8] = new TH1F("h209","chi2x_temp (1.0mn @> signal @> 0.85mn)",nx,0., chixmx);
-        hp[x_temp_idx + 9]= new TH1F("h210","chi2x_temp (0.85mn @> signal)",nx,0.,chixmx);
+    hp[x_temp_idx + 6] = new TH1F("h207","chi2x_temp (signal @> 1.5mn)",nx,0.,chixmx);
+    hp[x_temp_idx + 7] = new TH1F("h208","chi2x_temp (1.5mn @> signal @> 1.0mn)",nx, 0., chixmx);
+    hp[x_temp_idx + 8] = new TH1F("h209","chi2x_temp (1.0mn @> signal @> 0.85mn)",nx,0., chixmx);
+    hp[x_temp_idx + 9]= new TH1F("h210","chi2x_temp (0.85mn @> signal)",nx,0.,chixmx);
 
-        hp[y_generic_idx + 0] = new TH1F("h301","dy_generic (all sig); #Deltay (#mum)",ny,-halfys,halfys);
+    hp[y_generic_idx + 0] = new TH1F("h301","dy_generic (all sig); #Deltay (#mum)",ny,-halfys,halfys);
     hp[y_generic_idx + 1] = new TH1F("h302","dy_generic (signal @> 1.5mn); #Deltay (#mum)",ny,-halfys,halfys);      
     hp[y_generic_idx + 2] = new TH1F("h303","dy_generic (1.5mn @> signal @> 1.0mn); #Deltay (#mum)",ny,-halfys,halfys);      
     hp[y_generic_idx + 3] = new TH1F("h304","dy_generic (1.0mn @> signal @> 0.85mn); #Deltay (#mum)",ny,-halfys,halfys);     
@@ -253,30 +247,30 @@ int main(int argc, char *argv[])
 
     hp[charge_idx + 0] = new TH1F("h100","Number generated e",150,0.,5000000.);	
     hp[charge_idx + 1] = new TH1F ("h500","Cluster Charge",250,0.,500000.);
-        hp[charge_idx + 2] = new TH1F ("h501","npix(signal @> 1.5mn)",40,0.5,40.5);
-        hp[charge_idx + 3] = new TH1F ("h502","npix(1.5mn @> signal @> 1.0mn)",40,0.5,40.5);
-        hp[charge_idx + 4] = new TH1F ("h503","npix(1.0mn @> signal @> 0.85mn)",40,0.5,40.5);
-        hp[charge_idx + 5] = new TH1F ("h504","npix(0.85mn @> signal)",40,0.5,40.5);
-        hp[charge_idx + 6] = new TH1F ("h505","2 Cluster Merged Charge",500,0.,1000000.);
-        hp[charge_idx + 7] = new TH1F ("h506","chi2y_2cls (signal @> 1.5mn)",nx,0.,chiymx);
-        hp[charge_idx + 8] = new TH1F ("h507","chi2y_2cls (1.5mn @> signal @> 1.0mn)",nx,0.,  chiymx);
-        hp[charge_idx + 9] = new TH1F ("h508","chi2y_2cls (1.0mn @> signal @> 0.85mn)",nx,0., chiymx);
-        hp[charge_idx + 10] = new TH1F ("h509","chi2y_2cls (0.85mn @> signal)",nx,0.,chiymx);
-        hp[charge_idx + 11] = new TH1F ("h510","chi2x_2cls (signal @> 1.5mn)",nx,0.,chiymx);
-        hp[charge_idx + 12] = new TH1F ("h511","chi2x_2cls (1.5mn @> signal @> 1.0mn)",nx,0., chiymx);
-        hp[charge_idx + 13] = new TH1F ("h512","chi2x_2cls (1.0mn @> signal @> 0.85mn)",nx,0.,   chiymx);
-        hp[charge_idx + 14] = new TH1F ("h513","chi2x_2cls (0.85mn @> signal)",nx,0.,chiymx);
-        hp[charge_idx + 15] = new TH1F ("h606","measured Q/generated Q",300,0.,1.5);
+    hp[charge_idx + 2] = new TH1F ("h501","npix(signal @> 1.5mn)",40,0.5,40.5);
+    hp[charge_idx + 3] = new TH1F ("h502","npix(1.5mn @> signal @> 1.0mn)",40,0.5,40.5);
+    hp[charge_idx + 4] = new TH1F ("h503","npix(1.0mn @> signal @> 0.85mn)",40,0.5,40.5);
+    hp[charge_idx + 5] = new TH1F ("h504","npix(0.85mn @> signal)",40,0.5,40.5);
+    hp[charge_idx + 6] = new TH1F ("h505","2 Cluster Merged Charge",500,0.,1000000.);
+    hp[charge_idx + 7] = new TH1F ("h506","chi2y_2cls (signal @> 1.5mn)",nx,0.,chiymx);
+    hp[charge_idx + 8] = new TH1F ("h507","chi2y_2cls (1.5mn @> signal @> 1.0mn)",nx,0.,  chiymx);
+    hp[charge_idx + 9] = new TH1F ("h508","chi2y_2cls (1.0mn @> signal @> 0.85mn)",nx,0., chiymx);
+    hp[charge_idx + 10] = new TH1F ("h509","chi2y_2cls (0.85mn @> signal)",nx,0.,chiymx);
+    hp[charge_idx + 11] = new TH1F ("h510","chi2x_2cls (signal @> 1.5mn)",nx,0.,chiymx);
+    hp[charge_idx + 12] = new TH1F ("h511","chi2x_2cls (1.5mn @> signal @> 1.0mn)",nx,0., chiymx);
+    hp[charge_idx + 13] = new TH1F ("h512","chi2x_2cls (1.0mn @> signal @> 0.85mn)",nx,0.,   chiymx);
+    hp[charge_idx + 14] = new TH1F ("h513","chi2x_2cls (0.85mn @> signal)",nx,0.,chiymx);
+    hp[charge_idx + 15] = new TH1F ("h606","measured Q/generated Q",300,0.,1.5);
 
 
 
-        // Set style for the the histograms	
+    // Set style for the the histograms	
 
-        for(int i=0; i<hp.size(); ++i) {
-            if(hp[i] == NULL) continue;
-            hp[i]->SetLineColor(2);
-            hp[i]->SetFillColor(38);
-        }
+    for(int i=0; i<hp.size(); ++i) {
+        if(hp[i] == NULL) continue;
+        hp[i]->SetLineColor(2);
+        hp[i]->SetFillColor(38);
+    }
 
     std::vector<std::pair<int, int> > pixlst;
 
@@ -287,7 +281,7 @@ int main(int argc, char *argv[])
 
     //  Set the ID to zero to flag the special reco mode
 
-    tempID = 0;
+    int tempID = 0;
 
     //  Determine current time
 
@@ -298,6 +292,20 @@ int main(int argc, char *argv[])
     int lfile = startfile+numrun;
 
     for(int ifile = startfile; ifile < lfile; ++ifile) {
+
+        memset(nqbin, 0., sizeof(nqbin));
+        memset(qtotal, 0., sizeof(qtotal));
+        memset(qsmear, 0., sizeof(qsmear));
+        memset(qmerge, 0., sizeof(qmerge));
+        memset(npix, 0., sizeof(npix));
+        memset(xfrac, 0., sizeof(xfrac));
+        memset(yfrac, 0., sizeof(yfrac));
+        memset(nelec, 0., sizeof(nelec));
+        zero_3d_array(cluster, nevents, TXSIZE, TYSIZE);
+        zero_2d_array(xsum1, nevents, TXSIZE);
+        zero_2d_array(xsum2, nevents, TXSIZE);
+        zero_2d_array(ysum1, nevents, TYSIZE);
+        zero_2d_array(ysum2, nevents, TYSIZE);
 
         //  Read in 1D z template information first
 
@@ -520,8 +528,9 @@ secondp: clslnx = pplast-ppfrst;
              xhit[n] = -(x1 + (zcen - z1) * cotalpha);
              yhit[n] = -(y1 + (zcen - z1) * cotbeta);
 
-             ndcol = TYSIZE/2 +1;
+             int ndcol = TYSIZE/2 +1;
              std::vector<int> ndhit(ndcol, 0);
+             int idcol;
 
              //sigraw is zero padded to allow overflow in double col
              //projections
@@ -532,10 +541,10 @@ secondp: clslnx = pplast-ppfrst;
 
 
              triplg(vgauss);
-             qsmear[n] = 1.+vgauss[0]*common_frac;
+             qsmear[n] = (1.+vgauss[0]*common_frac);
              pixlst.clear();
              for(int i=0; i<ndcol; ++i) {ndhit[i] = 0;}
-             icol = 0;
+             int icol = 0;
              if(vgauss[1] < 0.) {icol = 1;}
              for(int j=0; j<TXSIZE; ++j) {
                  triplg(wgauss);
@@ -599,7 +608,7 @@ secondp: clslnx = pplast-ppfrst;
                  }
              }
 
-             //if(qmax < 1500.) continue;
+             if(qmax < 1500.) continue;
 
 
              // Simulate clustering around maximum signal (seed)
@@ -613,7 +622,7 @@ secondp: clslnx = pplast-ppfrst;
 
 
 
-             numadd = 1;
+             int numadd = 1;
              //iterively find all non zero pixels near our seed
              while(numadd > 0){
                  //use copy of vector to avoid modifying vector as we loop through it
@@ -621,10 +630,10 @@ secondp: clslnx = pplast-ppfrst;
                  numadd = 0;
                  for ( auto pixIter = pixlst_copy.begin(); pixIter != pixlst_copy.end(); ++pixIter ) {
                      //max's are +2 because we are doing <max in the loop
-                     imin = pixIter->first-1; 
-                     imax = pixIter->first+2;
-                     jmin = pixIter->second-1;
-                     jmax = pixIter->second+2;
+                     int imin = pixIter->first-1; 
+                     int imax = pixIter->first+2;
+                     int jmin = pixIter->second-1;
+                     int jmax = pixIter->second+2;
                      if(imin < 0) {imin = 0;}
                      if(imax > TXSIZE) {imax = TXSIZE;}
                      if(jmin < 0) {jmin = 0;}
@@ -645,13 +654,13 @@ secondp: clslnx = pplast-ppfrst;
              }
 
              float qmeas=0.;
-             jmin = TYSIZE;
-             imax = 0;
+             npix[n] = 0.;
              for (auto pixIter = pixlst.begin() ; pixIter != pixlst.end(); ++pixIter ) {
                  int i = pixIter->first; 
                  int j = pixIter->second;
                  cluster[n][i][j] = clust[i][j];
                  qmeas += clust[i][j];
+                 npix[n] += 1.;
              }
              qtotal[n] = qmeas;
 
@@ -775,23 +784,33 @@ secondp: clslnx = pplast-ppfrst;
          float sytwo=0.;
 
 
-         //compute single pixel averages over all clusters 
+         //compute averages over all clusters 
          for(int n=0; n<read_events; n++){
+
+             float qmeas = qtotal[n];
+             float rcorr = qmeas/float(nelec[n]); //ratio of measured charge to generated charge
+
+
+             hp[charge_idx]->Fill(float(nelec[n]));
+             hp[charge_idx + 1] ->Fill(qmeas);
+             hp[charge_idx + 15]->Fill(rcorr);
+
+             if(n>0){
+                 qmerge[n] = qtotal[n] + qsmear[n]*qtotal[n-1]/qsmear[n-1];
+                 hp[charge_idx+6] ->Fill(qmerge[n]);
+             }
 
 
              float xsum[TXSIZE], ysum[TYSIZE];
 
              memset(xsum, 0., sizeof(xsum));
              memset(ysum, 0., sizeof(ysum));
-             //printf("Clust %i: \n", n);
              for(int i=0; i<TXSIZE; i++){
                  for(int j=0; j<TYSIZE; j++){
                      xsum[i] += cluster[n][i][j];
                      ysum[j] += cluster[n][i][j];
                  }
-                 //printf("\n");
              }
-             //printf("\n");
 
              int xwidth=0;
              int ywidth=0;
@@ -1047,7 +1066,7 @@ secondp: clslnx = pplast-ppfrst;
 
          for(int i=0; i<hp.size(); ++i) { 
              if(hp[i] == NULL) continue;
-             //hp[i]->Reset();
+             hp[i]->Reset();
          }
 
          qperbit = pixmax/(pow(2.,(double)(numbits)-1.));
@@ -1144,14 +1163,10 @@ secondp: clslnx = pplast-ppfrst;
 
 
              // No double pixels 
+            bool ydouble[TYSIZE], xdouble[TXSIZE];
+            memset(ydouble, false, sizeof(ydouble));
+            memset(xdouble, false, sizeof(xdouble));
 
-             for(int i=0; i<TYSIZE; ++i) {
-                 ydouble[i] = false;
-             }
-
-             for(int j=0; j<TXSIZE; ++j) {
-                 xdouble[j] = false;
-             }
 
 
              float cluster_local[TXSIZE][TYSIZE];
@@ -1163,23 +1178,25 @@ secondp: clslnx = pplast-ppfrst;
              }
 
 
+            int mrow = TXSIZE, mcol = TYSIZE;
 
 
              //        if(fabs(cotbeta) < 2.1) continue;
              // Do the template analysis on the cluster 
              SiPixelTemplateReco::ClusMatrix clusterPayload{&cluster_local[0][0], xdouble, ydouble, mrow,mcol};
 
-             //  Sideload this template slice
 
              int speed = 0;
-             ierr = PixelTempReco1D(tempID, cotalpha, cotbeta, locBz, locBx,  clusterPayload, templ, yrec, sigmay, proby, xrec, sigmax, probx,  qbin, speed, probQ);
+             int qbin;
+
+
+             int ierr = PixelTempReco1D(tempID, cotalpha, cotbeta, locBz, locBx,  clusterPayload, templ, yrec, sigmay, proby, xrec, sigmax, probx,  qbin, speed, probQ);
              if(ierr != 0) {
                  ++nbad; 
                  printf("reconstruction failed with error %d \n", ierr);
              } else {
                  ngood++;
-                 qb = qbin;
-                 ++nbin[qb];
+                 nqbin[qbin] += 1.;
                  dy = yrec - (TYSIZE/2)*ysize - yhit[n];
                  dx = xrec - (TXSIZE/2)*xsize - xhit[n];
 
@@ -1197,20 +1214,26 @@ secondp: clslnx = pplast-ppfrst;
                  hp[x_generic_idx]->Fill(dx_gen);
                  hp[x_generic_idx+1 +qbin]->Fill(dx_gen);
 
+
+                 //fill npix qbins here
+                 hp[charge_idx+2+qbin]->Fill(npix[n]);
+
                  // fill Chisq from template fit here
 
 
-                    int k= int(xhit[n]/xsize * 8. + 4.5);
-                    int l= int(yhit[n]/ysize * 8. + 4.5);
-                    printf("Hit bins %i %i \n", k,l);
-                    printf("Template: dx dy %.3f %.3f \n", dx,dy);
-                    printf("Generic: dx dy %.3f %.3f \n", dx_gen,dy_gen);
+                 /*
+                 int k= int(xhit[n]/xsize * 8. + 4.5);
+                 int l= int(yhit[n]/ysize * 8. + 4.5);
+                 printf("Hit bins %i %i \n", k,l);
+                 printf("Template: dx dy %.3f %.3f \n", dx,dy);
+                 printf("Generic: dx dy %.3f %.3f \n", dx_gen,dy_gen);
+                 */
 
              }
 
          }
 
-         printf(" low q failures = %d, failed fits = %d, successful fits = %d, total read events %d \n", nbin[4], nbad, ngood, read_events);	   
+         printf(" low q failures = %.0f, failed fits = %d, successful fits = %d, total read events %d \n", nqbin[4], nbad, ngood, read_events);	   
 
          /*
           * Histograms plotting
@@ -1227,16 +1250,17 @@ secondp: clslnx = pplast-ppfrst;
 
 
          /*
-         scaley = hp[5]->GetRMS();
-         scalex = hp[15]->GetRMS();   
-         delyavg = (float)hp[20]->GetMean();
-         delysig = (float)hp[20]->GetRMS();    
-         for(int i=0; i<4; ++i) {
-             scaly[i] = hp[6+i]->GetRMS();
-             scalx[i] = hp[16+i]->GetRMS();
-             offsety[i] = hp[1+i]->GetMean();
-             offsetx[i] = hp[11+i]->GetMean();
-         }    
+            float scaley, scalex, scalx[4], scaly[4], delyavg, delysig, offsetx[4], offsety[4];
+            scaley = hp[5]->GetRMS();
+            scalex = hp[15]->GetRMS();   
+            delyavg = (float)hp[20]->GetMean();
+            delysig = (float)hp[20]->GetRMS();    
+            for(int i=0; i<4; ++i) {
+            scaly[i] = hp[6+i]->GetRMS();
+            scalx[i] = hp[16+i]->GetRMS();
+            offsety[i] = hp[1+i]->GetMean();
+            offsetx[i] = hp[11+i]->GetMean();
+            }    
 
          //create a function with 2 parameters in the range [0.,100.]
 
@@ -1297,6 +1321,10 @@ secondp: clslnx = pplast-ppfrst;
          //grab 30th smallest charge
          auto it = std::next(qmsort.begin(), 29);
          float qmin30 = *it;
+         //grab 60th smallest charge
+         it = std::next(qmsort.begin(), 59);
+         float qmin60 = *it;
+
          fprintf(temp_output_file, "%.8f %.8f %.8f %.8f %.8f %.8f %.8f \n",
                  dytwo, sytwo, dxtwo, sytwo, qmin30, clslny, clslnx );
 
@@ -1332,8 +1360,20 @@ secondp: clslnx = pplast-ppfrst;
 
 
          //fitted stuff
+         // MISSING
 
 
+
+
+         float tqbin = nqbin[0] + nqbin[1] + nqbin[2] + nqbin[3]; //exclude low-q failures
+         for(int i=0; i<4; i++){
+             nqbin[i]/tqbin;
+         }
+
+         float fyone = nyone/nevents;
+         float fxone = nyone/nevents;
+         float fytwo = nyone/2./nevents;
+         float fxtwo = nyone/2./nevents;
 
          //output to gen_errors
 
@@ -1341,9 +1381,6 @@ secondp: clslnx = pplast-ppfrst;
 
          fprintf(temp_output_file, "%.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f \n",
                  qavg, pixmax, symax, dyone, syone, sxmax, dyone, syone);
-         //grab 60th smallest charge
-         it = std::next(qmsort.begin(), 59);
-         float qmin60 = *it;
 
          fprintf(temp_output_file, "%.8f %.8f %.8f %.8f %.8f %.8f \n",
                  dytwo, sytwo, dxtwo, sytwo, qmin30, qmin60);
@@ -1368,10 +1405,10 @@ secondp: clslnx = pplast-ppfrst;
     printf("ellapsed time = %f seconds \n", deltat);
 
     delete_3d_array(cluster, nevents, TXSIZE, TYSIZE);
-    delete_2d_array(xsum1, nevents, TXSIZE/2);
-    delete_2d_array(xsum2, nevents, TXSIZE/2);
-    delete_2d_array(ysum1, nevents, TYSIZE/2);
-    delete_2d_array(ysum2, nevents, TYSIZE/2);
+    delete_2d_array(xsum1, nevents, TXSIZE);
+    delete_2d_array(xsum2, nevents, TXSIZE);
+    delete_2d_array(ysum1, nevents, TYSIZE);
+    delete_2d_array(ysum2, nevents, TYSIZE);
 
     return 0;
 } // MAIN__ 
