@@ -111,6 +111,32 @@ float** setup_2d_array(int size1, int size2){
     return a;
 }
 
+//return 4 parameters for template output
+//first two are always mean and std dev
+//second two are fitted mean and sigma of gaussian if fit went well
+//fit must have already been done
+std::vector<float> get_gaussian_pars(TH1F *h){
+    std::vector<float> pars;
+    double h_mean = h->GetMean();
+    double h_std = std::max(h->GetStdDev(), 3.);
+    pars.push_back(h_mean);
+    pars.push_back(h_std);
+    TF1 *fit = h->GetFunction("gaus");
+    double mean = fit->GetParameter(1);
+    double sigma = std::max(fit->GetParameter(2), 3.);
+    if(h->Integral() > 50. && fabs(mean) < 300. && abs(sigma) < 175. ){
+        pars.push_back(mean);
+        pars.push_back(sigma);
+    }
+    else{
+        pars.push_back(h_mean);
+        pars.push_back(h_std);
+    }
+    return pars;
+}
+
+
+
 void delete_2d_array(float **a, int size1, int size2 ){
     for(int i=0; i< size1; i++){
         delete[] a[i];
