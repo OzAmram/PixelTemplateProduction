@@ -57,10 +57,10 @@ int main(int argc, char *argv[])
 
     float xhit[nevents], yhit[nevents], cotalpha, cotbeta;
 
-    float  qsmear[nevents], qmerge[nevents], npix[nevents],  qflx[nevents], qfly[nevents],
+    float  qsmear[nevents], npix[nevents],  qflx[nevents], qfly[nevents],
     qtotal[nevents];
 
-    int nelec[nevents];
+    int nelec[nevents], qbins[nevents], qbin_merge[nevents];
 
     float ***cluster = setup_3d_array(nevents, TXSIZE, TYSIZE); //Cluster as found by seeding + clustering algo
     float **xsum1 = setup_2d_array(nevents, TXSIZE);
@@ -76,7 +76,13 @@ int main(int argc, char *argv[])
     static float q100, q101, q50, q51, q10, qmax; 
 
 
+    //parameters for template fit
+    SiPixelTemplateEntry * slice;
+    bool ydouble[TYSIZE], xdouble[TXSIZE];
+    memset(ydouble, false, sizeof(ydouble));
+    memset(xdouble, false, sizeof(xdouble));
 
+    int mrow = TXSIZE, mcol = TYSIZE;
 
     const double gain = 3.19;
     const double ped = 16.46;
@@ -88,6 +94,8 @@ int main(int argc, char *argv[])
     static double vcaloffst = 60.;
     const float fmax = 0.5f;
     int write_temp_header, use_l1_offset;
+
+    const double rten = 10.;
 
     const int nvers = 21;
 
@@ -106,17 +114,7 @@ int main(int argc, char *argv[])
     long deltas, deltaus;
     double deltat;
 
-    TF1 *cfunc0 = new TF1("chisquare0",chisquare0,0.,100.,3);
-    cfunc0->SetParLimits(1,0.01,50);
-    cfunc0->SetParNames("norm","mean","scale");
-
-    TF1 *cfunc1 = new TF1("chisquare1",chisquare1,0.,50.,3);
-    cfunc1->SetParNames("norm","mean","scale");
-
-    TF1 *vfunc = new TF1("vavilov",vavilov,-10.,50.,4);
-    vfunc->SetParNames("norm","mean","sigma","kappa");
-
-    TCanvas* c1 = new TCanvas("c1", header, 800, 800);
+    TCanvas* c1 = new TCanvas("c1", header, 1600, 1000);
     c1->SetFillStyle(4000);
 
 
@@ -200,14 +198,21 @@ int main(int argc, char *argv[])
 
 
     const int y_temp_idx =0;
+    const int y_chi2_idx =5;
     const int x_temp_idx =10;
-    const int y_generic_idx =20;
-    const int x_generic_idx =30;
-    const int charge_idx = 40;
+    const int x_chi2_idx =15;
+
+    const int y_temp_fp_idx =20;
+    const int x_temp_fp_idx =25;
+    const int y_generic_idx =30;
+    const int x_generic_idx =40;
+    const int charge_idx = 50;
+    const int y_chi2_fp_idx = 58;
+    const int x_chi2_fp_idx = 62;
     const int y_corr_idx = 0;
     const int x_corr_idx = 5;
 
-    const int n_hists = 50;
+    const int n_hists = 70;
     const int n_profs = 10;
 
 
@@ -217,61 +222,87 @@ int main(int argc, char *argv[])
     static vector<TProfile*> profs(n_profs);
     
     hp[y_temp_idx + 0] = new TH1F("h101","dy_temp (all sig); #Deltay (#mum)",ny,-halfys,halfys);
-    hp[y_temp_idx + 1] = new TH1F("h102","dy_temp (signal @> 1.5mn); #Deltay (#mum)",ny,-halfys,halfys);      
-    hp[y_temp_idx + 2] = new TH1F("h103","dy_temp (1.5mn @> signal @> 1.0mn); #Deltay (#mum)",ny,-halfys,halfys);      
-    hp[y_temp_idx + 3] = new TH1F("h104","dy_temp (1.0mn @> signal @> 0.85mn); #Deltay (#mum)",ny,-halfys,halfys);     
-    hp[y_temp_idx + 4] = new TH1F("h105","dy_temp (0.85mn @> signal); #Deltay (#mum)",ny,-halfys,halfys);      
-    hp[y_temp_idx + 5] = new TH1F("h106","chi2y_temp (single pix)",ny,0.,chiymx);
-    hp[y_temp_idx + 6] = new TH1F("h107","chi2y_temp (signal @> 1.5mn)",ny,0.,chiymx);
-    hp[y_temp_idx + 7] = new TH1F("h108","chi2y_temp (1.5mn @> signal @> 1.0mn)",ny, 0., chiymx);
-    hp[y_temp_idx + 8] = new TH1F("h109","chi2y_temp (1.0mn @> signal @> 0.85mn)",ny,0., chiymx);
-    hp[y_temp_idx + 9]= new TH1F("h110","chi2y_temp (0.85mn @> signal)",ny,0.,chiymx);
+    hp[y_temp_idx + 1] = new TH1F("h102","dy_temp (signal > 1.5mn); #Deltay (#mum)",ny,-halfys,halfys);      
+    hp[y_temp_idx + 2] = new TH1F("h103","dy_temp (1.5mn > signal > 1.0mn); #Deltay (#mum)",ny,-halfys,halfys);      
+    hp[y_temp_idx + 3] = new TH1F("h104","dy_temp (1.0mn > signal > 0.85mn); #Deltay (#mum)",ny,-halfys,halfys);     
+    hp[y_temp_idx + 4] = new TH1F("h105","dy_temp (0.85mn > signal); #Deltay (#mum)",ny,-halfys,halfys);      
+
+    hp[y_chi2_idx + 0] = new TH1F("h106","chi2y_temp (single pix)",ny,0.,chiymx);
+    hp[y_chi2_idx + 1] = new TH1F("h107","chi2y_temp (signal > 1.5mn)",ny,0.,chiymx);
+    hp[y_chi2_idx + 2] = new TH1F("h108","chi2y_temp (1.5mn > signal > 1.0mn)",ny, 0., chiymx);
+    hp[y_chi2_idx + 3] = new TH1F("h109","chi2y_temp (1.0mn > signal > 0.85mn)",ny,0., chiymx);
+    hp[y_chi2_idx + 4]= new TH1F("h110","chi2y_temp (0.85mn > signal)",ny,0.,chiymx);
 
     hp[x_temp_idx + 0] = new TH1F("h201","dx_temp (all sig); #Deltax (#mum)",nx,-halfxs,halfxs);
-    hp[x_temp_idx + 1] = new TH1F("h202","dx_temp (signal @> 1.5mn); #Deltax (#mum)",nx,-halfxs,halfxs);      
-    hp[x_temp_idx + 2] = new TH1F("h203","dx_temp (1.5mn @> signal @> 1.0mn); #Deltax (#mum)",nx,-halfxs,halfxs);      
-    hp[x_temp_idx + 3] = new TH1F("h204","dx_temp (1.0mn @> signal @> 0.85mn); #Deltax (#mum)",nx,-halfxs,halfxs);     
-    hp[x_temp_idx + 4] = new TH1F("h205","dx_temp (0.85mn @> signal); #Deltax (#mum)",nx,-halfxs,halfxs);      
-    hp[x_temp_idx + 5] = new TH1F("h206","chi2x_temp (single pix)",nx,0.,chixmx);
-    hp[x_temp_idx + 6] = new TH1F("h207","chi2x_temp (signal @> 1.5mn)",nx,0.,chixmx);
-    hp[x_temp_idx + 7] = new TH1F("h208","chi2x_temp (1.5mn @> signal @> 1.0mn)",nx, 0., chixmx);
-    hp[x_temp_idx + 8] = new TH1F("h209","chi2x_temp (1.0mn @> signal @> 0.85mn)",nx,0., chixmx);
-    hp[x_temp_idx + 9]= new TH1F("h210","chi2x_temp (0.85mn @> signal)",nx,0.,chixmx);
+    hp[x_temp_idx + 1] = new TH1F("h202","dx_temp (signal > 1.5mn); #Deltax (#mum)",nx,-halfxs,halfxs);      
+    hp[x_temp_idx + 2] = new TH1F("h203","dx_temp (1.5mn > signal > 1.0mn); #Deltax (#mum)",nx,-halfxs,halfxs);      
+    hp[x_temp_idx + 3] = new TH1F("h204","dx_temp (1.0mn > signal > 0.85mn); #Deltax (#mum)",nx,-halfxs,halfxs);     
+    hp[x_temp_idx + 4] = new TH1F("h205","dx_temp (0.85mn > signal); #Deltax (#mum)",nx,-halfxs,halfxs);      
 
-    hp[y_generic_idx + 0] = new TH1F("h301","dy_generic (all sig); #Deltay (#mum)",ny,-halfys,halfys);
-    hp[y_generic_idx + 1] = new TH1F("h302","dy_generic (signal @> 1.5mn); #Deltay (#mum)",ny,-halfys,halfys);      
-    hp[y_generic_idx + 2] = new TH1F("h303","dy_generic (1.5mn @> signal @> 1.0mn); #Deltay (#mum)",ny,-halfys,halfys);      
-    hp[y_generic_idx + 3] = new TH1F("h304","dy_generic (1.0mn @> signal @> 0.85mn); #Deltay (#mum)",ny,-halfys,halfys);     
-    hp[y_generic_idx + 4] = new TH1F("h305","dy_generic (0.85mn @> signal); #Deltay (#mum)",ny,-halfys,halfys);      
+    hp[x_chi2_idx + 0] = new TH1F("h206","chi2x_temp (single pix)",nx,0.,chixmx);
+    hp[x_chi2_idx + 1] = new TH1F("h207","chi2x_temp (signal > 1.5mn)",nx,0.,chixmx);
+    hp[x_chi2_idx + 2] = new TH1F("h208","chi2x_temp (1.5mn > signal > 1.0mn)",nx, 0., chixmx);
+    hp[x_chi2_idx + 3] = new TH1F("h209","chi2x_temp (1.0mn > signal > 0.85mn)",nx,0., chixmx);
+    hp[x_chi2_idx + 4]= new TH1F("h210","chi2x_temp (0.85mn > signal)",nx,0.,chixmx);
 
-    hp[x_generic_idx + 0] = new TH1F("h401","dx_generic (all sig); #Deltax (#mum)",nx,-halfxs,halfxs);
-    hp[x_generic_idx + 1] = new TH1F("h402","dx_generic (signal @> 1.5mn); #Deltax (#mum)",nx,-halfxs,halfxs);      
-    hp[x_generic_idx + 2] = new TH1F("h403","dx_generic (1.5mn @> signal @> 1.0mn); #Deltax (#mum)",nx,-halfxs,halfxs);      
-    hp[x_generic_idx + 3] = new TH1F("h404","dx_generic (1.0mn @> signal @> 0.85mn); #Deltax (#mum)",nx,-halfxs,halfxs);     
-    hp[x_generic_idx + 4] = new TH1F("h405","dx_generic (0.85mn @> signal); #Deltax (#mum)",nx,-halfxs,halfxs);      
+
+    hp[y_temp_fp_idx + 0] = new TH1F("h301","dy_temp first pass (all sig); #Deltay (#mum)",ny,-halfys,halfys);
+    hp[y_temp_fp_idx + 1] = new TH1F("h302","dy_temp first pass (signal > 1.5mn); #Deltay (#mum)",ny,-halfys,halfys);      
+    hp[y_temp_fp_idx + 2] = new TH1F("h303","dy_temp first pass (1.5mn > signal > 1.0mn); #Deltay (#mum)",ny,-halfys,halfys);      
+    hp[y_temp_fp_idx + 3] = new TH1F("h304","dy_temp first pass (1.0mn > signal > 0.85mn); #Deltay (#mum)",ny,-halfys,halfys);     
+    hp[y_temp_fp_idx + 4] = new TH1F("h305","dy_temp first pass (0.85mn > signal); #Deltay (#mum)",ny,-halfys,halfys);      
+
+    hp[x_temp_fp_idx + 0] = new TH1F("h306","dx_temp first pass (all sig); #Deltax (#mum)",nx,-halfxs,halfxs);
+    hp[x_temp_fp_idx + 1] = new TH1F("h307","dx_temp first pass (signal > 1.5mn); #Deltax (#mum)",nx,-halfxs,halfxs);      
+    hp[x_temp_fp_idx + 2] = new TH1F("h308","dx_temp first pass (1.5mn > signal > 1.0mn); #Deltax (#mum)",nx,-halfxs,halfxs);      
+    hp[x_temp_fp_idx + 3] = new TH1F("h309","dx_temp first pass (1.0mn > signal > 0.85mn); #Deltax (#mum)",nx,-halfxs,halfxs);     
+    hp[x_temp_fp_idx + 4] = new TH1F("h310","dx_temp first pass (0.85mn > signal); #Deltax (#mum)",nx,-halfxs,halfxs);      
+
+    hp[y_chi2_fp_idx + 0] = new TH1F("h506","chi2y_temp first pass, merged(signal > 1.5mn)",ny,0.,chiymx);
+    hp[y_chi2_fp_idx + 1] = new TH1F("h507","chi2y_temp first pass, merged(1.5mn > signal > 1.0mn)",ny, 0., chiymx);
+    hp[y_chi2_fp_idx + 2] = new TH1F("h508","chi2y_temp first pass, merged(1.0mn > signal > 0.85mn)",ny,0., chiymx);
+    hp[y_chi2_fp_idx + 3] = new TH1F("h509","chi2y_temp first pass, merged(0.85mn > signal)",ny,0.,chiymx);
+
+    hp[x_chi2_fp_idx + 0] = new TH1F("h510","chi2x_temp first pass, merged(signal > 1.5mn)",ny,0.,chiymx);
+    hp[x_chi2_fp_idx + 1] = new TH1F("h511","chi2x_temp first pass, merged(1.5mn > signal > 1.0mn)",ny, 0., chiymx);
+    hp[x_chi2_fp_idx + 2] = new TH1F("h512","chi2x_temp first pass, merged(1.0mn > signal > 0.85mn)",ny,0., chiymx);
+    hp[x_chi2_fp_idx + 3] = new TH1F("h513","chi2x_temp first pass, merged(0.85mn > signal)",ny,0.,chiymx);
+
+
+    hp[y_generic_idx + 0] = new TH1F("h401","dy_generic (all sig); #Deltay (#mum)",ny,-halfys,halfys);
+    hp[y_generic_idx + 1] = new TH1F("h402","dy_generic (signal > 1.5mn); #Deltay (#mum)",ny,-halfys,halfys);      
+    hp[y_generic_idx + 2] = new TH1F("h403","dy_generic (1.5mn > signal > 1.0mn); #Deltay (#mum)",ny,-halfys,halfys);      
+    hp[y_generic_idx + 3] = new TH1F("h404","dy_generic (1.0mn > signal > 0.85mn); #Deltay (#mum)",ny,-halfys,halfys);     
+    hp[y_generic_idx + 4] = new TH1F("h405","dy_generic (0.85mn > signal); #Deltay (#mum)",ny,-halfys,halfys);      
+
+    hp[x_generic_idx + 0] = new TH1F("h406","dx_generic (all sig); #Deltax (#mum)",nx,-halfxs,halfxs);
+    hp[x_generic_idx + 1] = new TH1F("h407","dx_generic (signal > 1.5mn); #Deltax (#mum)",nx,-halfxs,halfxs);      
+    hp[x_generic_idx + 2] = new TH1F("h408","dx_generic (1.5mn > signal > 1.0mn); #Deltax (#mum)",nx,-halfxs,halfxs);      
+    hp[x_generic_idx + 3] = new TH1F("h409","dx_generic (1.0mn > signal > 0.85mn); #Deltax (#mum)",nx,-halfxs,halfxs);     
+    hp[x_generic_idx + 4] = new TH1F("h410","dx_generic (0.85mn > signal); #Deltax (#mum)",nx,-halfxs,halfxs);      
 
 
     hp[charge_idx + 0] = new TH1F("h100","Number generated e",150,0.,5000000.);	
     hp[charge_idx + 1] = new TH1F ("h500","Cluster Charge",250,0.,500000.);
-    hp[charge_idx + 2] = new TH1F ("h501","npix(signal @> 1.5mn)",40,0.5,40.5);
-    hp[charge_idx + 3] = new TH1F ("h502","npix(1.5mn @> signal @> 1.0mn)",40,0.5,40.5);
-    hp[charge_idx + 4] = new TH1F ("h503","npix(1.0mn @> signal @> 0.85mn)",40,0.5,40.5);
-    hp[charge_idx + 5] = new TH1F ("h504","npix(0.85mn @> signal)",40,0.5,40.5);
+    hp[charge_idx + 2] = new TH1F ("h501","npix(signal > 1.5mn)",40,0.5,40.5);
+    hp[charge_idx + 3] = new TH1F ("h502","npix(1.5mn > signal > 1.0mn)",40,0.5,40.5);
+    hp[charge_idx + 4] = new TH1F ("h503","npix(1.0mn > signal > 0.85mn)",40,0.5,40.5);
+    hp[charge_idx + 5] = new TH1F ("h504","npix(0.85mn > signal)",40,0.5,40.5);
     hp[charge_idx + 6] = new TH1F ("h505","2 Cluster Merged Charge",500,0.,1000000.);
     hp[charge_idx + 7] = new TH1F ("h606","measured Q/generated Q",300,0.,1.5);
 
     int nbins_prof = 10;
-    profs[y_corr_idx + 0] = new TProfile("h111","dy vs qlf (all sig); #Deltay (#mum)", nbins_prof, -1., 1., -50., 50.);
-    profs[y_corr_idx + 1] = new TProfile("h112","dy vs qlf (signal @> 1.5mn); #Deltay (#mum)",nbins_prof, -1., 1., -50., 50.);
-    profs[y_corr_idx + 2] = new TProfile("h113","dy vs qlf (1.5mn @> signal @> 1.0mn); #Deltay (#mum)",nbins_prof, -1., 1., -50., 50.);
-    profs[y_corr_idx + 3] = new TProfile("h114","dy vs qlf (1.0mn @> signal @> 0.85mn); #Deltay (#mum)",nbins_prof, -1., 1., -50., 50.);
-    profs[y_corr_idx + 4] = new TProfile("h115","dy vs qlf (0.85mn @> signal); #Deltay (#mum)",nbins_prof, -1., 1., -50., 50.);
+    profs[y_corr_idx + 0] = new TProfile("h111","dy vs qfl (all sig) ", nbins_prof, -1., 1., -50., 50.);
+    profs[y_corr_idx + 1] = new TProfile("h112","dy vs qfl (signal > 1.5mn); ",nbins_prof, -1., 1., -50., 50.);
+    profs[y_corr_idx + 2] = new TProfile("h113","dy vs qfl (1.5mn > signal > 1.0mn)",nbins_prof, -1., 1., -50., 50.);
+    profs[y_corr_idx + 3] = new TProfile("h114","dy vs qfl (1.0mn > signal > 0.85mn)",nbins_prof, -1., 1., -50., 50.);
+    profs[y_corr_idx + 4] = new TProfile("h115","dy vs qfl (0.85mn > signal) ",nbins_prof, -1., 1., -50., 50.);
 
-    profs[x_corr_idx + 0] = new TProfile("h111","dx vs qlf (all sig); #Deltax (#mum)", nbins_prof, -1., 1., -50., 50.);
-    profs[x_corr_idx + 1] = new TProfile("h112","dx vs qlf (signal @> 1.5mn); #Deltax (#mum)",nbins_prof, -1., 1., -50., 50.);
-    profs[x_corr_idx + 2] = new TProfile("h113","dx vs qlf (1.5mn @> signal @> 1.0mn); #Deltax (#mum)",nbins_prof, -1., 1., -50., 50.);
-    profs[x_corr_idx + 3] = new TProfile("h114","dx vs qlf (1.0mn @> signal @> 0.85mn); #Deltax (#mum)",nbins_prof, -1., 1., -50., 50.);
-    profs[x_corr_idx + 4] = new TProfile("h115","dx vs qlf (0.85mn @> signal); #Deltax (#mum)",nbins_prof, -1., 1., -50., 50.);
+    profs[x_corr_idx + 0] = new TProfile("h211","dx vs qfl (all sig) ", nbins_prof, -1., 1., -50., 50.);
+    profs[x_corr_idx + 1] = new TProfile("h212","dx vs qfl (signal > 1.5mn)",nbins_prof, -1., 1., -50., 50.);
+    profs[x_corr_idx + 2] = new TProfile("h213","dx vs qfl (1.5mn > signal > 1.0mn)",nbins_prof, -1., 1., -50., 50.);
+    profs[x_corr_idx + 3] = new TProfile("h214","dx vs qfl (1.0mn > signal > 0.85mn)",nbins_prof, -1., 1., -50., 50.);
+    profs[x_corr_idx + 4] = new TProfile("h215","dx vs qfl (0.85mn > signal) ",nbins_prof, -1., 1., -50., 50.);
 
 
 
@@ -304,14 +335,25 @@ int main(int argc, char *argv[])
 
     for(int ifile = startfile; ifile < lfile; ++ifile) {
 
+         for(int i=0; i<hp.size(); ++i) { 
+             if(hp[i] == NULL) continue;
+             hp[i]->Reset();
+         }
+         for(int i=0; i<profs.size(); i++){
+             if(profs[i] == NULL) continue;
+             profs[i]->Reset();
+         }
+
+         qperbit = pixmax/(pow(2.,(double)(numbits)-1.));
         memset(nqbin, 0., sizeof(nqbin));
         memset(qtotal, 0., sizeof(qtotal));
         memset(qsmear, 0., sizeof(qsmear));
-        memset(qmerge, 0., sizeof(qmerge));
         memset(npix, 0., sizeof(npix));
         memset(qflx, 0., sizeof(qflx));
         memset(qfly, 0., sizeof(qfly));
         memset(nelec, 0., sizeof(nelec));
+        memset(qbins, 0., sizeof(qbins));
+        memset(qbin_merge, 0., sizeof(qbin_merge));
         zero_3d_array(cluster, nevents, TXSIZE, TYSIZE);
         zero_2d_array(xsum1, nevents, TXSIZE);
         zero_2d_array(xsum2, nevents, TXSIZE);
@@ -499,6 +541,20 @@ secondp: clslnx = pplast-ppfrst;
 
          get_label(events_file, header, 80);
          printf("Header: %s\n", header);
+         if(write_temp_header && ifile == startfile) {
+
+
+             fprintf(temp_output_file,"%s", header);
+             fprintf(temp_output_file,"%d %d %4.2f %d %d %d %d %5.4f %5.4f %4.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %f %4.4f %4.4f %4.4f \n",
+                     id,nvers,Bfield,NTy,NTyx,NTxx,IDtype,Vbias, temp,fluenc,qscale,q50,lorwdy,
+                     lorwdx,ysize,xsize,thick,q51,lorbsy,lorbsx,fbin[0], fbin[1], fbin[2]);
+
+             int err1  = fprintf(generr_output_file,"%s", header);
+             int err2 = fprintf(generr_output_file,"%d %d %4.2f %d %d %d %d %5.4f %5.4f %4.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %f %4.4f %4.4f %4.4f \n",
+                     id,nvers,Bfield,NTy,NTyx,NTxx,IDtype,Vbias, temp,fluenc,qscale,q50,lorwdy,
+                     lorwdx,ysize,xsize,thick,q51,lorbsy,lorbsx,fbin[0], fbin[1], fbin[2]);
+             if(err1 <0 || err2 < 0) printf("Error printing to generr file. errors %i and %i \n", err1, err2);
+         }
 
 
          fscanf(events_file,"%f  %f  %f", &ysize, &xsize, &thick);
@@ -565,8 +621,10 @@ secondp: clslnx = pplast-ppfrst;
 
                  //do main cluster
                  for(int i=0; i<TYSIZE; ++i) {
-                     sigraw[TXSIZE-1-j][TYSIZE-1-i] = pixin[j][i];
-                     qin = (10.*pixin[j][i] + xgauss[i]*noise);
+                     sigraw[TXSIZE-1-j][TYSIZE-1-i] = rten * pixin[j][i];
+                     if(rten * pixin[j][i] > 200.) 
+                         qin = (rten*pixin[j][i] + xgauss[i]*noise);
+                     else qin = 0.;
                      rclust[TXSIZE-1-j][TYSIZE-1-i] = qin;
                      if(qin < q100*(1.+wgauss[i]*q100_frac)) {
                          clust[TXSIZE-1-j][TYSIZE-1-i] = 0.;
@@ -574,12 +632,9 @@ secondp: clslnx = pplast-ppfrst;
                          idcol = (TYSIZE-1-i+icol)/2;
                          ++ndhit[idcol];
                          if(non_linear == 0) {
-                             qin *= (1.+gain_frac*ygauss[i]);
-                             signal = qperbit*((int)((qin + zgauss[i]*readout_noise)/qscale/qperbit) + 0.5);
+                             signal = qin * (1. + gain_frac*ygauss[i]) + zgauss[i]*readout_noise;
                          } else {
                              adc = (double)((int)(p3+p2*tanh(p0*(qin + vcaloffst)/(7.0*vcal) - p1)));
-                             // The simulated clusters assume that qscale = 1 [no charge scaling here]
-                             //						 signal = ((float)((1.+gain_frac*ygauss[i])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i]*readout_noise)/qscale;		
                              signal = ((float)((1.+gain_frac*ygauss[i])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i]*readout_noise);							 
                          }	 
                          clust[TXSIZE-1-j][TYSIZE-1-i] = qsmear[n]*signal;
@@ -699,31 +754,25 @@ secondp: clslnx = pplast-ppfrst;
                      int j2 = 2*j+1;
 
                      //sigraw padded with extra 0's to allow overflow
-                     qin = 10. * (sigraw[j1][i] + sigraw[j1+1][i]);
+                     qin = (sigraw[j1][i] + sigraw[j1+1][i]);
                      qin += xgauss[i]*noise;
                      if(qin > q101*(1.+wgauss[i]*q100_frac)) {
                          if(non_linear == 0) {
-                             qin *= (1.+gain_frac*ygauss[i]);
-                             signal = qperbit*((int)((qin + zgauss[i]*readout_noise)/qscale/qperbit) + 0.5);
+                             signal = qin * (1. + gain_frac*ygauss[i]) + zgauss[i]*readout_noise;
                          } else {
                              adc = (double)((int)(p3+p2*tanh(p0*(qin + vcaloffst)/(7.0*vcal) - p1)));
-                             // The simulated clusters assume that qscale = 1 [no charge scaling here]
-                             //						 signal = ((float)((1.+gain_frac*ygauss[i])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i]*readout_noise)/qscale;		
                              signal = ((float)((1.+gain_frac*ygauss[i])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i]*readout_noise);							 
                          }	 
                          xsum1[n][j] += qsmear[n]*signal;
                      }
 
-                     qin = 10. * (sigraw[j2][i] + sigraw[j2+1][i]);
+                     qin = (sigraw[j2][i] + sigraw[j2+1][i]);
                      qin += xgauss[i]*noise;
                      if(qin > q101*(1.+wgauss[i]*q100_frac)) {
                          if(non_linear == 0) {
-                             qin *= (1.+gain_frac*ygauss[i]);
-                             signal = qperbit*((int)((qin + zgauss[i]*readout_noise)/qscale/qperbit) + 0.5);
+                             signal = qin * (1. + gain_frac*ygauss[i]) + zgauss[i]*readout_noise;
                          } else {
                              adc = (double)((int)(p3+p2*tanh(p0*(qin + vcaloffst)/(7.0*vcal) - p1)));
-                             // The simulated clusters assume that qscale = 1 [no charge scaling here]
-                             //						 signal = ((float)((1.+gain_frac*ygauss[i])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i]*readout_noise)/qscale;		
                              signal = ((float)((1.+gain_frac*ygauss[i])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i]*readout_noise);							 
                          }	 
                          xsum2[n][j] += qsmear[n]*signal;
@@ -740,32 +789,26 @@ secondp: clslnx = pplast-ppfrst;
                      int i2 = 2*i+1;
 
                      //sigraw padded with extra 0's to allow overflow
-                     qin = 10. * (sigraw[j][i1] + sigraw[j][i1+1]);
+                     qin = (sigraw[j][i1] + sigraw[j][i1+1]);
                      qin += xgauss[i1]*noise;
                      if(qin > q101*(1.+wgauss[i1]*q100_frac)) {
                          if(non_linear == 0) {
-                             qin *= (1.+gain_frac*ygauss[i1]);
-                             signal = qperbit*((int)((qin + zgauss[i1]*readout_noise)/qscale/qperbit) + 0.5);
+                             signal = qin * (1. + gain_frac*ygauss[i1]) + zgauss[i1]*readout_noise;
                          } else {
                              adc = (double)((int)(p3+p2*tanh(p0*(qin + vcaloffst)/(7.0*vcal) - p1)));
-                             // The simulated clusters assume that qscale = 1 [no charge scaling here]
-                             //						 signal = ((float)((1.+gain_frac*ygauss[i])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i]*readout_noise)/qscale;		
                              signal = ((float)((1.+gain_frac*ygauss[i1])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i1]*readout_noise);							 
                          }	 
                          ysum1[n][i] += qsmear[n]*signal;
                      }
 
                      //sigraw padded with extra 0's to allow overflow
-                     qin = 10. * (sigraw[j][i2] + sigraw[j][i2+1]);
+                     qin = (sigraw[j][i2] + sigraw[j][i2+1]);
                      qin += xgauss[i2]*noise;
                      if(qin > q101*(1.+wgauss[i2]*q100_frac)) {
                          if(non_linear == 0) {
-                             qin *= (1.+gain_frac*ygauss[i2]);
-                             signal = qperbit*((int)((qin + zgauss[i2]*readout_noise)/qscale/qperbit) + 0.5);
+                             signal = qin * (1. + gain_frac*ygauss[i2]) + zgauss[i2]*readout_noise;
                          } else {
                              adc = (double)((int)(p3+p2*tanh(p0*(qin + vcaloffst)/(7.0*vcal) - p1)));
-                             // The simulated clusters assume that qscale = 1 [no charge scaling here]
-                             //						 signal = ((float)((1.+gain_frac*ygauss[i])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i]*readout_noise)/qscale;		
                              signal = ((float)((1.+gain_frac*ygauss[i2])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i2]*readout_noise);							 
                          }	 
                          ysum2[n][i] += qsmear[n]*signal;
@@ -806,24 +849,39 @@ secondp: clslnx = pplast-ppfrst;
              hp[charge_idx + 1] ->Fill(qmeas);
              hp[charge_idx + 7]->Fill(rcorr);
 
+             float qmerge = 0.;
              if(n>0){
-                 qmerge[n] = qtotal[n] + qsmear[n]*qtotal[n-1]/qsmear[n-1];
-                 hp[charge_idx+6] ->Fill(qmerge[n]);
+                 qmerge = qtotal[n] + qsmear[n]*qtotal[n-1]/qsmear[n-1];
+                 hp[charge_idx+6] ->Fill(qmerge);
              }
 
-             int qbin;
              float q_frac = qmeas / qavg;
              if(q_frac > fbin[0]) {
-                 qbin=0;
+                 qbins[n]=0;
              } 
              else if(q_frac > fbin[1]) {
-                 qbin=1;
+                 qbins[n]=1;
              } 
              else if(q_frac > fbin[2]) {
-                 qbin=2;
+                 qbins[n]=2;
              } 
              else {
-                 qbin=3;
+                 qbins[n]=3;
+             }
+
+             float q_frac_merge = qmerge / qavg;
+
+             if(q_frac_merge > 2.* fbin[0]) {
+                 qbin_merge[n]=0;
+             } 
+             else if(q_frac > 2.* fbin[1]) {
+                 qbin_merge[n]=1;
+             } 
+             else if(q_frac > 2.* fbin[2]) {
+                 qbin_merge[n]=2;
+             } 
+             else {
+                 qbin_merge[n]=3;
              }
 
 
@@ -893,31 +951,17 @@ secondp: clslnx = pplast-ppfrst;
 
 
              //compute front and back signal fractions
-             //switch indexes compared to fortran because of coordinate reverse
-             float xfrac, yfrac;
-             if (xwidth == 1){
-                 xfrac = 0.;
-             }
-             else if(xwidth ==2){
-                 xfrac = xsum[xstart]/(xsum[xstart] + xsum[xstart+1]);
-             }
-             else{
-                int xlast = xstart + xwidth -1;
-                xfrac = xsum[xstart]/(xsum[xlast] + xsum[xstart]);
-             }
-		     qflx[n] = 2.*xfrac - 1.;
-                 
-             if (ywidth == 1){
-                 yfrac = 0.;
-             }
-             else if(ywidth ==2){
-                 yfrac = ysum[ystart]/(ysum[ystart] + ysum[ystart+1]);
-             }
-             else{
-                int ylast = ystart + ywidth -1;
-                yfrac = ysum[ystart]/(ysum[ylast] + ysum[ystart]);
-             }
-		     qfly[n] = 2.*yfrac - 1.;
+             //Fraction of charge loss between front and back, for
+             //non-irradiated sensor should average to zero but for rad.
+             //damaged you lose charge on one side due to trapping
+             int xlast = xstart + xwidth -1;
+             int ylast = ystart + ywidth -1;
+
+             float xfrac = (xsum[xstart] - xsum[xlast]) / (xsum[xstart] + xsum[xlast]);
+             float yfrac = (ysum[ystart] - ysum[ylast]) / (ysum[ystart] + ysum[ylast]);
+
+		     qfly[n] = yfrac;
+		     qflx[n] = xfrac;
                  
              //compute avg shift and variance of single pixel clusters
              if(xwidth ==1){
@@ -1029,7 +1073,7 @@ secondp: clslnx = pplast-ppfrst;
 
 
          // Copy info into the slice and reformat from pixelav coordinates to CMSSW local coordinates
-         SiPixelTemplateEntry * slice = new SiPixelTemplateEntry;
+         slice = new SiPixelTemplateEntry;
 
 
          slice->runnum = ifile;
@@ -1086,6 +1130,15 @@ secondp: clslnx = pplast-ppfrst;
          }
 
 
+         //do first pass of template reco with no charge loss correction
+         for(int i=0; i<4; i++){
+             for(int j=0; j<6; j++){
+                slice->yflpar[i][j] = 0.;
+                slice->xflpar[i][j] = 0.;
+             }
+         }
+
+
          locBx = 1.;
          if(cotbeta < 0.) locBx = -1.;
          locBz = locBx;
@@ -1109,30 +1162,11 @@ secondp: clslnx = pplast-ppfrst;
          tote = 0.;
          bade = 0.;
 
-         if(write_temp_header && ifile==startfile) {
-
-
-             fprintf(temp_output_file,"%s", header);
-             fprintf(temp_output_file,"%d %d %4.2f %d %d %d %d %5.4f %5.4f %4.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %f %4.4f %4.4f %4.4f \n",
-                     id,nvers,Bfield,NTy,NTyx,NTxx,IDtype,Vbias, temp,fluenc,qscale,q50,lorwdy,
-                     lorwdx,ysize,xsize,thick,q51,lorbsy,lorbsx,fbin[0], fbin[1], fbin[2]);
-
-             fprintf(generr_output_file,"%s", header);
-             fprintf(temp_output_file,"%d %d %4.2f %d %d %d %d %5.4f %5.4f %4.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %f %4.4f %4.4f %4.4f \n",
-                     id,nvers,Bfield,NTy,NTyx,NTxx,IDtype,Vbias, temp,fluenc,qscale,q50,lorwdy,
-                     lorwdx,ysize,xsize,thick,q51,lorbsy,lorbsx,fbin[0], fbin[1], fbin[2]);
-         }
-
-         for(int i=0; i<hp.size(); ++i) { 
-             if(hp[i] == NULL) continue;
-             hp[i]->Reset();
-         }
-
-         qperbit = pixmax/(pow(2.,(double)(numbits)-1.));
 
 
 
-         // Loop over all clusters and apply generic and 1d reco
+
+         // Loop over all clusters and apply generic and first pass of template reco (no charge loss correction) 
          for(int n=0; n<read_events; n++){
 
 
@@ -1202,29 +1236,36 @@ secondp: clslnx = pplast-ppfrst;
 
 
              float xrec_gen = SiPixelUtils::generic_position_formula(clus_size_x, Q_f_x, Q_l_x, e_f_x, e_l_x,
-                     lorbsx, thick, cotalpha,
+                     lorwdx, thick, cotalpha,
                      xsize, isBigPix, isBigPix,
                      eff_charge_cut_lowX, eff_charge_cut_highX,
-                     size_cutX);
+                     size_cutX) - lorbsx;
              float yrec_gen = SiPixelUtils::generic_position_formula(clus_size_y, Q_f_y, Q_l_y, e_f_y, e_l_y,
-                     lorbsy, thick, cotbeta,
+                     lorwdy, thick, cotbeta,
                      ysize, isBigPix, isBigPix,
                      eff_charge_cut_lowY, eff_charge_cut_highY,
-                     size_cutY);
-
-             float dx_gen = xrec - (TXSIZE/2)*xsize - xhit[n];
-             float dy_gen = yrec - (TYSIZE/2)*ysize - yhit[n];
+                     size_cutY) - lorbsy;
 
 
+             
+
+             //coordinates returned based origin being top left corner of
+             //template
+             //hit positions based on center of central pixel in template
+             float dx_gen = xrec_gen - (TXSIZE/2.)*xsize - xhit[n];
+             float dy_gen = yrec_gen - (TYSIZE/2.)*ysize - yhit[n];
+
+             hp[y_generic_idx]->Fill(dy_gen);
+             hp[y_generic_idx+1 +qbins[n]]->Fill(dy_gen);
+
+             hp[x_generic_idx]->Fill(dx_gen);
+             hp[x_generic_idx+1 +qbins[n]]->Fill(dx_gen);
 
 
-             // Do the template reco on the cluster 
 
 
-             // No double pixels 
-            bool ydouble[TYSIZE], xdouble[TXSIZE];
-            memset(ydouble, false, sizeof(ydouble));
-            memset(xdouble, false, sizeof(xdouble));
+             // Do first round of template reco on the cluster without charge
+             // loss correction
 
 
 
@@ -1237,7 +1278,87 @@ secondp: clslnx = pplast-ppfrst;
              }
 
 
-            int mrow = TXSIZE, mcol = TYSIZE;
+
+
+             //        if(fabs(cotbeta) < 2.1) continue;
+             // Do the template analysis on the cluster 
+             SiPixelTemplateReco::ClusMatrix clusterPayload{&cluster_local[0][0], xdouble, ydouble, mrow,mcol};
+
+
+             int speed = 0;
+             int qbin;
+
+
+             int ierr = PixelTempReco1D(tempID, cotalpha, cotbeta, locBz, locBx,  clusterPayload, templ, yrec, sigmay, proby, xrec, sigmax, probx,  qbin, speed, probQ);
+             if(ierr != 0) {
+                 printf("First pass reconstruction failed with error %d \n", ierr);
+             } else {
+                 //coordinates returned based origin being center of first
+                 //pixel in template
+                 //hit positions based on center of central pixel in template
+                 dy = yrec - (TYSIZE/2)*ysize - yhit[n];
+                 dx = xrec - (TXSIZE/2)*xsize - xhit[n];
+
+                 if(qbin != qbins[n]){
+                     printf("WARNING qbins disagree !!!. Local is %i Template is %i \n", qbins[n], qbin);
+
+                 }
+                 //Fill first pass template reco residuals
+                 hp[y_temp_fp_idx]->Fill(dy);
+                 hp[y_temp_fp_idx+1+qbin]->Fill(dy);
+
+                 hp[x_temp_fp_idx]->Fill(dx);
+                 hp[x_temp_fp_idx+1+qbin]->Fill(dx);
+
+                 //charge loss vs reidual profiles
+                 profs[x_corr_idx]->Fill(qflx[n], dx);
+                 profs[y_corr_idx]->Fill(qfly[n], dy);
+                 profs[x_corr_idx+1+qbins[n]]->Fill(qflx[n], dx);
+                 profs[y_corr_idx+1+qbins[n]]->Fill(qfly[n], dy);
+
+
+                 double ndf = 0.1; //set in template sideload by chi2 avg param
+                 double chisq_y = ROOT::Math::chisquared_quantile_c(proby, ndf);
+                 double chisq_x = ROOT::Math::chisquared_quantile_c(probx, ndf);
+                 
+                 //merged cluster qbin first pass chi2
+                 hp[y_chi2_fp_idx+qbin_merge[n]]->Fill(chisq_y); 
+
+                 hp[x_chi2_fp_idx+qbin_merge[n]]->Fill(chisq_x);
+
+             }
+         }
+
+
+         //Compute charge loss correction and add it to the template
+         fit_pol5(profs[x_corr_idx]);
+         fit_pol5(profs[y_corr_idx]);
+         
+         std::vector<float> x_corr_pars, y_corr_pars;
+         for(int i=0; i<4; i++){
+             x_corr_pars = fit_pol5(profs[x_corr_idx+1+i]);
+             y_corr_pars = fit_pol5(profs[y_corr_idx+1+i]);
+             for(int j=0; j<6; j++){
+                slice->yflpar[i][j] = y_corr_pars[j];
+                slice->xflpar[i][j] = x_corr_pars[j];
+             }
+         }
+
+
+         templ.sideload(slice, IDtype, locBx, locBz, lorwdy, lorwdx, q50, fbin, xsize, ysize, thick);
+
+         //do second round of template fits with charge loss correction
+         for(int n=0; n<read_events; n++){
+
+             float cluster_local[TXSIZE][TYSIZE];
+             memset(cluster_local, 0., sizeof(cluster_local));
+             for(int i=0; i<TXSIZE; i++){
+                 for(int j=0; j<TYSIZE; j++){
+                     cluster_local[i][j] = cluster[n][i][j];
+                 }
+             }
+
+
 
 
              //        if(fabs(cotbeta) < 2.1) continue;
@@ -1252,26 +1373,29 @@ secondp: clslnx = pplast-ppfrst;
              int ierr = PixelTempReco1D(tempID, cotalpha, cotbeta, locBz, locBx,  clusterPayload, templ, yrec, sigmay, proby, xrec, sigmax, probx,  qbin, speed, probQ);
              if(ierr != 0) {
                  ++nbad; 
-                 printf("reconstruction failed with error %d \n", ierr);
+                 printf("2nd pass reconstruction failed with error %d \n", ierr);
              } else {
                  ngood++;
-                 nqbin[qbin] += 1.;
+                 
+                 //coordinates returned based origin being center of first
+                 //pixel in template
+                 //hit positions based on center of central pixel in template
                  dy = yrec - (TYSIZE/2)*ysize - yhit[n];
                  dx = xrec - (TXSIZE/2)*xsize - xhit[n];
 
+                 if(qbin != qbins[n]){
+                     printf("WARNING qbins disagree !!!. Local is %i Template is %i \n", qbins[n], qbin);
+                 }
+                 nqbin[qbin]++;
 
-                 //Fill template reco and generic reco residuals
+
+                 //Fill final template reco residuals 
                  hp[y_temp_idx]->Fill(dy);
                  hp[y_temp_idx+1+qbin]->Fill(dy);
 
                  hp[x_temp_idx]->Fill(dx);
                  hp[x_temp_idx+1+qbin]->Fill(dx);
 
-                 hp[y_generic_idx]->Fill(dy_gen);
-                 hp[y_generic_idx+1 +qbin]->Fill(dy_gen);
-
-                 hp[x_generic_idx]->Fill(dx_gen);
-                 hp[x_generic_idx+1 +qbin]->Fill(dx_gen);
 
 
                  //fill npix qbins here
@@ -1284,11 +1408,11 @@ secondp: clslnx = pplast-ppfrst;
                  //double re_prob = 1. - TMath::Gamma(ndf/2., chisq_y/2.);
                  //printf("proby, re_prob, Chi sq : %.4f %.4f %.4f \n", proby, re_prob, chisq_y);
                  
-                 if(clus_size_y == 1) hp[y_temp_idx + 5]->Fill(chisq_y); //single pixel chi2
-                 else hp[y_temp_idx+6+qbin]->Fill(chisq_y); //qbin chisq
+                 if(clus_size_y == 1) hp[y_chi2_idx]->Fill(chisq_y); //single pixel chi2
+                 else hp[y_chi2_idx+1+qbin]->Fill(chisq_y); //qbin chisq
 
-                 if(clus_size_x == 1) hp[x_temp_idx + 5]->Fill(chisq_x); 
-                 else hp[x_temp_idx+6+qbin]->Fill(chisq_x);
+                 if(clus_size_x == 1) hp[x_chi2_idx]->Fill(chisq_x); 
+                 else hp[x_chi2_idx+1+qbin]->Fill(chisq_x);
 
 
                  /*
@@ -1305,61 +1429,7 @@ secondp: clslnx = pplast-ppfrst;
 
          printf(" low q failures = %.0f, failed fits = %d, successful fits = %d, total read events %d \n", nqbin[4], nbad, ngood, read_events);	   
 
-         //Histogram Fitting
 
-         for(int i=0; i<5; ++i) {
-             hp[y_temp_idx + i]->Fit("gaus");
-             hp[x_temp_idx + i]->Fit("gaus");
-             hp[y_generic_idx + i]->Fit("gaus");
-             hp[x_generic_idx + i]->Fit("gaus");
-
-         }
-
-
-         /*
-            float scaley, scalex, scalx[4], scaly[4], delyavg, delysig, offsetx[4], offsety[4];
-            scaley = hp[5]->GetRMS();
-            scalex = hp[15]->GetRMS();   
-            delyavg = (float)hp[20]->GetMean();
-            delysig = (float)hp[20]->GetRMS();    
-            for(int i=0; i<4; ++i) {
-            scaly[i] = hp[6+i]->GetRMS();
-            scalx[i] = hp[16+i]->GetRMS();
-            offsety[i] = hp[1+i]->GetMean();
-            offsetx[i] = hp[11+i]->GetMean();
-            }    
-
-         //create a function with 2 parameters in the range [0.,100.]
-
-         Double_t cp01 = hp[22]->GetMean()/2.;
-         Double_t cp02 = 0.75;
-         Double_t cp00 = hp[22]->GetEntries()*2./cp01; 
-         cfunc0->SetParameters(cp00,cp01,cp02);
-         hp[22]->Fit("chisquare0");
-         Double_t cpar0[3];
-         cfunc0->GetParameters(cpar0);
-         printf("cpar0 = %lf/%lf/%lf \n", cpar0[0], cpar0[1], cpar0[2]);
-
-         double pixels = hp[24]->GetMean();
-         Double_t cp11 = cpar0[1]/pixels;
-         Double_t cp12 = cpar0[2];
-         Double_t cp10 = hp[23]->GetEntries()*2./cp11; 
-         cfunc1->SetParameters(cp10,cp11,cp12);
-         cfunc1->SetParLimits(1,cp11,cp11);
-         cfunc1->SetParLimits(2,cp12,cp12);
-         hp[23]->Fit("chisquare1");
-
-         //create a function with 4 parameters in the range [-10,50]
-
-         Double_t fp1 = hp[25]->GetMean();
-         Double_t fp2 = 0.1*p1;
-         Double_t fp3 = 0.02*p1/20000.;
-         Double_t fp0 = hp[25]->GetEntries()*20000./fp1; 
-         vfunc->SetParameters(fp0,fp1,fp2,fp3);
-         hp[25]->Fit("vavilov");
-         Double_t par[4];
-         vfunc->GetParameters(par);
-         */
 
          //  Create an output filename for this run 
 
@@ -1374,6 +1444,12 @@ secondp: clslnx = pplast-ppfrst;
              c1->Print(outfile1);
              c1->Clear();
          }
+         for(int i=0; i<profs.size(); i++){
+             if(profs[i] == NULL) continue;
+             profs[i]->Draw();
+             c1->Print(outfile1);
+             c1->Clear();
+         }
          c1->Print(outfile2);
          c1->Clear();
 
@@ -1385,10 +1461,10 @@ secondp: clslnx = pplast-ppfrst;
 
          fprintf(temp_output_file, "%.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f \n",
                  qavg, pixmax, symax, dyone, syone, sxmax, dyone, syone);
-         //grab 30th smallest charge
+         //grab 30th smallest charge (0.1%)
          auto it = std::next(qmsort.begin(), 29);
          float qmin30 = *it;
-         //grab 60th smallest charge
+         //grab 60th smallest charge (0.2%) 
          it = std::next(qmsort.begin(), 59);
          float qmin60 = *it;
 
@@ -1413,33 +1489,99 @@ secondp: clslnx = pplast-ppfrst;
          //x charge variance fit
          for(int i=0; i<2; i++){
              for(int j=0; j<5; j++){
-                 fprintf(temp_output_file, "%15.8E ", slice->ypar[i][j]);
+                 fprintf(temp_output_file, "%15.8E ", slice->xpar[i][j]);
              }
              fprintf(temp_output_file, "\n");
          }
          //x template
          for(int k = 0; k < 9; k++){
-             for(int j=0; j<TYSIZE; j++){
-                 fprintf(temp_output_file, "%8.1f ", slice->ytemp[k][j]);
+             for(int j=0; j<TXSIZE; j++){
+                 fprintf(temp_output_file, "%8.1f ", slice->xtemp[k][j]);
              }
              fprintf(temp_output_file, "\n");
          }
 
 
-         //fitted stuff
+         //y template reisduals info
          for(int i=0; i<4; i++){
              auto pars = get_gaussian_pars(hp[y_temp_idx +1 +i]);
              for(int j=0; j<4; j++){
                  fprintf(temp_output_file, "%9.1f ", pars[j]);
              }
+             fprintf(temp_output_file, "\n");
+         }
+         //y charge loss correction
+         for(int i = 0; i < 4; i++){
+             for(int j=0; j<6; j++){
+                 fprintf(temp_output_file, "%15.8E ", slice->yflpar[i][j]);
+             }
+             fprintf(temp_output_file, "\n");
+         }
+         
+         //x template reisduals info
+         for(int i=0; i<4; i++){
+             auto pars = get_gaussian_pars(hp[x_temp_idx +1 +i]);
+             for(int j=0; j<4; j++){
+                 fprintf(temp_output_file, "%9.1f ", pars[j]);
+             }
+             fprintf(temp_output_file, "\n");
+         }
+         //x charge loss correction
+         for(int i = 0; i < 4; i++){
+             for(int j=0; j<6; j++){
+                 fprintf(temp_output_file, "%15.8E ", slice->xflpar[i][j]);
+             }
+             fprintf(temp_output_file, "\n");
+         }
+
+         //chi-squared template fit info
+         for(int i=0; i<4; i++){
+             auto chiy_pars = get_chi2_pars(hp[y_chi2_idx + 1 +i]);
+             auto chix_pars = get_chi2_pars(hp[x_chi2_idx + 1 +i]);
+             fprintf(temp_output_file, "%9.3f %9.3f %9.3f %9.3f \n", 
+                     chiy_pars[0], chiy_pars[1], chix_pars[0], chix_pars[1]);
+         }
+
+         //y first pass temp fit avg and std dev + chi2 of merged clusters
+         for(int i=0; i<4; i++){
+             auto chiy_pars = get_chi2_pars(hp[y_chi2_fp_idx + i]);
+             auto temp_pars = get_gaussian_pars(hp[y_temp_fp_idx +1 +i]);
+             fprintf(temp_output_file, "%9.1f %9.1f %9.3f %9.3f \n", 
+                     temp_pars[0], temp_pars[1], chiy_pars[0], chiy_pars[1]);
+         }
+         //x first pass temp fit avg and std dev + chi2 of merged clusters
+         for(int i=0; i<4; i++){
+             auto chix_pars = get_chi2_pars(hp[x_chi2_fp_idx + i]);
+             auto temp_pars = get_gaussian_pars(hp[x_temp_fp_idx +1 +i]);
+             fprintf(temp_output_file, "%9.1f %9.1f %9.3f %9.3f \n", 
+                     temp_pars[0], temp_pars[1], chix_pars[0], chix_pars[1]);
+         }
+             
+
+         //y generic reisduals info
+         for(int i=0; i<4; i++){
+             auto pars = get_gaussian_pars(hp[y_generic_idx +1 +i]);
+             for(int j=0; j<4; j++){
+                 fprintf(temp_output_file, "%9.1f ", pars[j]);
+             }
+             fprintf(temp_output_file, "\n");
+         }
+
+         //x generic reisduals info
+         for(int i=0; i<4; i++){
+             auto pars = get_gaussian_pars(hp[x_generic_idx +1 +i]);
+             for(int j=0; j<4; j++){
+                 fprintf(temp_output_file, "%9.1f ", pars[j]);
+             }
+             fprintf(temp_output_file, "\n");
          }
 
 
-
-
+         //calculate q bin fractions
          float tqbin = nqbin[0] + nqbin[1] + nqbin[2] + nqbin[3]; //exclude low-q failures
+         float fqbin[4];
          for(int i=0; i<4; i++){
-             nqbin[i]/tqbin;
+             fqbin[i] = nqbin[i]/tqbin;
          }
 
          float fyone = nyone/nevents;
@@ -1447,20 +1589,47 @@ secondp: clslnx = pplast-ppfrst;
          float fytwo = nyone/2./nevents;
          float fxtwo = nyone/2./nevents;
 
+         //single pixel chi2 info
+         auto chiy_pars = get_chi2_pars(hp[y_chi2_idx]);
+         auto chix_pars = get_chi2_pars(hp[x_chi2_idx]);
+         fprintf(temp_output_file, "%9.3f %9.3f %9.3f %9.3f ", chiy_pars[0], chiy_pars[1], chix_pars[0], chix_pars[1]);
+         
+         //qmin2, vavilov fit params, charge ratio and extra param
+         auto vav_pars1 = get_vavilov_pars(hp[charge_idx + 1]);
+         float avg_qratio = hp[charge_idx + 7]->GetMean();
+
+         fprintf(temp_output_file, "%8.5f %8.5f %8.5f %8.5f %8.5f %8.5f \n", 
+                 qmin60, vav_pars1[0], vav_pars1[1], vav_pars1[2], avg_qratio, 1.0  );
+
+
+         //2nd vavilov fit, qbin fractions and single pixel fractions
+         auto vav_pars2 = get_vavilov_pars(hp[charge_idx + 6]);
+         fprintf(temp_output_file,"%9.1f %9.1f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f \n", 
+                 vav_pars2[0], vav_pars2[1], vav_pars2[2], fqbin[0], fqbin[1], fqbin[2],
+                 fyone, fxone, fytwo, fxtwo);
+
+
          //output to gen_errors
 
          fprintf(generr_output_file, "%i %8.6f %8.6f %8.6f \n", ifile, slice->costrk[0], slice->costrk[1], slice->costrk[2]);
 
-         fprintf(temp_output_file, "%.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f \n",
-                 qavg, pixmax, symax, dyone, syone, sxmax, dyone, syone);
+         fprintf(generr_output_file, "%8.1f %8.1f %8.1f %8.1f %8.1f %8.1f %8.1f %8.1f \n",
+                 qavg, pixmax, symax, dyone, syone, dyone, syone);
 
-         fprintf(temp_output_file, "%.2f %.2f %.2f %.2f %.2f %.2f \n",
+         fprintf(generr_output_file, "%8.1f %8.1f %8.1f %8.1f %8.1f %8.1f \n",
                  dytwo, sytwo, dxtwo, sytwo, qmin30, qmin60);
 
+         //x and y generic reisduals info
+         for(int i=0; i<4; i++){
+             auto y_pars = get_gaussian_pars(hp[y_generic_idx +1 +i]);
+             auto x_pars = get_gaussian_pars(hp[x_generic_idx +1 +i]);
+             fprintf(generr_output_file, "%9.1f %9.1f %9.1f %9.1f \n", 
+                     y_pars[0], y_pars[1], x_pars[0], x_pars[1]);
+         }
 
          //more fitted stuff
 
-
+        delete slice;
     }
     // Close output files
 

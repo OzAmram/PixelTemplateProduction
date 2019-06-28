@@ -121,12 +121,15 @@ std::vector<float> get_gaussian_pars(TH1F *h){
     double h_std = std::max(h->GetStdDev(), 3.);
     pars.push_back(h_mean);
     pars.push_back(h_std);
-    TF1 *fit = h->GetFunction("gaus");
-    double mean = fit->GetParameter(1);
-    double sigma = std::max(fit->GetParameter(2), 3.);
-    if(h->Integral() > 50. && fabs(mean) < 300. && abs(sigma) < 175. ){
-        pars.push_back(mean);
-        pars.push_back(sigma);
+    if(h->Integral() > 50.){
+        h->Fit("gaus");
+        TF1 *fit = h->GetFunction("gaus");
+        double mean = fit->GetParameter(1);
+        double sigma = std::max(fit->GetParameter(2), 3.);
+        if(fabs(mean) < 300. && abs(sigma) < 175. ){
+            pars.push_back(mean);
+            pars.push_back(sigma);
+        }
     }
     else{
         pars.push_back(h_mean);
@@ -134,6 +137,55 @@ std::vector<float> get_gaussian_pars(TH1F *h){
     }
     return pars;
 }
+std::vector<float> fit_pol5(TProfile *h){
+    std::vector<float> pars;
+    h->Fit("pol5");
+    h->SetStats(false);
+    TF1 *fit = h->GetFunction("pol5");
+    for(int i=0; i<5; i++){
+        pars.push_back(fit->GetParameter(i));
+    }
+    return pars;
+}
+
+std::vector<float> get_chi2_pars(TH1F *h){
+    std::vector<float> pars;
+    if(h->Integral() < 20.){
+        pars.push_back(0.10);
+        pars.push_back(0.16);
+        return pars;
+    }
+    double h_mean = h->GetMean();
+    double h_min = h->GetMinimum();
+    double dmean = h_mean - h_min;
+    if(dmean < 0.1) dmean = h_mean;
+    pars.push_back(dmean);
+    pars.push_back(h_min);
+    return pars;
+}
+
+std::vector<float> get_vavilov_pars(TH1F *h){
+
+    TF1 *vfunc = new TF1("vavilov",vavilov,-10.,50.,4);
+    vfunc->SetParNames("norm","mean","sigma","kappa");
+
+    Double_t p1 = h->GetMean();
+    Double_t p2 = 0.1*p1;
+    Double_t p3 = 0.02*p1/20000.;
+    Double_t p0 = h->GetEntries()*20000./p1; 
+    vfunc->SetParameters(p0,p1,p2,p3);
+    h->Fit("vavilov");
+    std::vector<float> pars;
+    //we don't care about norm
+    for(int i=1; i<4; i++){
+        pars.push_back(vfunc->GetParameter(i));
+    }
+    delete vfunc;
+    return pars;
+    
+}
+    
+
 
 
 
