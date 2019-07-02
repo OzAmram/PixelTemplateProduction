@@ -33,22 +33,11 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
     const int Nx = 21; // nbins in x
     const int Ny = 13; // nbins in y
     
-    const int nqpt = 150000;
-
-    double  pixelt[Nx][Ny],  pixel[Nx][Ny],
-    xsum[Nx], ysum[Ny],
+    double  pixelt[Nx][Ny],  
     xpar[nprm][4],
     xytemp[Nx][Ny][7][7], xytmp2[Nx][Ny][7][7]; 
 
-    int nqfit;
-    double qsig[nqpt], qexp[nqpt];
-
     int nxytry[7][7];
-
-    //random function                                                                                                                                                              
-    int triplg(std::vector<float>&); 
-    std::vector<float> dgauss(TYSIZE);
-    float mpv, sigma, arg, prob, dummy;
 
     //declare larger arrays dynamically to avoid stack overflow
     double *pixev = new double[Nx*Ny*nevents]; // charge per bin?
@@ -58,10 +47,6 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
 
     //size of pixel (in pixelav coordinates)
     float xsize, ysize, zsize;
-
-    //define middle of dimension ranges
-    const int NHx = Nx/2;
-    const int NHy = Ny/2;
 
     FILE *f_config = fopen("pix_2t.proc", "r");
 
@@ -85,10 +70,6 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
     double rten = 10.;
     double thr = q100;
     double thr10 = 0.1*thr;
-
-    //search for best measured one-pixel offsets
-    float cotamn=1.10;
-    float cotbmn=1.10;
 
     char fname[100];
     char header[120];
@@ -170,7 +151,6 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
             j2d[n] = j2dn;
 
             qsum[n] = 0.;
-            memset(ysum, 0., sizeof(ysum));
             memset(pixelt, 0., sizeof(pixelt));
 
             for(int i=0; i<Nx; i++){
@@ -267,7 +247,7 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
                     nxytry[k][l] +=1;
                 }
 
-                if(l < 0 || l > 8){
+                if(l < 0 || l > 6){
                     printf("Problem with event %i, index (l) is =%i \n", n, l);
                 }
                 else{
@@ -281,7 +261,7 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
 	 */
         for(int i=0; i<7; i++){
 	  for(int j=0; j<7; j++){
-            printf("number of template entries %i ", nxytry[i][j]);
+            printf("number of template entries %i \n", nxytry[i][j]);
 	  }
         }
         printf("\n");
@@ -311,34 +291,6 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
             }
         }
 
-	// analyze cluster charge
-	char plot_title[100];
-	TH1F* hexp = new TH1F("hqexp","Cluster Charge; Q_clus (e)",250,0.,500000.);
-        TH1F* hqsig = new TH1F("hqsig","Cluster Charge; Q_clus (e)",250,0.,500000.);
-	std::vector<float> qexp_v,qsig_v,n_v,qerr_v;
-
-	nqfit=0;
-        for(n=0; n<nmc; n++){
-	  int k = i2d[n];
-	  int l = j2d[n];
-	  if((k>0 && k<7) && (l>0 && l<7)){
-	    for(int i=0; i<Nx; i++){
-	      for(int j=0; j<Ny; j++){
-		if(xytemp[i][j][k][l] > thr && pixev[i*(Ny *nevents) + j*nevents + n] > 0){
-		  if(nqfit < nqpt) nqfit+=1;
-		  qexp[nqfit] = xytemp[i][j][k][l]; // charge expected?
-		  qexp_v.push_back(qexp[nqfit]);
-		  triplg(dgauss);
-		  qsig[nqfit] = pixev[i*(Ny *nevents) + j*nevents + n]+ dgauss[1]*noise; // signal + noise
-		  qsig_v.push_back(qsig[nqfit]);
-		  n_v.push_back(nqfit);
-		  qerr_v.push_back(1);
-		}
-	      }
-	    }
-	  }
-	}
-
         //open summary files
         char file_out[100];
 
@@ -349,7 +301,7 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
 	fprintf(zptemp_file, "%8.1f %8.1f %2i %2i %2i %2i\n", qavg,pixmax,imin,imax,jmin,jmax); 
 	for(int k=2; k <4; k++){
 	  for(int p=0; p<nprm; p++){
-	    fprintf(zptemp_file, "%15.8E ", xpar[p][k]);
+	    fprintf(zptemp_file, "%15.8E ", xpar[p][k]); // these should be 0 now
 	  }
 	  fprintf(zptemp_file, "\n");
 	}
@@ -359,13 +311,13 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
             float ycenter = ((l+1)*0.166667 - 0.166667) *ysize;
 	    float xcenter = ((k+1)*0.166667 - 0.666667) *xsize;
             fprintf(zptemp_file, "biny %2i,  ycenter = %8.2f um, binx %2i, xcenter = %8.2f um \n", l+1, ycenter, k+1, xcenter);
-            for(int i=0; i<Nx; i++){
-	      for(int j=0; j<Ny; j++){
+	    for(int j=0; j<Ny; j++){
+	      for(int i=0; i<Nx; i++){
 		fprintf(zptemp_file, "%8.1f ", xytemp[i][j][k][l] );
 	      }
+	      fprintf(zptemp_file, "\n"); 
             }
 	  }
-	  fprintf(zptemp_file, "\n"); // where new line should go?
 	}
 
         fclose(zptemp_file);
