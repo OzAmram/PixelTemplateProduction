@@ -43,6 +43,10 @@ using namespace std;
 #include "TPostScript.h"
 #include "Math/DistFunc.h"
 
+#ifdef TEMPL_DEBUG
+#include  "ranlux.c"
+#endif
+
 
 
 //vavilov distribution (to fit to)
@@ -255,6 +259,18 @@ int triplg(std::vector<float>& x)
 
     static int fcall = -1;
 
+#ifdef TEMPL_DEBUG
+    static int lux = 2;
+    static int seed = 1234;
+    static int k1=0;
+    static int k2=0;
+    static float rlux_out[TYTEN];
+    static int size = TYTEN;
+#endif
+
+
+
+    
     // Local variables 
     static float r1, r2;
     static int i__;
@@ -271,17 +287,29 @@ int triplg(std::vector<float>& x)
 //  Initalize the parameters 
 
     if (fcall) {
-	twopi = 2.*acos((double)-1.);
-	ibase = TYTEN;
-	fcall = 0;
+	    twopi = 2.*acos((double)-1.);
+	    ibase = TYTEN;
+	    fcall = 0;
+#ifdef TEMPL_DEBUG
+        rluxgo_(&lux, &seed, &k1, &k2);
+#endif
     }
 
 //  If all random numbers used up, generate 210 more 
 
     if (ibase == TYTEN) {
+
+#ifdef TEMPL_DEBUG
+       ranlux_(rlux_out, &size);
+#endif
 	   for (i__ = 0; i__ < TYTEN-1; i__ += 2) {
+#ifdef TEMPL_DEBUG
+          r1 = rlux_out[i__];
+          r2 = rlux_out[i__+1];
+#else
 	      r1 = ((float)random())/((float)RAND_MAX);
 	      r2 = ((float)random())/((float)RAND_MAX);
+#endif
 	      arg = (double)(1. - r1);
 	      if (arg < 1.e-30) {arg = 1.e-30;}
 	      r__ = sqrt(log(arg) * (-2.));

@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
     static bool fpix;
     float pixin[TXSIZE][TYSIZE];
     bool ydouble[TYSIZE], xdouble[TXSIZE];
-    float ztemp[TYSIZE][9], ptemp[TXSIZE][9], xpar[4][5];
+    float ztemp[9][TYSIZE], ptemp[9][TXSIZE], xpar[4][5];
     float dummy[T2YSIZE];
     float sxmax, symax, sxmaxx, symaxx, cosx, cosy, cosz;
     static float thick, xsize, ysize, noise, zcen, gain_frac, q100_frac, common_frac, readout_noise, qscale, qperbit;
@@ -89,15 +89,8 @@ int main(int argc, char *argv[])
     long deltas, deltaus;
     double deltat;
 
-    TF1 *cfunc0 = new TF1("chisquare0",chisquare0,0.,100.,3);
-    cfunc0->SetParLimits(1,0.01,50);
-    cfunc0->SetParNames("norm","mean","scale");
 
-    TF1 *cfunc1 = new TF1("chisquare1",chisquare1,0.,50.,3);
-    cfunc1->SetParNames("norm","mean","scale");
 
-    TF1 *vfunc = new TF1("vavilov",vavilov,-10.,50.,4);
-    vfunc->SetParNames("norm","mean","sigma","kappa");
 
     TCanvas* c1 = new TCanvas("c1", header, 800, 800);
     c1->SetFillStyle(4000);
@@ -265,18 +258,20 @@ int main(int argc, char *argv[])
                 fscanf(ztemp_file, " %f ", &ztemp[k][i]);
             }
         }
+
         fclose(ztemp_file);
+
 
         // Calculate the mean cluster size in pixels
 
         float pzfrst=0.f, pzlast=0.f;
         for(int i=0; i<TYSIZE; ++i) {
             for (int k=6; k > -1; --k) {
-                if(ztemp[i][k] > symaxx) {
-                    float dzsig = ztemp[i][k] - ztemp[i][k+1];
+                if(ztemp[k][i] > symaxx) {
+                    float dzsig = ztemp[k][i] - ztemp[k+1][i];
                     float frac;
                     if(dzsig > 0.f) {
-                        frac = (ztemp[i][k] - symaxx)/dzsig;
+                        frac = (ztemp[k][i] - symaxx)/dzsig;
                         if(frac > 1.f) frac = 1.f;
                         if(frac < 0.f) frac = 0.f;
                     } else {
@@ -290,11 +285,11 @@ int main(int argc, char *argv[])
 firstz: ;
         for(int i=TYSIZE-1; i>-1; --i) {
             for (int k=1; k < 9; ++k) {
-                if(ztemp[i][k] > symaxx) {
-                    float dzsig = ztemp[i][k] - ztemp[i][k-1];
+                if(ztemp[k][i] > symaxx) {
+                    float dzsig = ztemp[k][i] - ztemp[k-1][i];
                     float frac;
                     if(dzsig > 0.f) {
-                        frac = (ztemp[i][k] - symaxx)/dzsig;
+                        frac = (ztemp[k][i] - symaxx)/dzsig;
                         if(frac > 1.f) frac = 1.f;
                         if(frac < 0.f) frac = 0.f;
                     } else {
@@ -348,11 +343,11 @@ secondz: clslny = pzlast-pzfrst;
          float ppfrst=0.f, pplast=0.f;
          for(int i=0; i<TXSIZE; ++i) {
              for (int k=7; k > -1; --k) {
-                 if(ptemp[i][k] > sxmaxx) {
-                     float dpsig = ptemp[i][k] - ptemp[i][k+1];
+                 if(ptemp[k][i] > sxmaxx) {
+                     float dpsig = ptemp[k][i] - ptemp[k+1][i];
                      float frac;
                      if(dpsig > 0.f) {
-                         frac = (ptemp[i][k] - sxmaxx)/dpsig;
+                         frac = (ptemp[k][i] - sxmaxx)/dpsig;
                          if(frac > 1.f) frac = 1.f;
                          if(frac < 0.f) frac = 0.f;
                      } else {
@@ -366,11 +361,11 @@ secondz: clslny = pzlast-pzfrst;
 firstp: ;
         for(int i=TXSIZE-1; i>-1; --i) {
             for (int k=1; k < 9; ++k) {
-                if(ptemp[i][k] > sxmaxx) {
-                    float dpsig = ptemp[i][k] - ptemp[i][k-1];
+                if(ptemp[k][i] > sxmaxx) {
+                    float dpsig = ptemp[k][i] - ptemp[k-1][i];
                     float frac;
                     if(dpsig > 0.f) {
-                        frac = (ptemp[i][k] - sxmaxx)/dpsig;
+                        frac = (ptemp[k][i] - sxmaxx)/dpsig;
                         if(frac > 1.f) frac = 1.f;
                         if(frac < 0.f) frac = 0.f;
                     } else {
@@ -749,6 +744,9 @@ secondp: clslnx = pplast-ppfrst;
 
          //create a function with 2 parameters in the range [0.,100.]
 
+         TF1 *cfunc0 = new TF1("chisquare0",chisquare0,0.,100.,3);
+         cfunc0->SetParLimits(1,0.01,50);
+         cfunc0->SetParNames("norm","mean","scale");
          Double_t cp01 = hp[22]->GetMean()/2.;
          Double_t cp02 = 0.75;
          Double_t cp00 = hp[22]->GetEntries()*2./cp01; 
@@ -758,6 +756,9 @@ secondp: clslnx = pplast-ppfrst;
          cfunc0->GetParameters(cpar0);
          printf("cpar0 = %lf/%lf/%lf \n", cpar0[0], cpar0[1], cpar0[2]);
 
+
+         TF1 *cfunc1 = new TF1("chisquare1",chisquare1,0.,50.,3);
+         cfunc1->SetParNames("norm","mean","scale");
          double pixels = hp[24]->GetMean();
          Double_t cp11 = cpar0[1]/pixels;
          Double_t cp12 = cpar0[2];
@@ -769,6 +770,8 @@ secondp: clslnx = pplast-ppfrst;
 
          //create a function with 4 parameters in the range [-10,50]
 
+         TF1 *vfunc = new TF1("vavilov",vavilov,-10.,50.,4);
+         vfunc->SetParNames("norm","mean","sigma","kappa");
          Double_t p1 = hp[25]->GetMean();
          Double_t p2 = 0.1*p1;
          Double_t p3 = 0.02*p1/20000.;

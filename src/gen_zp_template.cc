@@ -26,6 +26,7 @@
  *   Write integers for the templates
  */
 
+#define TEMPL_DEBUG
 #include "template_utils.h"
 
 
@@ -282,7 +283,7 @@ int main(int argc, char *argv[])
     hp[x_generic_idx + 4] = new TH1F("h410","dx_generic (0.85mn > signal); #Deltax (#mum)",nx,-halfxs,halfxs);      
 
 
-    hp[charge_idx + 0] = new TH1F("h100","Number generated e",150,0.,5000000.);	
+    hp[charge_idx + 0] = new TH1F("h100","Number generated e",150,0.,500000.);	
     hp[charge_idx + 1] = new TH1F ("h500","Cluster Charge",250,0.,500000.);
     hp[charge_idx + 2] = new TH1F ("h501","npix(signal > 1.5mn)",40,0.5,40.5);
     hp[charge_idx + 3] = new TH1F ("h502","npix(1.5mn > signal > 1.0mn)",40,0.5,40.5);
@@ -540,7 +541,16 @@ secondp: clslnx = pplast-ppfrst;
          // Read-in a header string first and print it    
 
          get_label(events_file, header, 80);
+
          printf("Header: %s\n", header);
+         fscanf(events_file,"%f  %f  %f", &ysize, &xsize, &thick);
+         zcen = thick/2.;
+         printf("xsize/ysize/thick = %f/%f/%f \n", xsize, ysize, thick);
+         fpix = false;
+
+         if(thick > 285.) {fpix = true;}
+
+         float qavg = 0.f; //average charge after threshholding effects
          if(write_temp_header && ifile == startfile) {
 
 
@@ -557,13 +567,6 @@ secondp: clslnx = pplast-ppfrst;
          }
 
 
-         fscanf(events_file,"%f  %f  %f", &ysize, &xsize, &thick);
-         zcen = thick/2.;
-         printf("xsize/ysize/thick = %f/%f/%f \n", xsize, ysize, thick);
-         fpix = false;
-         if(thick > 285.) {fpix = true;}
-
-         float qavg = 0.f; //average charge after threshholding effects
 
          // loop over all events once to get single pixel avgs.
          int read_events = 0;
@@ -735,10 +738,13 @@ secondp: clslnx = pplast-ppfrst;
              if(qmsort.size() < 60){
                  qmsort.insert(qmeas);
              }
-             else if(qmeas < *(qmsort.end())){
-                 qmsort.erase(qmsort.end());
+             else if(qmeas < *(qmsort.rbegin())){
+                 //its smaller than something in the list, remove largest
+                 //element and this to list
+                 qmsort.erase(qmsort.find(*qmsort.rbegin()));
                  qmsort.insert(qmeas);
              }
+             
 
 
              qavg += qmeas;

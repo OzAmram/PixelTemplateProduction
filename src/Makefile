@@ -2,8 +2,8 @@ root_flags= `root-config --cflags --ldflags --libs --glibs`
 compiler_flags=-std=c++11 -Wall -O0 -g
 vdt_dir=/usr/local/include
 includes= -I. -I../cmssw_code/ -I$(vdt_dir)
-DEPS= template_utils.h ../cmssw_code/*
-EXE= compare_templates gen_zp_template gen_zp_template2d gen_xy_template #gen_xy_template2d
+DEPS= template_utils.h ranlux.c ../cmssw_code/*
+EXE= compare_templates load_template_test gen_zp_template gen_zp_template2d gen_zp_template2d_old gen_xy_template #gen_xy_template2d
 ODIR=../bin
 
 all: $(EXE)
@@ -26,6 +26,9 @@ gen_xy_template2d: gen_xy_template2d_2t.cc $(DEPS)
 
 compare_templates: compare_templates.cc $(DEPS)
 	g++ compare_templates.cc -o $(ODIR)/compare_templates $(compiler_flags) $(root_flags) $(includes)
+
+load_template_test: load_template_test.cc $(DEPS)
+	g++ load_template_test.cc -o $(ODIR)/load_template_test $(compiler_flags) $(root_flags) $(includes)
 
 clean:
 	rm -f $(ODIR)/*
