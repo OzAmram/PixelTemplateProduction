@@ -1,9 +1,9 @@
 /* compare_templates
  * Author Oz Amram June 2019
  *
- * Compares all the floats in two files to see if they disagree beyond some
+ * Compares all the doubles in two files to see if they disagree beyond some
  * tolerance.
- * Ignores lines with anything that cannot be interpretted as a float
+ * Ignores lines with anything that cannot be interpretted as a double
  * Very useful for comparing two sets of templates, to see if something has
  * changed when changing the code
  *
@@ -25,13 +25,12 @@ int main(int argc, char *argv[]){
     FILE *f1 = fopen(argv[1], "r");
     FILE *f2 = fopen(argv[2], "r");
 
-    float tolerance = 1e-5;
+    double tolerance = 1e-5;
 
     if(argc > 3){
-        sscanf(argv[3], " %f ", &tolerance);
+        tolerance = atof(argv[3]);
     }
-    float val1, val2;
-    int nargs1, nargs2;
+    double val1, val2;
     char b1[180], b2[180];
     int checked_vals = 0;
     int line_num=0;
@@ -58,14 +57,14 @@ int main(int argc, char *argv[]){
         while(s1.substr(ps1).length() > 0 && s2.substr(ps2).length() > 0){
 
             try{
-                //try to read a float from the string
-                val1 = std::stof(s1.substr(ps1), &new1);
-                val2 = std::stof(s2.substr(ps2), &new2);
+                //try to read a double from the string
+                val1 = std::stod(s1.substr(ps1), &new1);
+                val2 = std::stod(s2.substr(ps2), &new2);
                 ps1+=new1;
                 ps2+=new2;
                 
 
-                float diff = std::fabs((val1 - val2)/val1);
+                double diff = std::fabs((val1 - val2)/val1);
                 if(diff > tolerance){
                     printf("Difference between files found on line %i \n"
                            "%s has %f. " 
@@ -82,8 +81,13 @@ int main(int argc, char *argv[]){
                 }
             }
             catch(const std::invalid_argument& ia){
-                // Couldn't convert to a float, likely a string
-                //printf("Not floats. Strings are %s %s", s1.substr(ps1).c_str(), s2.substr(ps2).c_str());
+                // Couldn't convert to a double, likely a string
+                //printf("Not doubles. Strings are %s %s", s1.substr(ps1).c_str(), s2.substr(ps2).c_str());
+                break;
+            }
+            catch(const std::out_of_range& ia){
+                printf("Out of range?. Line is %i. %s %s \n", line_num, s1.c_str(), s2.c_str());
+                printf("ps1, new1, ps2, new2: %d %d %d %d \n", (int) ps1,  (int)new1,  (int)new2,  (int)ps2);
                 break;
             }
 

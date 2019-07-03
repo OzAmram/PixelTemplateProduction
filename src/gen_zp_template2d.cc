@@ -55,10 +55,10 @@ int main(int argc, char *argv[])
     int ierr, qbin, qb, jmin, jmax, imin, imax, numadd, idcol, edgeflagx, edgeflagy, npixels;
     int mrow = TXSIZE, mcol = TYSIZE;
     const int TXSHIFT = (TXSIZE - T2XSIZE)/2;
-    double dx, dy, tote, bade, adc;
+    double dx, dy,  adc;
     float scaley, scalex, scalx[4], scaly[4], delyavg, delysig, offsetx[4], offsety[4];
     static int numbits;
-    static float q100, q101, q50, q51, q10, qmax; 
+    static float q100, q101, q50, q51,  qmax; 
     const double gain = 3.19;
     const double ped = 16.46;
     const double p0 = 0.01218;
@@ -124,7 +124,6 @@ int main(int argc, char *argv[])
 
     q50=0.5*q100;
     q51=0.5*q101;
-    q10=0.2*q50;
 
     //  Open template output file
 
@@ -266,7 +265,7 @@ int main(int argc, char *argv[])
 
         float pzfrst=0.f, pzlast=0.f;
         for(int i=0; i<TYSIZE; ++i) {
-            for (int k=6; k > -1; --k) {
+            for (int k=7; k > -1; --k) {
                 if(ztemp[k][i] > symaxx) {
                     float dzsig = ztemp[k][i] - ztemp[k+1][i];
                     float frac;
@@ -295,7 +294,7 @@ firstz: ;
                     } else {
                         frac = 0.f;
                     }
-                    pzlast = i-(k+frac-4.f)/8.f;
+                    pzlast = i-(k-frac-4.f)/8.f;
                     goto secondz;
                 }
             }
@@ -371,7 +370,7 @@ firstp: ;
                     } else {
                         frac = 0.f;
                     }
-                    pplast = i-(k+frac-4.f)/8.f;
+                    pplast = i-(k-frac-4.f)/8.f;
                     goto secondp;
                 }
             }
@@ -493,8 +492,6 @@ secondp: clslnx = pplast-ppfrst;
 
          nevent=0;
          nbad = 0;
-         tote = 0.;
-         bade = 0.;
 
          if(write_temp_header && ifile==startfile) {
              fprintf(output_file,"%s", header);
@@ -783,9 +780,9 @@ secondp: clslnx = pplast-ppfrst;
 
          //  Create an output filename for this run 
 
-         sprintf(outfile0,"template_histos%5.5d_newResp.ps[",ifile);
-         sprintf(outfile1,"template_histos%5.5d_newResp.ps",ifile);
-         sprintf(outfile2,"template_histos%5.5d_newResp.ps]",ifile);
+         sprintf(outfile0,"template2d_histos%5.5d.pdf[",ifile);
+         sprintf(outfile1,"template2d_histos%5.5d.pdf",ifile);
+         sprintf(outfile2,"template2d_histos%5.5d.pdf]",ifile);
          c1->Clear();
          c1->Print(outfile0);
          for(int i=0; i<26; ++i) {

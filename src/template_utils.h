@@ -119,20 +119,24 @@ float** setup_2d_array(int size1, int size2){
 //first two are always mean and std dev
 //second two are fitted mean and sigma of gaussian if fit went well
 //fit must have already been done
-std::vector<float> get_gaussian_pars(TH1F *h){
+std::vector<float> get_gaussian_pars(TH1F *h, double min_std = 3.){
     std::vector<float> pars;
     double h_mean = h->GetMean();
-    double h_std = std::max(h->GetStdDev(), 3.);
+    double h_std = std::max(h->GetStdDev(), min_std);
     pars.push_back(h_mean);
     pars.push_back(h_std);
     if(h->Integral() > 50.){
         h->Fit("gaus");
         TF1 *fit = h->GetFunction("gaus");
         double mean = fit->GetParameter(1);
-        double sigma = std::max(fit->GetParameter(2), 3.);
+        double sigma = std::max(fit->GetParameter(2), min_std);
         if(fabs(mean) < 300. && abs(sigma) < 175. ){
             pars.push_back(mean);
             pars.push_back(sigma);
+        }
+        else{
+            pars.push_back(h_mean);
+            pars.push_back(h_std);
         }
     }
     else{
@@ -184,7 +188,6 @@ std::vector<float> get_vavilov_pars(TH1F *h){
     for(int i=1; i<4; i++){
         pars.push_back(vfunc->GetParameter(i));
     }
-    delete vfunc;
     return pars;
     
 }

@@ -3,7 +3,7 @@ compiler_flags=-std=c++11 -Wall -O0 -g
 vdt_dir=/usr/local/include
 includes= -I. -I../cmssw_code/ -I$(vdt_dir)
 DEPS= template_utils.h ranlux.c ../cmssw_code/*
-EXE= compare_templates load_template_test gen_zp_template gen_zp_template2d gen_zp_template2d_old gen_xy_template #gen_xy_template2d
+EXE= compare_templates gen_zp_template gen_zp_template2d gen_zp_template2d_old gen_xy_template gen_xy_template2d
 ODIR=../bin
 
 all: $(EXE)
@@ -18,8 +18,8 @@ gen_zp_template2d: gen_zp_template2d.cc $(DEPS)
 gen_zp_template2d_old: gen_zp_template2d_2018_2t.cxx
 	g++ gen_zp_template2d_2018_2t.cxx -o $(ODIR)/gen_zp_template2d_old $(compiler_flags)  $(root_flags) $(includes)
 
-gen_xy_template: gen_xy_templateqd4_2t.cc $(DEPS)
-	g++ gen_xy_templateqd4_2t.cc   -o $(ODIR)/gen_xy_template $(compiler_flags) $(root_flags) $(includes)
+gen_xy_template: gen_xy_template.cc $(DEPS)
+	g++ gen_xy_template.cc   -o $(ODIR)/gen_xy_template $(compiler_flags) $(root_flags) $(includes)
 
 gen_xy_template2d: gen_xy_template2d_2t.cc $(DEPS)
 	g++ gen_xy_template2d_2t.cc  -o $(ODIR)/gen_xy_template2d $(compiler_flags) $(root_flags) $(includes)
