@@ -150,13 +150,21 @@ std::vector<float> fit_pol5(TProfile *h){
     h->Fit("pol5");
     h->SetStats(false);
     TF1 *fit = h->GetFunction("pol5");
-    for(int i=0; i<5; i++){
-        pars.push_back(fit->GetParameter(i));
+    Double_t chi2 = fit->GetChisquare();
+        for(int i=0; i<5; i++){
+            if(chi2 < 1e6){
+                pars.push_back(fit->GetParameter(i));
+            }
+            else{
+                pars.push_back(0.);
+            }
+
     }
+
     return pars;
 }
 
-std::vector<float> get_chi2_pars(TH1F *h){
+std::vector<float> get_chi2_pars(TH1F *h, double h_min){
     std::vector<float> pars;
     if(h->Integral() < 20.){
         pars.push_back(0.10);
@@ -164,7 +172,8 @@ std::vector<float> get_chi2_pars(TH1F *h){
         return pars;
     }
     double h_mean = h->GetMean();
-    double h_min = h->GetMinimum();
+    if(h_min < 0.) h_min = 0.;
+    if(h_min > h_mean) h_min = 0.;
     double dmean = h_mean - h_min;
     if(dmean < 0.1) dmean = h_mean;
     pars.push_back(dmean);

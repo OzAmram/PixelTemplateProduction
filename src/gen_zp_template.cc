@@ -48,7 +48,6 @@ int main(int argc, char *argv[])
     static float pixmaxy, pixmaxx;
     static int startfile,  nbad, ngood, non_linear, numrun; 
     int  id,NTy, NTyx,NTxx,IDtype;
-    int clus_size_x, clus_size_y;
 
 
     std::multiset<float> qmsort;
@@ -218,6 +217,7 @@ int main(int argc, char *argv[])
     gStyle->SetHistLineWidth(2);
     static vector<TH1F*> hp(n_hists);
     static vector<TProfile*> profs(n_profs);
+    double chi_min[n_hists]; //chi2 minimum values, keep same indexing
 
     hp[y_temp_idx + 0] = new TH1F("h201","dy_temp (all sig); #Deltay (#mum)",ny,-halfys,halfys);
     hp[y_temp_idx + 1] = new TH1F("h202","dy_temp (signal > 1.5mn); #Deltay (#mum)",ny,-halfys,halfys);      
@@ -225,11 +225,11 @@ int main(int argc, char *argv[])
     hp[y_temp_idx + 3] = new TH1F("h204","dy_temp (1.0mn > signal > 0.85mn); #Deltay (#mum)",ny,-halfys,halfys);     
     hp[y_temp_idx + 4] = new TH1F("h205","dy_temp (0.85mn > signal); #Deltay (#mum)",ny,-halfys,halfys);      
 
-    hp[y_chi2_idx + 0] = new TH1F("h206","chi2y_temp (single pix)",ny,0.,chimx);
-    hp[y_chi2_idx + 1] = new TH1F("h207","chi2y_temp (signal > 1.5mn)",ny,0.,chimx);
-    hp[y_chi2_idx + 2] = new TH1F("h208","chi2y_temp (1.5mn > signal > 1.0mn)",ny, 0., chimx);
-    hp[y_chi2_idx + 3] = new TH1F("h209","chi2y_temp (1.0mn > signal > 0.85mn)",ny,0., chimx);
-    hp[y_chi2_idx + 4]=  new TH1F("h210","chi2y_temp (0.85mn > signal)",ny,0.,chimx);
+    hp[y_chi2_idx + 0] = new TH1F("h206","chi2 y_temp (single pix)",ny,0.,chimx);
+    hp[y_chi2_idx + 1] = new TH1F("h207","chi2 y_temp (signal > 1.5mn)",ny,0.,chimx);
+    hp[y_chi2_idx + 2] = new TH1F("h208","chi2 y_temp (1.5mn > signal > 1.0mn)",ny, 0., chimx);
+    hp[y_chi2_idx + 3] = new TH1F("h209","chi2 y_temp (1.0mn > signal > 0.85mn)",ny,0., chimx);
+    hp[y_chi2_idx + 4]=  new TH1F("h210","chi2 y_temp (0.85mn > signal)",ny,0.,chimx);
 
     hp[x_temp_idx + 0] = new TH1F("h101","dx_temp (all sig); #Deltax (#mum)",nx,-halfxs,halfxs);
     hp[x_temp_idx + 1] = new TH1F("h102","dx_temp (signal > 1.5mn); #Deltax (#mum)",nx,-halfxs,halfxs);      
@@ -237,11 +237,11 @@ int main(int argc, char *argv[])
     hp[x_temp_idx + 3] = new TH1F("h104","dx_temp (1.0mn > signal > 0.85mn); #Deltax (#mum)",nx,-halfxs,halfxs);     
     hp[x_temp_idx + 4] = new TH1F("h105","dx_temp (0.85mn > signal); #Deltax (#mum)",nx,-halfxs,halfxs);      
 
-    hp[x_chi2_idx + 0] = new TH1F("h106","chi2x_temp (single pix)",nx,0.,chimx);
-    hp[x_chi2_idx + 1] = new TH1F("h107","chi2x_temp (signal > 1.5mn)",nx,0.,chimx);
-    hp[x_chi2_idx + 2] = new TH1F("h108","chi2x_temp (1.5mn > signal > 1.0mn)",nx, 0., chimx);
-    hp[x_chi2_idx + 3] = new TH1F("h109","chi2x_temp (1.0mn > signal > 0.85mn)",nx,0., chimx);
-    hp[x_chi2_idx + 4]=  new TH1F("h110","chi2x_temp (0.85mn > signal)",nx,0.,chimx);
+    hp[x_chi2_idx + 0] = new TH1F("h106","chi2 x_temp (single pix)",nx,0.,chimx);
+    hp[x_chi2_idx + 1] = new TH1F("h107","chi2 x_temp (signal > 1.5mn)",nx,0.,chimx);
+    hp[x_chi2_idx + 2] = new TH1F("h108","chi2 x_temp (1.5mn > signal > 1.0mn)",nx, 0., chimx);
+    hp[x_chi2_idx + 3] = new TH1F("h109","chi2 x_temp (1.0mn > signal > 0.85mn)",nx,0., chimx);
+    hp[x_chi2_idx + 4]=  new TH1F("h110","chi2 x_temp (0.85mn > signal)",nx,0.,chimx);
 
 
     hp[y_temp_fp_idx + 0] = new TH1F("h306","dy_temp first pass (all sig); #Deltay (#mum)",ny,-halfys,halfys);
@@ -312,6 +312,8 @@ int main(int argc, char *argv[])
         hp[i]->SetFillColor(38);
     }
 
+    
+
     std::vector<std::pair<int, int> > pixlst;
 
     // Create template object
@@ -361,6 +363,11 @@ int main(int argc, char *argv[])
         zero_2d_array(xsum2, nevents, TXSIZE);
         zero_2d_array(ysum1, nevents, TYSIZE);
         zero_2d_array(ysum2, nevents, TYSIZE);
+
+         for(int i=0; i< n_hists; i++){
+             chi_min[i] = 10.;
+         }
+
 
         //  Read in 1D z template information first
 
@@ -560,11 +567,11 @@ secondp: clslnx = pplast-ppfrst;
                      id,nvers,Bfield,NTy,NTyx,NTxx,IDtype,Vbias, temp,fluenc,qscale,q50,lorwdy,
                      lorwdx,ysize,xsize,thick,q51,lorbsy,lorbsx,fbin[0], fbin[1], fbin[2]);
 
-             int err1  = fprintf(generr_output_file,"%s", header);
-             int err2 = fprintf(generr_output_file,"%d %d %4.2f %d %d %d %d %5.4f %5.4f %4.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %f %4.4f %4.4f %4.4f \n",
-                     id,nvers,Bfield,NTy,NTyx,NTxx,IDtype,Vbias, temp,fluenc,qscale,q50,lorwdy,
+             int ngen_ver = 1;
+             fprintf(generr_output_file,"%s", header);
+             fprintf(generr_output_file,"%d %d %4.2f %d %d %d %d %5.4f %5.4f %4.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %f %4.4f %4.4f %4.4f \n",
+                     id,ngen_ver,Bfield,NTy,NTyx,NTxx,IDtype,Vbias, temp,fluenc,qscale,q50,lorwdy,
                      lorwdx,ysize,xsize,thick,q51,lorbsy,lorbsx,fbin[0], fbin[1], fbin[2]);
-             if(err1 <0 || err2 < 0) printf("Error printing to generr file. errors %i and %i \n", err1, err2);
          }
 
 
@@ -1186,15 +1193,13 @@ secondp: clslnx = pplast-ppfrst;
 
              //edges of cluster
              //
-             //f is lower edge of first pixel
-             //l is upper edge of last pixel
-             float e_f_x  = xstart[n] *xsize;
-             float e_l_x  = (xend+1)*xsize; 
-             float e_f_y  = ystart[n] *ysize;
-             float e_l_y  = (yend+1) *ysize;
+             //f is upper edge of first pixel
+             //l is lower edge of last pixel
+             float e_f_x  = (xstart[n]+1) *xsize;
+             float e_l_x  = (xend)*xsize; 
+             float e_f_y  = (ystart[n]+1) *ysize;
+             float e_l_y  = (yend) *ysize;
 
-             clus_size_x = xend-xstart[n] + 1;
-             clus_size_y = yend-ystart[n] + 1;
 
              bool isBigPix = false;
 
@@ -1207,12 +1212,12 @@ secondp: clslnx = pplast-ppfrst;
              float size_cutY = 3.0;
 
 
-             float xrec_gen = SiPixelUtils::generic_position_formula(clus_size_x, Q_f_x, Q_l_x, e_f_x, e_l_x,
+             float xrec_gen = SiPixelUtils::generic_position_formula(xwidth[n], Q_f_x, Q_l_x, e_f_x, e_l_x,
                      lorwdx, thick, cotalpha,
                      xsize, isBigPix, isBigPix,
                      eff_charge_cut_lowX, eff_charge_cut_highX,
                      size_cutX) - lorbsx;
-             float yrec_gen = SiPixelUtils::generic_position_formula(clus_size_y, Q_f_y, Q_l_y, e_f_y, e_l_y,
+             float yrec_gen = SiPixelUtils::generic_position_formula(ywidth[n], Q_f_y, Q_l_y, e_f_y, e_l_y,
                      lorwdy, thick, cotbeta,
                      ysize, isBigPix, isBigPix,
                      eff_charge_cut_lowY, eff_charge_cut_highY,
@@ -1291,6 +1296,8 @@ secondp: clslnx = pplast-ppfrst;
                      profs[y_corr_idx+1+qbins[n]]->Fill(qfly[n], dy);
 
                      hp[y_chi2_fp_idx+qbin_merge[n]]->Fill(chisq_y); 
+                     chi_min[y_chi2_fp_idx + qbin_merge[n]] = std::min(chisq_y, chi_min[y_chi2_fp_idx + qbin_merge[n]]);
+
                  }
 
                  if(xwidth[n] > 1){
@@ -1301,6 +1308,7 @@ secondp: clslnx = pplast-ppfrst;
                      profs[x_corr_idx+1+qbins[n]]->Fill(qflx[n], dx);
 
                      hp[x_chi2_fp_idx+qbin_merge[n]]->Fill(chisq_x);
+                     chi_min[x_chi2_fp_idx + qbin_merge[n]] = std::min(chisq_x, chi_min[x_chi2_fp_idx + qbin_merge[n]]);
                  }
 
 
@@ -1377,21 +1385,29 @@ secondp: clslnx = pplast-ppfrst;
 
                  hp[charge_idx+2+qbin]->Fill(npix[n]);
 
-                 if(ywidth[n] == 1) hp[y_chi2_idx]->Fill(chisq_y); //single pixel chi2
+                 if(ywidth[n] == 1){
+                     hp[y_chi2_idx]->Fill(chisq_y); //single pixel chi2
+                     chi_min[y_chi2_idx] = std::min(chisq_y, chi_min[y_chi2_idx]);
+                 }
                  else{
 
                      //Fill final template reco residuals 
                      hp[y_temp_idx]->Fill(dy);
                      hp[y_temp_idx+1+qbin]->Fill(dy);
                      hp[y_chi2_idx+1+qbin]->Fill(chisq_y); //qbin chisq
+                     chi_min[y_chi2_idx+1+qbin] = std::min(chisq_y, chi_min[y_chi2_idx+1+qbin]);
                  }
 
-                 if(xwidth[n] ==1) hp[x_chi2_idx]->Fill(chisq_x); 
+                 if(xwidth[n] ==1){
+                     hp[x_chi2_idx]->Fill(chisq_x); 
+                     chi_min[x_chi2_idx] = std::min(chisq_x, chi_min[x_chi2_idx]);
+                 }
                  else{
                      hp[x_temp_idx]->Fill(dx);
                      hp[x_temp_idx+1+qbin]->Fill(dx);
 
                      hp[x_chi2_idx+1+qbin]->Fill(chisq_x);
+                     chi_min[x_chi2_idx+1+qbin] = std::min(chisq_x, chi_min[x_chi2_idx+1+qbin]);
                  }
 
 
@@ -1408,6 +1424,13 @@ secondp: clslnx = pplast-ppfrst;
          }
 
          printf(" low q failures = %.0f, failed fits = %d, successful fits = %d, total read events %d \n", nqbin[4], nbad, ngood, read_events);	   
+
+         /*
+         printf("chi sq: \n");
+         for(int i=0; i< 40; i++){
+             printf("%.2f ", chi_min[i]);
+         }
+         */
 
 
 
@@ -1495,22 +1518,22 @@ secondp: clslnx = pplast-ppfrst;
 
          //chi-squared template fit info
          for(int i=0; i<4; i++){
-             auto chiy_pars = get_chi2_pars(hp[y_chi2_idx + 1 +i]);
-             auto chix_pars = get_chi2_pars(hp[x_chi2_idx + 1 +i]);
+             auto chiy_pars = get_chi2_pars(hp[y_chi2_idx + 1 +i], chi_min[y_chi2_idx + 1 +i]);
+             auto chix_pars = get_chi2_pars(hp[x_chi2_idx + 1 +i], chi_min[x_chi2_idx + 1 +i]);
              fprintf(temp_output_file, "%9.3f %9.3f %9.3f %9.3f \n", 
                      chiy_pars[0], chiy_pars[1], chix_pars[0], chix_pars[1]);
          }
 
          //y first pass temp fit avg and std dev + chi2 of merged clusters
          for(int i=0; i<4; i++){
-             auto chiy_pars = get_chi2_pars(hp[y_chi2_fp_idx + i]);
+             auto chiy_pars = get_chi2_pars(hp[y_chi2_fp_idx + i], chi_min[y_chi2_fp_idx + i]);
              auto temp_pars = get_gaussian_pars(hp[y_temp_fp_idx +1 +i], 5.);
              fprintf(temp_output_file, "%9.1f %9.1f %9.3f %9.3f \n", 
                      temp_pars[0], temp_pars[1], chiy_pars[0], chiy_pars[1]);
          }
          //x first pass temp fit avg and std dev + chi2 of merged clusters
          for(int i=0; i<4; i++){
-             auto chix_pars = get_chi2_pars(hp[x_chi2_fp_idx + i]);
+             auto chix_pars = get_chi2_pars(hp[x_chi2_fp_idx + i], chi_min[x_chi2_fp_idx +i]);
              auto temp_pars = get_gaussian_pars(hp[x_temp_fp_idx +1 +i], 3.);
              fprintf(temp_output_file, "%9.1f %9.1f %9.3f %9.3f \n", 
                      temp_pars[0], temp_pars[1], chix_pars[0], chix_pars[1]);
@@ -1543,14 +1566,14 @@ secondp: clslnx = pplast-ppfrst;
              fqbin[i] = nqbin[i]/tqbin;
          }
 
-         float fyone = nyone/nevents;
-         float fxone = nyone/nevents;
-         float fytwo = nyone/2./nevents;
-         float fxtwo = nyone/2./nevents;
+         float fyone = float(nyone)/float(nevents);
+         float fxone = float(nxone)/float(nevents);
+         float fytwo = float(nytwo)/2./float(nevents);
+         float fxtwo = float(nxtwo)/2./float(nevents);
 
          //single pixel chi2 info
-         auto chiy_pars = get_chi2_pars(hp[y_chi2_idx]);
-         auto chix_pars = get_chi2_pars(hp[x_chi2_idx]);
+         auto chiy_pars = get_chi2_pars(hp[y_chi2_idx], chi_min[y_chi2_idx]);
+         auto chix_pars = get_chi2_pars(hp[x_chi2_idx], chi_min[x_chi2_idx]);
          fprintf(temp_output_file, "%9.3f %9.3f %9.3f %9.3f ", chiy_pars[0], chiy_pars[1], chix_pars[0], chix_pars[1]);
 
          //qmin2, vavilov fit params, charge ratio and extra param
@@ -1573,7 +1596,7 @@ secondp: clslnx = pplast-ppfrst;
          fprintf(generr_output_file, "%i %8.6f %8.6f %8.6f \n", ifile, slice->costrk[0], slice->costrk[1], slice->costrk[2]);
 
          fprintf(generr_output_file, "%8.1f %8.1f %8.1f %8.1f %8.1f %8.1f %8.1f\n",
-                 qavg, pixmax, symax, dyone, syone, dxone, sxone);
+                 qavg, pixmax, dyone, syone, dxone, sxone);
 
          fprintf(generr_output_file, "%8.1f %8.1f %8.1f %8.1f %8.1f %8.1f \n",
                  dytwo, sytwo, dxtwo, sxtwo, qmin30, qmin60);
