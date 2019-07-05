@@ -26,18 +26,18 @@
  */
 #include "template_utils.h"
 
-void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int nprm = 5, 
+void gen_xy_template2d(const int nevents = 32000, const int npt = 300, const int nprm = 5, 
 		       const int maxarg = 5){
 
     //size of the x and y arrays in template
     const int Nx = 21; // nbins in x
     const int Ny = 13; // nbins in y
     
-    double  pixelt[Nx][Ny], xpar[nprm][4], xytemp[Nx][Ny][7][7];
+    double xpar[nprm][4], xytemp[Nx][Ny][7][7];
     int nxytry[7][7];
 
     //declare larger arrays dynamically to avoid stack overflow
-    double *pixev = new double[Nx*Ny*nevents]; // charge per bin?
+    float ***pixev = setup_3d_array(Nx, Ny, nevents); // charge per bin
     double *qsum = new double[nevents]; // sum charged
     int *i2d = new int[nevents]; // this is xhit position per bin
     int *j2d = new int[nevents]; // this is yhit position per bin
@@ -45,6 +45,7 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
     //size of pixel (in pixelav coordinates)
     float xsize, ysize, zsize;
 
+    // read pix_2t proc (containing # of template files to be processed)
     FILE *f_config = fopen("pix_2t.proc", "r");
 
     if(f_config ==0){
@@ -98,6 +99,8 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
 
         int nelec;
 
+	zero_3d_array(pixev, Nx, Ny, nevents);
+
         //loop over events 
         int n;
         for(n=0; n < nevents; n++){
@@ -117,6 +120,7 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
 
             float bixin[Nx][Ny];
             memset(bixin, 0., sizeof(bixin));
+
             //note the confusing index switch. input arrays are 13x21, we swap
             //to 21x13
             for(int j=0; j<Ny; j++){ // 13
@@ -151,13 +155,12 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
             j2d[n] = j2dn;
 
             qsum[n] = 0.;
-            memset(pixelt, 0., sizeof(pixelt));
 
             for(int i=0; i<Nx; i++){
                 for(int j=0; j<Ny; j++){
                     double qin = bixin[i][j] * rten;
                     if(qin < 0.) qin = 0.;
-                    pixev[i*(Ny *nevents) + j*nevents + n] = qin;
+		    pixev[i][j][n] = qin;
 		    //if(n==0 && qin>0){ 
 		    //printf("qin %f for i %i and j %i \n ",qin,i,j);                                                                                                              
 		    //} 
@@ -194,60 +197,74 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
 
 		for(int i=0; i < Nx; i++){
 		  for(int j=0; j < Ny; j++){
-		    xytemp[i][j][k][l] += pixev[i*(Ny *nevents) + j*nevents + n];
-		    
-		    // 0th bin of new pixel same as last bin of previous pixel
-		    // thus, not only add that charge but also from:
+		    xytemp[i][j][k][l] += pixev[i][j][n];
+
+		    // 0th bin of new pixel same as last bin of previous pixel   
 		    if(i>0) {
-		      if(k==0){ // bin0px(i) = bin6px(i-1)
-			xytemp[i][j][6][l] += pixev[(i-1)*(Ny *nevents) + j*nevents + n]; // adding to bin6 of that same pix
+		      if(k==0){ // bin0px(i) = bin6px(i-1) 
+			xytemp[i][j][6][l] += pixev[i-1][j][n]; // adding to bin6 of that same pix 
 		      }
-		      else if(k==6){ // bin6px(i) = bin0px(i+1)
-			xytemp[i-1][j][0][l] += pixev[i*(Ny *nevents) + j*nevents + n]; // adding to bin0 of pix-1
+		      else if(k==6){ // bin6px(i) = bin0px(i+1) 
+			xytemp[i-1][j][0][l] += pixev[i][j][n];  // adding to bin0 of pix-1 
 		      }
 		    }
 
-		    // same for y
+		    // same for y 
                     if(j>0) {
-		      if(l==0){
-			xytemp[i][j][k][6] += pixev[i*(Ny *nevents) + (j-1)*nevents + n]; // adding to bin6 of that same pix 
-		      }
-		      else if(l==6){
-			xytemp[i][j-1][k][0] += pixev[i*(Ny *nevents) + j*nevents + n]; // adding to bin0 of pix-1 
-		      }
-		    }
+                      if(l==0){
+                        xytemp[i][j][k][6] += pixev[i][j-1][n]; // adding to bin6 of that same pix 
+                      }
+                      else if(l==6){
+                        xytemp[i][j-1][k][0] += pixev[i][j][n]; // adding to bin0 of pix-1
+                      }
+                    }
 
-		    // i'm wondering if these are not duplicated...
-                    if(i>0 && j>0) {
-		      if(k==0 && l==0){
-			xytemp[i][j][6][6] += pixev[(i-1)*(Ny *nevents) + (j-1)*nevents + n];
-		      }
-		      else if(k==6 && l==6){
-			xytemp[i-1][j-1][0][0] += pixev[i*(Ny *nevents) + j*nevents + n];
-		      }
-		      else if(k==0 && l==6){
-			xytemp[i][j-1][0][0] += pixev[(i-1)*(Ny *nevents) + j*nevents + n];
-		      }
-		      else if(k==6 && l==0){
-			xytemp[i-1][j][0][0] += pixev[i*(Ny *nevents) + (j-1)*nevents + n];
-		      }
-		    }
-		  } //  end Ny
+		    if(i>0 && j>0) {
+                      if(k==0 && l==0){
+                        xytemp[i][j][6][6] += pixev[i-1][j-1][n];
+                      }
+                      else if(k==6 && l==6){
+                        xytemp[i-1][j-1][0][0] += pixev[i][j][n];
+                      }
+                      else if(k==0 && l==6){
+                        xytemp[i][j-1][0][0] += pixev[i-1][j][n];
+                      }
+                      else if(k==6 && l==0){
+                        xytemp[i-1][j][0][0] += pixev[i][j-1][n];
+                      }
+                    }
+
+		  } // end Ny
                 } // end Nx
 
-                if(k < 0 || k > 6){
-                    printf("Problem with event %i, index (k) is =%i \n", n, k);
+		if(k < 0 || k > 6){
+		  printf("Problem with event %i, index (k) is =%i \n", n, k);
                 }
-                else{
-                    nxytry[k][l] +=1;
-                }
+                else if(k==0 || k==6){ // these get filled together
+		  nxytry[0][l] += 1;
+		  nxytry[6][l] += 1;
+		}
 
                 if(l < 0 || l > 6){
                     printf("Problem with event %i, index (l) is =%i \n", n, l);
                 }
-                else{
-		    nxytry[k][l] +=1; //why is it adding again!!!
+		else if(l==0 || l==6){ // these get filled together
+                  nxytry[k][0] += 1;
+                  nxytry[k][6] += 1;
                 }
+
+		if(k==0 && l==0){
+		  nxytry[6][6] += 1;
+		}
+		else if(k==6 && l==6){
+		  nxytry[0][0] += 1;
+		}
+		else if(k==0 && l==6){
+		  nxytry[6][0] += 1;
+		}
+		else if(k==6 && l==0){
+		  nxytry[0][6] += 1;
+		}
             } 
         }//end loop over events
 
@@ -264,9 +281,9 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
 	//renorm the distributions, find the maximum average pixel signal in 7x7 grid
         float pixmax = 0.;
 	int imin = Nx;
-	int imax = 1;
+	int imax = 0;
 	int jmin = Ny;
-	int jmax = 1;
+	int jmax = 0;
         for(int i =0; i<Nx; i++){
             for(int j =0; j<Ny; j++){
                 for(int k =0; k<7; k++){
@@ -326,7 +343,7 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
 
     } //end loop over files
 
-    delete[] pixev;
+    delete_3d_array(pixev, Nx, Ny, nevents);
     delete[] qsum; 
     delete[] i2d; 
     delete[] j2d;
