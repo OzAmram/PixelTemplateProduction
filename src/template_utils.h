@@ -43,6 +43,10 @@ using namespace std;
 #include "TPostScript.h"
 #include "Math/DistFunc.h"
 
+#ifdef TEMPL_DEBUG
+#include  "ranlux.c"
+#endif
+
 
 
 //vavilov distribution (to fit to)
@@ -115,20 +119,24 @@ float** setup_2d_array(int size1, int size2){
 //first two are always mean and std dev
 //second two are fitted mean and sigma of gaussian if fit went well
 //fit must have already been done
-std::vector<float> get_gaussian_pars(TH1F *h){
+std::vector<float> get_gaussian_pars(TH1F *h, double min_std = 3.){
     std::vector<float> pars;
     double h_mean = h->GetMean();
-    double h_std = std::max(h->GetStdDev(), 3.);
+    double h_std = std::max(h->GetStdDev(), min_std);
     pars.push_back(h_mean);
     pars.push_back(h_std);
     if(h->Integral() > 50.){
         h->Fit("gaus");
         TF1 *fit = h->GetFunction("gaus");
         double mean = fit->GetParameter(1);
-        double sigma = std::max(fit->GetParameter(2), 3.);
+        double sigma = std::max(fit->GetParameter(2), min_std);
         if(fabs(mean) < 300. && abs(sigma) < 175. ){
             pars.push_back(mean);
             pars.push_back(sigma);
+        }
+        else{
+            pars.push_back(h_mean);
+            pars.push_back(h_std);
         }
     }
     else{
@@ -180,7 +188,6 @@ std::vector<float> get_vavilov_pars(TH1F *h){
     for(int i=1; i<4; i++){
         pars.push_back(vfunc->GetParameter(i));
     }
-    delete vfunc;
     return pars;
     
 }
@@ -255,6 +262,18 @@ int triplg(std::vector<float>& x)
 
     static int fcall = -1;
 
+#ifdef TEMPL_DEBUG
+    static int lux = 2;
+    static int seed = 1234;
+    static int k1=0;
+    static int k2=0;
+    static float rlux_out[TYTEN];
+    static int size = TYTEN;
+#endif
+
+
+
+    
     // Local variables 
     static float r1, r2;
     static int i__;
@@ -271,17 +290,29 @@ int triplg(std::vector<float>& x)
 //  Initalize the parameters 
 
     if (fcall) {
-	twopi = 2.*acos((double)-1.);
-	ibase = TYTEN;
-	fcall = 0;
+	    twopi = 2.*acos((double)-1.);
+	    ibase = TYTEN;
+	    fcall = 0;
+#ifdef TEMPL_DEBUG
+        rluxgo_(&lux, &seed, &k1, &k2);
+#endif
     }
 
 //  If all random numbers used up, generate 210 more 
 
     if (ibase == TYTEN) {
+
+#ifdef TEMPL_DEBUG
+       ranlux_(rlux_out, &size);
+#endif
 	   for (i__ = 0; i__ < TYTEN-1; i__ += 2) {
+#ifdef TEMPL_DEBUG
+          r1 = rlux_out[i__];
+          r2 = rlux_out[i__+1];
+#else
 	      r1 = ((float)random())/((float)RAND_MAX);
 	      r2 = ((float)random())/((float)RAND_MAX);
+#endif
 	      arg = (double)(1. - r1);
 	      if (arg < 1.e-30) {arg = 1.e-30;}
 	      r__ = sqrt(log(arg) * (-2.));
