@@ -33,10 +33,7 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
     const int Nx = 21; // nbins in x
     const int Ny = 13; // nbins in y
     
-    double  pixelt[Nx][Ny],  
-    xpar[nprm][4],
-    xytemp[Nx][Ny][7][7], xytmp2[Nx][Ny][7][7]; 
-
+    double  pixelt[Nx][Ny], xpar[nprm][4], xytemp[Nx][Ny][7][7];
     int nxytry[7][7];
 
     //declare larger arrays dynamically to avoid stack overflow
@@ -125,6 +122,9 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
             for(int j=0; j<Ny; j++){ // 13
 	        for (int i=0; i<Nx; i++){ // 21
 		  fscanf(f_evts, " %f ", &bixin[i][j]); // this is charge in 1000s of e-
+		  //if(n==0){
+		  //  printf("bix for i %i and j %i is %f",i,j,bixin[i][j]);
+		  //}
                 }
             }
 
@@ -158,6 +158,9 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
                     double qin = bixin[i][j] * rten;
                     if(qin < 0.) qin = 0.;
                     pixev[i*(Ny *nevents) + j*nevents + n] = qin;
+		    //if(n==0 && qin>0){ 
+		    //printf("qin %f for i %i and j %i \n ",qin,i,j);                                                                                                              
+		    //} 
 		    qsum[n] += qin;
                 }
             }
@@ -167,6 +170,8 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
 
         int nmc = n; // total number of events
  
+        printf("finish reading run %i read %i events, qsum = %.1f \n", iFile, nmc, qavg);
+
         fclose(f_evts);
         qavg /= double(nmc); // get average charge
         printf("finish reading run %i read %i events, qavg = %.1f \n", iFile, nmc, qavg);
@@ -174,7 +179,6 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
         //zero things for this run
         memset(nxytry, 0, sizeof(nxytry));
         memset(xytemp, 0., sizeof(xytemp));
-        memset(xytmp2, 0., sizeof(xytmp2));
 
         for(n=0; n<nmc; n++){
 
@@ -191,18 +195,15 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
 		for(int i=0; i < Nx; i++){
 		  for(int j=0; j < Ny; j++){
 		    xytemp[i][j][k][l] += pixev[i*(Ny *nevents) + j*nevents + n];
-		    xytmp2[i][j][k][l] += pow(pixev[i*(Ny *nevents) + j*nevents + n],2);
 		    
 		    // 0th bin of new pixel same as last bin of previous pixel
 		    // thus, not only add that charge but also from:
 		    if(i>0) {
 		      if(k==0){ // bin0px(i) = bin6px(i-1)
 			xytemp[i][j][6][l] += pixev[(i-1)*(Ny *nevents) + j*nevents + n]; // adding to bin6 of that same pix
-			xytmp2[i][j][6][l] += pow(pixev[(i-1)*(Ny *nevents) + j*nevents + n],2);
 		      }
 		      else if(k==6){ // bin6px(i) = bin0px(i+1)
 			xytemp[i-1][j][0][l] += pixev[i*(Ny *nevents) + j*nevents + n]; // adding to bin0 of pix-1
-			xytmp2[i-1][j][0][l] += pow(pixev[i*(Ny *nevents) + j*nevents + n],2);
 		      }
 		    }
 
@@ -210,11 +211,9 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
                     if(j>0) {
 		      if(l==0){
 			xytemp[i][j][k][6] += pixev[i*(Ny *nevents) + (j-1)*nevents + n]; // adding to bin6 of that same pix 
-			xytmp2[i][j][k][6] += pow(pixev[i*(Ny *nevents) + (j-1)*nevents + n],2);
 		      }
 		      else if(l==6){
 			xytemp[i][j-1][k][0] += pixev[i*(Ny *nevents) + j*nevents + n]; // adding to bin0 of pix-1 
-			xytmp2[i][j-1][k][0] += pow(pixev[i*(Ny *nevents) + j*nevents + n],2);
 		      }
 		    }
 
@@ -222,19 +221,15 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
                     if(i>0 && j>0) {
 		      if(k==0 && l==0){
 			xytemp[i][j][6][6] += pixev[(i-1)*(Ny *nevents) + (j-1)*nevents + n];
-			xytmp2[i][j][6][6] += pow(pixev[(i-1)*(Ny *nevents) + (j-1)*nevents + n],2);
 		      }
 		      else if(k==6 && l==6){
 			xytemp[i-1][j-1][0][0] += pixev[i*(Ny *nevents) + j*nevents + n];
-			xytmp2[i-1][j-1][0][0] += pow(pixev[i*(Ny *nevents) + j*nevents + n],2);
 		      }
 		      else if(k==0 && l==6){
 			xytemp[i][j-1][0][0] += pixev[(i-1)*(Ny *nevents) + j*nevents + n];
-			xytmp2[i][j-1][0][0] += pow(pixev[(i-1)*(Ny *nevents) + j*nevents + n],2);
 		      }
 		      else if(k==6 && l==0){
 			xytemp[i-1][j][0][0] += pixev[i*(Ny *nevents) + (j-1)*nevents + n];
-			xytmp2[i-1][j][0][0] += pow(pixev[i*(Ny *nevents) + (j-1)*nevents + n],2);
 		      }
 		    }
 		  } //  end Ny
@@ -279,7 +274,6 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
                         float sigxy = xytemp[i][j][k][l] / float(nxytry[k][l]);
 			xytemp[i][j][k][l] = sigxy;
 			if(sigxy > pixmax) pixmax = sigxy;
-                        xytmp2[i][j][k][l] = xytmp2[i][j][k][l] / float(nxytry[k][l]) - sigxy*sigxy; // is -sigxy**2  correct here?
 			if(sigxy > thr10) {
 			  if(i < imin) imin=i;
                           if(i > imax) imax=i;
@@ -289,6 +283,13 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
                     }
                 }
             }
+        }
+
+	// set parameters to 0
+	for(int p=0; p<nprm; p++){
+	  for(int i=0; i<4; i++){
+	    xpar[p][i] = 0;
+	  }
         }
 
         //open summary files
@@ -308,7 +309,8 @@ void gen_xy_template2d(const int nevents = 30000, const int npt = 200, const int
 	
 	for(int l=0; l <7; l++){
 	  for(int k=0; k <7; k++){
-            float ycenter = ((l+1)*0.166667 - 0.166667) *ysize;
+            //float ycenter = ((l+1)*0.166667 - 0.166667) *ysize; I think this is bugged in the original one(?)
+            float ycenter = ((l+1)*0.125 - 0.625) *ysize;
 	    float xcenter = ((k+1)*0.166667 - 0.666667) *xsize;
             fprintf(zptemp_file, "biny %2i,  ycenter = %8.2f um, binx %2i, xcenter = %8.2f um \n", l+1, ycenter, k+1, xcenter);
 	    for(int j=0; j<Ny; j++){
