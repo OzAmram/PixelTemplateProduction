@@ -3,7 +3,7 @@ compiler_flags=-std=c++11 -Wall -O0 -g
 vdt_dir=/usr/local/include
 includes= -I. -I../cmssw_code/ -I$(vdt_dir)
 DEPS= template_utils.h ranlux.c ../cmssw_code/*
-EXE= compare_templates gen_zp_template gen_zp_template2d gen_zp_template2d_old gen_xy_template gen_xy_template2d
+EXE= compare_templates gen_zp_template gen_zp_template2d gen_xy_template gen_xy_template2d #gen_zp_template2d_old 
 ODIR=../bin
 
 all: $(EXE)
