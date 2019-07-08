@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
     const int TXSHIFT = (TXSIZE - T2XSIZE)/2;
     double dx, dy,  adc;
     float scaley, scalex, scalx[4], scaly[4], delyavg, delysig, offsetx[4], offsety[4];
-    static int numbits;
+    static int numbits = 6;
     static float q100, q101, q50, q51,  qmax; 
     const double gain = 3.19;
     const double ped = 16.46;

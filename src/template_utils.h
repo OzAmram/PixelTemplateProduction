@@ -22,6 +22,7 @@
 #include "../cmssw_code/SiPixelTemplateReco.cc"
 #include "../cmssw_code/SiPixelTemplateReco2D.cc"
 #include "../cmssw_code/SiPixelUtils.cc"
+#include "../cmssw_code/SiPixelGenError.cc"
 
 
 using namespace std;
