@@ -508,6 +508,7 @@ secondp: clslnx = pplast-ppfrst;
          }  
 
          qperbit = pixmax/(pow(2.,(double)(numbits)-1.));
+         printf("qperbit is %.5f \n", qperbit);
 
          float rnelec = 0.f;
 

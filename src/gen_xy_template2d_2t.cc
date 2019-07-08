@@ -185,8 +185,9 @@ void gen_xy_template2d(const int nevents = 32000, const int npt = 300, const int
             if(qsum[n] < qavg){
 
                 //fill 2d 7x7 2d template for average charge determination
-                int k = i2d[n]; // k is pixel?
-                int l = j2d[n]; // l is pixel?
+                //hit position indexes
+                int k = i2d[n]; 
+                int l = j2d[n]; 
                 nxytry[k][l] +=1;
 
                 for(int i=0; i < Nx; i++){
@@ -271,7 +272,7 @@ void gen_xy_template2d(const int nevents = 32000, const int npt = 300, const int
                         xytemp[i][j][k][l] = sigxy;
                         if(sigxy > pixmax) pixmax = sigxy;
                         if(sigxy > thr10) {
-                            if(i < imin) imin=i; // this is to match the fortran output - is this even used later?
+                            if(i < imin) imin=i; 
                             if(i > imax) imax=i;
                             if(j < jmin) jmin=j;
                             if(j > jmax) jmax=j;
@@ -280,12 +281,14 @@ void gen_xy_template2d(const int nevents = 32000, const int npt = 300, const int
                 }
             }
         }
-	imin = imin+1;
-	imax = imax+1;
-	jmin = jmin+1;
-	jmax = jmax+1;
+        //increase by 1 to match previous fortran indexing, this is accounted
+        //for in the reco code
+        imin = imin+1;
+        imax = imax+1;
+        jmin = jmin+1;
+        jmax = jmax+1;
 
-        // set parameters to 0
+        // set fit parameters to 0 because they are unused 
         for(int p=0; p<nprm; p++){
             for(int i=0; i<4; i++){
                 xpar[p][i] = 0;
@@ -309,7 +312,7 @@ void gen_xy_template2d(const int nevents = 32000, const int npt = 300, const int
 
         for(int l=0; l <7; l++){
             for(int k=0; k <7; k++){
-	        float ycenter = ((l+1)*0.166667 - 0.666667) *ysize;
+                float ycenter = ((l+1)*0.166667 - 0.666667) *ysize;
                 float xcenter = ((k+1)*0.166667 - 0.666667) *xsize;
                 fprintf(zptemp_file, "biny %2i,  ycenter = %8.2f um, binx %2i, xcenter = %8.2f um \n", l+1, ycenter, k+1, xcenter);
                 for(int j=0; j<Ny; j++){
