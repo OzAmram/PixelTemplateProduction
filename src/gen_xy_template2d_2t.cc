@@ -271,15 +271,19 @@ void gen_xy_template2d(const int nevents = 32000, const int npt = 300, const int
                         xytemp[i][j][k][l] = sigxy;
                         if(sigxy > pixmax) pixmax = sigxy;
                         if(sigxy > thr10) {
-                            if(i < imin) imin=i+1; // this is to match the fortran output - is this even used later?
-                            if(i > imax) imax=i+1;
-                            if(j < jmin) jmin=j+1;
-                            if(j > jmax) jmax=j+1;
+                            if(i < imin) imin=i; // this is to match the fortran output - is this even used later?
+                            if(i > imax) imax=i;
+                            if(j < jmin) jmin=j;
+                            if(j > jmax) jmax=j;
                         }
                     }
                 }
             }
         }
+	imin = imin+1;
+	imax = imax+1;
+	jmin = jmin+1;
+	jmax = jmax+1;
 
         // set parameters to 0
         for(int p=0; p<nprm; p++){
