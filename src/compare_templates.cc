@@ -83,7 +83,9 @@ int main(int argc, char *argv[]){
             catch(const std::invalid_argument& ia){
                 // Couldn't convert to a double, likely a string
                 //printf("Not doubles. Strings are %s %s", s1.substr(ps1).c_str(), s2.substr(ps2).c_str());
-                break;
+                ps1 += s1.substr(ps1).length();
+                ps2 += s2.substr(ps2).length();
+                continue;
             }
             catch(const std::out_of_range& ia){
                 printf("Out of range?. Line is %i. %s %s \n", line_num, s1.c_str(), s2.c_str());
