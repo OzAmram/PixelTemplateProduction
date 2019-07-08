@@ -126,9 +126,6 @@ void gen_xy_template2d(const int nevents = 32000, const int npt = 300, const int
             for(int j=0; j<Ny; j++){ // 13
 	        for (int i=0; i<Nx; i++){ // 21
 		  fscanf(f_evts, " %f ", &bixin[i][j]); // this is charge in 1000s of e-
-		  //if(n==0){
-		  //  printf("bix for i %i and j %i is %f",i,j,bixin[i][j]);
-		  //}
                 }
             }
 
@@ -161,9 +158,6 @@ void gen_xy_template2d(const int nevents = 32000, const int npt = 300, const int
                     double qin = bixin[i][j] * rten;
                     if(qin < 0.) qin = 0.;
 		    pixev[i][j][n] = qin;
-		    //if(n==0 && qin>0){ 
-		    //printf("qin %f for i %i and j %i \n ",qin,i,j);                                                                                                              
-		    //} 
 		    qsum[n] += qin;
                 }
             }
@@ -198,26 +192,25 @@ void gen_xy_template2d(const int nevents = 32000, const int npt = 300, const int
 		for(int i=0; i < Nx; i++){
 		  for(int j=0; j < Ny; j++){
 		    xytemp[i][j][k][l] += pixev[i][j][n];
+		  }
+		}
 
+                for(int i=0; i < Nx; i++){
+		  for(int j=0; j < Ny; j++){
 		    // 0th bin of new pixel same as last bin of previous pixel   
-		    if(i>0) {
-		      if(k==0){ // bin0px(i) = bin6px(i-1) 
-			xytemp[i][j][6][l] += pixev[i-1][j][n]; // adding to bin6 of that same pix 
-		      }
-		      else if(k==6){ // bin6px(i) = bin0px(i+1) 
-			xytemp[i-1][j][0][l] += pixev[i][j][n];  // adding to bin0 of pix-1 
-		      }
+		    if(k==0 && i>0){ // bin0px(i) = bin6px(i-1) 
+		      xytemp[i][j][6][l] += pixev[i-1][j][n]; // adding to bin6 of that same pix 
+		    }
+		    else if(k==6 && i>0){ // bin6px(i) = bin0px(i+1) 
+		      xytemp[i-1][j][0][l] += pixev[i][j][n];  // adding to bin0 of pix-1 
 		    }
 
-		    // same for y 
-                    if(j>0) {
-                      if(l==0){
-                        xytemp[i][j][k][6] += pixev[i][j-1][n]; // adding to bin6 of that same pix 
-                      }
-                      else if(l==6){
-                        xytemp[i][j-1][k][0] += pixev[i][j][n]; // adding to bin0 of pix-1
-                      }
-                    }
+		    if(l==0 && j>0){
+		      xytemp[i][j][k][6] += pixev[i][j-1][n]; // adding to bin6 of that same pix 
+		    }
+		    else if(l==6 && j>0){
+		      xytemp[i][j-1][k][0] += pixev[i][j][n]; // adding to bin0 of pix-1
+		    }
 
 		    if(i>0 && j>0) {
                       if(k==0 && l==0){
@@ -227,31 +220,27 @@ void gen_xy_template2d(const int nevents = 32000, const int npt = 300, const int
                         xytemp[i-1][j-1][0][0] += pixev[i][j][n];
                       }
                       else if(k==0 && l==6){
-                        xytemp[i][j-1][0][0] += pixev[i-1][j][n];
+                        xytemp[i][j-1][6][0] += pixev[i-1][j][n];
                       }
                       else if(k==6 && l==0){
-                        xytemp[i-1][j][0][0] += pixev[i][j-1][n];
+                        xytemp[i-1][j][0][6] += pixev[i][j-1][n];
                       }
                     }
 
 		  } // end Ny
                 } // end Nx
-
+	    
 		if(k < 0 || k > 6){
 		  printf("Problem with event %i, index (k) is =%i \n", n, k);
                 }
-                else if(k==0 || k==6){ // these get filled together
-		  nxytry[0][l] += 1;
-		  nxytry[6][l] += 1;
-		}
+                else if(k==0) nxytry[6][l] += 1;
+		else if(k==6) nxytry[0][l] += 1;
 
                 if(l < 0 || l > 6){
                     printf("Problem with event %i, index (l) is =%i \n", n, l);
                 }
-		else if(l==0 || l==6){ // these get filled together
-                  nxytry[k][0] += 1;
-                  nxytry[k][6] += 1;
-                }
+                else if(l==0) nxytry[k][6] += 1;
+		else if(l==6) nxytry[k][0] += 1;
 
 		if(k==0 && l==0){
 		  nxytry[6][6] += 1;
@@ -268,38 +257,28 @@ void gen_xy_template2d(const int nevents = 32000, const int npt = 300, const int
             } 
         }//end loop over events
 
-        /*
-         * print number of template entries (debug)
-	 */
-        for(int i=0; i<7; i++){
-	  for(int j=0; j<7; j++){
-            printf("number of template entries %i \n", nxytry[i][j]);
-	  }
-        }
-        printf("\n");
-
 	//renorm the distributions, find the maximum average pixel signal in 7x7 grid
         float pixmax = 0.;
 	int imin = Nx;
 	int imax = 0;
 	int jmin = Ny;
 	int jmax = 0;
-        for(int i =0; i<Nx; i++){
-            for(int j =0; j<Ny; j++){
-                for(int k =0; k<7; k++){
-                    for(int l =0; l<7; l++){
-                        float sigxy = xytemp[i][j][k][l] / float(nxytry[k][l]);
-			xytemp[i][j][k][l] = sigxy;
-			if(sigxy > pixmax) pixmax = sigxy;
-			if(sigxy > thr10) {
-			  if(i < imin) imin=i;
-                          if(i > imax) imax=i;
-			  if(j < jmin) jmin=j;
-                          if(j > jmax) jmax=j;
-			}
-                    }
-                }
-            }
+	for(int k =0; k<7; k++){
+	  for(int l =0; l<7; l++){
+	    for(int i =0; i<Nx; i++){
+	      for(int j =0; j<Ny; j++){
+		float sigxy = xytemp[i][j][k][l] / float(nxytry[k][l]);
+		xytemp[i][j][k][l] = sigxy;
+		if(sigxy > pixmax) pixmax = sigxy;
+		if(sigxy > thr10) {
+		  if(i < imin) imin=i+1; // this is to match the fortran output - is this even used later?
+		  if(i > imax) imax=i+1;
+		  if(j < jmin) jmin=j+1;
+		  if(j > jmax) jmax=j+1;
+		}
+	      }
+	    }
+	  }
         }
 
 	// set parameters to 0
