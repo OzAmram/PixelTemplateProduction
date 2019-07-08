@@ -305,8 +305,7 @@ void gen_xy_template2d(const int nevents = 32000, const int npt = 300, const int
 
         for(int l=0; l <7; l++){
             for(int k=0; k <7; k++){
-                //float ycenter = ((l+1)*0.166667 - 0.166667) *ysize; I think this is bugged in the original one(?)
-                float ycenter = ((l+1)*0.125 - 0.625) *ysize;
+	        float ycenter = ((l+1)*0.166667 - 0.666667) *ysize;
                 float xcenter = ((k+1)*0.166667 - 0.666667) *xsize;
                 fprintf(zptemp_file, "biny %2i,  ycenter = %8.2f um, binx %2i, xcenter = %8.2f um \n", l+1, ycenter, k+1, xcenter);
                 for(int j=0; j<Ny; j++){
