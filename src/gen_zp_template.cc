@@ -127,17 +127,36 @@ int main(int argc, char *argv[])
 
 
     char extra[80];
-    fscanf(config_file,"%d %d %f %f %f %f %f %f %f %d %f %s", &startfile, &numrun, &noise, &q100, 
+    char line[160];
+    fgets(line, 160, config_file);
+
+    int num_read = sscanf(line,"%d %d %f %f %f %f %f %f %f %d %f %s", &startfile, &numrun, &noise, &q100, 
             &q101, &q100_frac, &common_frac, &gain_frac, &readout_noise, &non_linear, &qscale, &extra[0]);
     printf("processing %d files starting from %d, noise = %f, threshold0 = %f, threshold1 = %f," 
-            "rms threshold frac = %f, common_frac = %f, gain fraction = %f, readout noise = %f, nonlinear_resp = %d \n", 
-            numrun, startfile, noise, q100, q101, q100_frac, common_frac, gain_frac, readout_noise, non_linear);
+            "rms threshold frac = %f, common_frac = %f, gain fraction = %f, readout noise = %f, nonlinear_resp = %d, extra = %s \n", 
+            numrun, startfile, noise, q100, q101, q100_frac, common_frac, gain_frac, readout_noise, non_linear, extra);
+    if(num_read < 10){
+        printf("Error reading config file !. Only read %i params \n", num_read);
+        return 0;
+    }
 
 
-    fscanf(config_file, " %d %d ", &use_l1_offset, &write_temp_header);
-    fscanf(config_file, " %d %d %d %d %d %f %f %f %f %f",  &id, &NTy, &NTyx,&NTxx, &IDtype, &Bfield, &Vbias, &temp, &fluenc, &qscale);
+    fgets(line, 160, config_file);
+    num_read = sscanf(line, " %d %d ", &use_l1_offset, &write_temp_header);
+    if(num_read != 2){
+        printf("Error reading config file !\n");
+        printf("Line was %s \n", line);
+        return 0;
+    }
+    fgets(line, 160, config_file);
+    num_read = sscanf(line, " %d %d %d %d %d %f %f %f %f %f",  &id, &NTy, &NTyx,&NTxx, &IDtype, &Bfield, &Vbias, &temp, &fluenc, &qscale);
     printf("Using params: Use_l1_offset=%d, write_temp_header=%d, ID=%d NTy=%d NTyx=%d NTxx=%d Dtype=%d Bfield=%.2f Bias Voltage = %.1f temparature = %.0f fluence = %.2f q-scale = %.4f \n",
             use_l1_offset, write_temp_header, id, NTy, NTyx, NTxx, IDtype, Bfield, Vbias, temp, fluenc, qscale);
+    if(num_read != 10){
+        printf("Error reading config file !\n");
+        printf("Line was %s \n", line);
+        return 0;
+    }
 
     fclose(config_file);
 
@@ -1595,7 +1614,7 @@ secondp: clslnx = pplast-ppfrst;
 
          fprintf(generr_output_file, "%i %8.6f %8.6f %8.6f \n", ifile, slice->costrk[0], slice->costrk[1], slice->costrk[2]);
 
-         fprintf(generr_output_file, "%8.1f %8.1f %8.1f %8.1f %8.1f %8.1f %8.1f\n",
+         fprintf(generr_output_file, "%8.1f %8.1f %8.1f %8.1f %8.1f %8.1f \n",
                  qavg, pixmax, dyone, syone, dxone, sxone);
 
          fprintf(generr_output_file, "%8.1f %8.1f %8.1f %8.1f %8.1f %8.1f \n",
