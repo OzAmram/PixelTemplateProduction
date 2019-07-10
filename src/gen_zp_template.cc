@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
     float **ysum2 = setup_2d_array(nevents, TYSIZE);
     static float Bfield,Vbias,temp,fluenc;
     float nqbin[5];
-    double dx, dy,  adc;
+    double dx, dy;
     static int numbits;
     static float q100, q101, q50, q51,  qmax; 
 
@@ -83,14 +83,15 @@ int main(int argc, char *argv[])
 
     int mrow = TXSIZE, mcol = TYSIZE;
 
-    const double gain = 3.19;
-    const double ped = 16.46;
-    const double p0 = 0.01218;
-    const double p1 = 0.711;
-    const double p2 = 203.;
-    const double p3 = 148.;	
-    static double vcal = 47.;	
-    static double vcaloffst = 60.;
+    // const double gain = 3.19;
+    // const double ped = 16.46;
+    // const double p0 = 0.01218;
+    // const double p1 = 0.711;
+    // const double p2 = 203.;
+    // const double p3 = 148.;	
+    // static double vcal = 47.;	
+    // static double vcaloffst = 60.;
+
     const float fmax = 0.5f;
     int write_temp_header, use_l1_offset;
 
@@ -141,6 +142,17 @@ int main(int argc, char *argv[])
 
     fclose(config_file);
 
+    FrontEndModel frontEnd;
+    frontEnd.fe_type       = non_linear;
+    frontEnd.gain_frac     = gain_frac;
+    frontEnd.readout_noise = readout_noise;
+    if(use_l1_offset) {
+        printf("using L1 parameters \n");
+        frontEnd.vcal = 50.;	
+        frontEnd.vcaloffst = 670.;
+    }
+
+    
     //  Calculate 50% of threshold in q units and enc noise in adc units
 
     q50=0.5*q100;
@@ -179,11 +191,6 @@ int main(int argc, char *argv[])
     lorwdx = -lorwdx;
     lorbsx = -lorbsx;
 
-    if(use_l1_offset) {
-        printf("using L1 parameters \n");
-        vcal = 50.;	
-        vcaloffst = 670.;
-    }
 
     // Define the histograms to be used at each angle pair
 
@@ -642,12 +649,7 @@ secondp: clslnx = pplast-ppfrst;
                      } else {
                          idcol = (TYSIZE-1-i+icol)/2;
                          ++ndhit[idcol];
-                         if(non_linear == 0) {
-                             signal = qin * (1. + gain_frac*ygauss[i]) + zgauss[i]*readout_noise;
-                         } else {
-                             adc = (double)((int)(p3+p2*tanh(p0*(qin + vcaloffst)/(7.0*vcal) - p1)));
-                             signal = ((float)((1.+gain_frac*ygauss[i])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i]*readout_noise);							 
-                         }	 
+			 signal = frontEnd.apply_model( qin, ygauss[i], zgauss[i] );
                          clust[TXSIZE-1-j][TYSIZE-1-i] = qsmear[n]*signal;
                      }
                  }
@@ -689,7 +691,7 @@ secondp: clslnx = pplast-ppfrst;
 
 
              // Simulate clustering around maximum signal (seed)
-
+	     //
              pixlst.clear();
              pixlst.push_back(max);
              memset(bclust, false, sizeof(bclust));
@@ -697,12 +699,11 @@ secondp: clslnx = pplast-ppfrst;
 
              std::vector<std::pair<int, int> > pixlst_copy;
 
-
-
              int numadd = 1;
-             //iterively find all non zero pixels near our seed
+
+             //  Iteratively find all non zero pixels near our seed
              while(numadd > 0){
-                 //use copy of vector to avoid modifying vector as we loop through it
+                 //  Use copy of vector to avoid modifying vector as we loop through it
                  pixlst_copy = pixlst;
                  numadd = 0;
                  for ( auto pixIter = pixlst_copy.begin(); pixIter != pixlst_copy.end(); ++pixIter ) {
@@ -753,12 +754,7 @@ secondp: clslnx = pplast-ppfrst;
                  qmsort.insert(qmeas);
              }
 
-
-
              qavg += qmeas;
-
-
-
 
              //do x double  row projections
              for(int j=0; j<TXSIZE/2; j++){
@@ -771,24 +767,14 @@ secondp: clslnx = pplast-ppfrst;
                      qin = (sigraw[j1][i] + sigraw[j1+1][i]);
                      qin += xgauss[i]*noise;
                      if(qin > q101*(1.+wgauss[i]*q100_frac)) {
-                         if(non_linear == 0) {
-                             signal = qin * (1. + gain_frac*ygauss[i]) + zgauss[i]*readout_noise;
-                         } else {
-                             adc = (double)((int)(p3+p2*tanh(p0*(qin + vcaloffst)/(7.0*vcal) - p1)));
-                             signal = ((float)((1.+gain_frac*ygauss[i])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i]*readout_noise);							 
-                         }	 
+			 signal = frontEnd.apply_model( qin, ygauss[i], zgauss[i] );
                          xsum1[n][j] += qsmear[n]*signal;
                      }
 
                      qin = (sigraw[j2][i] + sigraw[j2+1][i]);
                      qin += xgauss[i]*noise;
                      if(qin > q101*(1.+wgauss[i]*q100_frac)) {
-                         if(non_linear == 0) {
-                             signal = qin * (1. + gain_frac*ygauss[i]) + zgauss[i]*readout_noise;
-                         } else {
-                             adc = (double)((int)(p3+p2*tanh(p0*(qin + vcaloffst)/(7.0*vcal) - p1)));
-                             signal = ((float)((1.+gain_frac*ygauss[i])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i]*readout_noise);							 
-                         }	 
+ 		         signal = frontEnd.apply_model( qin, ygauss[i], zgauss[i] );
                          xsum2[n][j] += qsmear[n]*signal;
                      }
                  }
@@ -806,12 +792,7 @@ secondp: clslnx = pplast-ppfrst;
                      qin = (sigraw[j][i1] + sigraw[j][i1+1]);
                      qin += xgauss[i1]*noise;
                      if(qin > q101*(1.+wgauss[i1]*q100_frac)) {
-                         if(non_linear == 0) {
-                             signal = qin * (1. + gain_frac*ygauss[i1]) + zgauss[i1]*readout_noise;
-                         } else {
-                             adc = (double)((int)(p3+p2*tanh(p0*(qin + vcaloffst)/(7.0*vcal) - p1)));
-                             signal = ((float)((1.+gain_frac*ygauss[i1])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i1]*readout_noise);							 
-                         }	 
+			 signal = frontEnd.apply_model( qin, ygauss[i], zgauss[i] );
                          ysum1[n][i] += qsmear[n]*signal;
                      }
 
@@ -819,12 +800,7 @@ secondp: clslnx = pplast-ppfrst;
                      qin = (sigraw[j][i2] + sigraw[j][i2+1]);
                      qin += xgauss[i2]*noise;
                      if(qin > q101*(1.+wgauss[i2]*q100_frac)) {
-                         if(non_linear == 0) {
-                             signal = qin * (1. + gain_frac*ygauss[i2]) + zgauss[i2]*readout_noise;
-                         } else {
-                             adc = (double)((int)(p3+p2*tanh(p0*(qin + vcaloffst)/(7.0*vcal) - p1)));
-                             signal = ((float)((1.+gain_frac*ygauss[i2])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i2]*readout_noise);							 
-                         }	 
+			 signal = frontEnd.apply_model( qin, ygauss[i], zgauss[i] );
                          ysum2[n][i] += qsmear[n]*signal;
                      }
                  }

@@ -50,6 +50,66 @@ using namespace std;
 
 
 
+//-----------------------------------------------------------------------------
+//  A simple struct to collect the information about the electronics model.
+//  The kind of front-end response that will be modeled is selected by fe_type.
+//  
+//  Note: this is a struct and all variables are public.
+//-----------------------------------------------------------------------------
+struct FrontEndModel
+{
+   //--- Variables, read from the config file.
+   int   fe_type       = 0;
+   float gain_frac     = 0.f;
+   float readout_noise = 0.f;
+
+   //--- Variables we can change, but we start with good default values
+   double vcal = 47.0;	
+   double vcaloffst = 60.0;
+
+   //--- Constants (could be made variables later)
+   const double gain  = 3.19;
+   const double ped   = 16.46;
+   const double p0    = 0.01218;
+   const double p1    = 0.711;
+   const double p2    = 203.;
+   const double p3    = 148.;	
+
+
+  //-----------------------------------------------------------------------------
+  //  A function to simulate the electronics response: different gains, TOT, etc.
+  //-----------------------------------------------------------------------------
+  float apply_model( float qin, float ygauss, float zgauss )
+  {
+    float signal = 0.f;
+    
+    switch ( fe_type ) {
+    case 0:
+      signal = qin * (1. + gain_frac*ygauss) + zgauss*readout_noise;
+      break;
+
+    case 1:
+      {
+	double adc = (double)((int)(p3+p2*tanh(p0*(qin + vcaloffst)/(7.0*vcal) - p1)));
+	signal = ((float)((1.+gain_frac*ygauss)*(vcal*gain*(adc-ped))) - vcaloffst + zgauss*readout_noise);
+      }
+      break;
+
+    default:
+      std::cout << "ElectronicModel::apply_model: illegal fe_type = " << fe_type << std::endl;
+      assert(0);
+    }
+
+    return signal;
+  }
+  
+};
+
+
+
+
+			 
+
 //vavilov distribution (to fit to)
 Double_t vavilov(Double_t *v, Double_t *par)
 {
