@@ -696,8 +696,16 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
             ypar[p][0] = f_ytemp1->GetParameter(p);
             ypar[p][1] = f_ytemp2->GetParameter(p);
         }
-        delete f_ytemp1, f_ytemp2, c_ytemp, g_ytemp1, g_ytemp2;
-        delete f_xtemp1, f_xtemp2, c_xtemp, g_xtemp1, g_xtemp2;
+        delete f_ytemp1; 
+        delete f_ytemp2; 
+        delete c_ytemp; 
+        delete g_ytemp1; 
+        delete g_ytemp2;
+        delete f_xtemp1; 
+        delete f_xtemp2; 
+        delete c_xtemp; 
+        delete g_xtemp1; 
+        delete g_xtemp2;
 
         /*
         //print out charges and variances that are being fit (for debugging)
