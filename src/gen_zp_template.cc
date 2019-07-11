@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
     static float qavg_raw,  clslnx, clslny; 
     static float xrec, yrec, sigmax, sigmay, probx, proby, probQ,  signal, locBz, locBx,  pixmax;
     static float pixmaxy, pixmaxx;
-    static int startfile,  nbad, ngood, non_linear, numrun; 
+    static int startfile,  nbad, ngood, fe_model_type, numrun; 
     int  id,NTy, NTyx,NTxx,IDtype;
 
 
@@ -132,10 +132,10 @@ int main(int argc, char *argv[])
     fgets(line, 160, config_file);
 
     int num_read = sscanf(line,"%d %d %f %f %f %f %f %f %f %d %f %s", &startfile, &numrun, &noise, &q100, 
-            &q101, &q100_frac, &common_frac, &gain_frac, &readout_noise, &non_linear, &qscale, &extra[0]);
+            &q101, &q100_frac, &common_frac, &gain_frac, &readout_noise, &fe_model_type, &qscale, &extra[0]);
     printf("processing %d files starting from %d, noise = %f, threshold0 = %f, threshold1 = %f," 
-            "rms threshold frac = %f, common_frac = %f, gain fraction = %f, readout noise = %f, nonlinear_resp = %d, extra = %s \n", 
-            numrun, startfile, noise, q100, q101, q100_frac, common_frac, gain_frac, readout_noise, non_linear, extra);
+            "rms threshold frac = %f, common_frac = %f, gain fraction = %f, readout noise = %f, front end model type = %d, extra = %s \n", 
+            numrun, startfile, noise, q100, q101, q100_frac, common_frac, gain_frac, readout_noise, fe_model_type, extra);
     if(num_read < 10){
         printf("Error reading config file !. Only read %i params \n", num_read);
         return 0;
@@ -162,7 +162,7 @@ int main(int argc, char *argv[])
     fclose(config_file);
 
     FrontEndModel frontEnd;
-    frontEnd.fe_type       = non_linear;
+    frontEnd.fe_type       = fe_model_type;
     frontEnd.gain_frac     = gain_frac;
     frontEnd.readout_noise = readout_noise;
     if(use_l1_offset) {
@@ -171,7 +171,7 @@ int main(int argc, char *argv[])
         frontEnd.vcaloffst = 670.;
     }
 
-    
+
     //  Calculate 50% of threshold in q units and enc noise in adc units
 
     q50=0.5*q100;
@@ -338,7 +338,7 @@ int main(int argc, char *argv[])
         hp[i]->SetFillColor(38);
     }
 
-    
+
 
     std::vector<std::pair<int, int> > pixlst;
 
@@ -390,9 +390,9 @@ int main(int argc, char *argv[])
         zero_2d_array(ysum1, nevents, TYSIZE);
         zero_2d_array(ysum2, nevents, TYSIZE);
 
-         for(int i=0; i< n_hists; i++){
-             chi_min[i] = 10.;
-         }
+        for(int i=0; i< n_hists; i++){
+            chi_min[i] = 10.;
+        }
 
 
         //  Read in 1D z template information first
@@ -418,6 +418,7 @@ int main(int argc, char *argv[])
         //flip to match cmssw coords
         for(int i = 1; i > -1; --i) {
             fscanf(ztemp_file,"%f %f %f %f %f", &ypar[i][0], &ypar[i][1], &ypar[i][2], &ypar[i][3], &ypar[i][4]);
+            printf("Pars are %.4e %.4e %.4e %.4e %.4e \n", ypar[i][0], ypar[i][1], ypar[i][2], ypar[i][3], ypar[i][4]);
         }
 
         for (int k=0; k < 9; ++k) {
@@ -496,6 +497,7 @@ secondz: clslny = pzlast-pzfrst;
 
          for(int i = 1; i > -1; --i) {
              fscanf(ptemp_file,"%f %f %f %f %f", &xpar[i][0], &xpar[i][1], &xpar[i][2], &xpar[i][3], &xpar[i][4]);
+             printf("Pars are %.4e %.4e %.4e %.4e %.4e \n", xpar[i][0], xpar[i][1], xpar[i][2], xpar[i][3], xpar[i][4]);
          }
 
          for (int k=0; k < 9; ++k) {
@@ -668,7 +670,7 @@ secondp: clslnx = pplast-ppfrst;
                      } else {
                          idcol = (TYSIZE-1-i+icol)/2;
                          ++ndhit[idcol];
-			 signal = frontEnd.apply_model( qin, ygauss[i], zgauss[i] );
+                         signal = frontEnd.apply_model( qin, ygauss[i], zgauss[i] );
                          clust[TXSIZE-1-j][TYSIZE-1-i] = qsmear[n]*signal;
                      }
                  }
@@ -710,7 +712,7 @@ secondp: clslnx = pplast-ppfrst;
 
 
              // Simulate clustering around maximum signal (seed)
-	     //
+             //
              pixlst.clear();
              pixlst.push_back(max);
              memset(bclust, false, sizeof(bclust));
@@ -786,14 +788,14 @@ secondp: clslnx = pplast-ppfrst;
                      qin = (sigraw[j1][i] + sigraw[j1+1][i]);
                      qin += xgauss[i]*noise;
                      if(qin > q101*(1.+wgauss[i]*q100_frac)) {
-			 signal = frontEnd.apply_model( qin, ygauss[i], zgauss[i] );
+                         signal = frontEnd.apply_model( qin, ygauss[i], zgauss[i] );
                          xsum1[n][j] += qsmear[n]*signal;
                      }
 
                      qin = (sigraw[j2][i] + sigraw[j2+1][i]);
                      qin += xgauss[i]*noise;
                      if(qin > q101*(1.+wgauss[i]*q100_frac)) {
- 		         signal = frontEnd.apply_model( qin, ygauss[i], zgauss[i] );
+                         signal = frontEnd.apply_model( qin, ygauss[i], zgauss[i] );
                          xsum2[n][j] += qsmear[n]*signal;
                      }
                  }
@@ -811,7 +813,7 @@ secondp: clslnx = pplast-ppfrst;
                      qin = (sigraw[j][i1] + sigraw[j][i1+1]);
                      qin += xgauss[i1]*noise;
                      if(qin > q101*(1.+wgauss[i1]*q100_frac)) {
-			 signal = frontEnd.apply_model( qin, ygauss[i], zgauss[i] );
+                         signal = frontEnd.apply_model( qin, ygauss[i], zgauss[i] );
                          ysum1[n][i] += qsmear[n]*signal;
                      }
 
@@ -819,7 +821,7 @@ secondp: clslnx = pplast-ppfrst;
                      qin = (sigraw[j][i2] + sigraw[j][i2+1]);
                      qin += xgauss[i2]*noise;
                      if(qin > q101*(1.+wgauss[i2]*q100_frac)) {
-			 signal = frontEnd.apply_model( qin, ygauss[i], zgauss[i] );
+                         signal = frontEnd.apply_model( qin, ygauss[i], zgauss[i] );
                          ysum2[n][i] += qsmear[n]*signal;
                      }
                  }
@@ -1421,11 +1423,11 @@ secondp: clslnx = pplast-ppfrst;
          printf(" low q failures = %.0f, failed fits = %d, successful fits = %d, total read events %d \n", nqbin[4], nbad, ngood, read_events);	   
 
          /*
-         printf("chi sq: \n");
-         for(int i=0; i< 40; i++){
-             printf("%.2f ", chi_min[i]);
-         }
-         */
+            printf("chi sq: \n");
+            for(int i=0; i< 40; i++){
+            printf("%.2f ", chi_min[i]);
+            }
+            */
 
 
 

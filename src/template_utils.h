@@ -140,13 +140,22 @@ Double_t chisquare1(Double_t *v, Double_t *par)
    return fitval;
 }
 
+int is_empty_str(char *s) {
+  while (*s != '\0') {
+    if (!isspace((unsigned char)*s))
+      return 0;
+    s++;
+  }
+  return 1;
+}
+
 void get_label(FILE *ifp, char *label, unsigned int size){
     memset(label, ' ', sizeof(char) * size);
     bool got_label = false;
     int i =0;
     while(!got_label){
         fgets(label, size, ifp);
-        if(label[0] != '\n') got_label = true;
+        if(!is_empty_str(label)) got_label = true;
         i++;
     }
     return;
