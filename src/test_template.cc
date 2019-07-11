@@ -18,7 +18,7 @@
 //! Add charge collection efficiency information
 
 
-
+#define TEMPL_DEBUG
 #include "template_utils.h"
 #include "PixelGeneric2D.cc"
 
@@ -43,18 +43,18 @@ int main(int argc, char *argv[])
     int izdet;
     static vector<double> fluence(4,0.);
     int i, j, k, ierr, qbin, qb, nypix, nxpix, etabin, jmin, jmax, imin, imax, numadd, idcol;
-    double dx, dy, eta, dxc, dyc, log10probxy, log10probQ, tote, bade, weight, alpha, adc, qnorm, dxclust, dyclust;
+    double dx, dy, eta, dxc, dyc, log10probxy, log10probQ, tote, bade, weight, alpha, qnorm, dxclust, dyclust;
     double qpixels, qfrac;
     static int iyd, ixd, speed;	
     static float q100, q101, q50, q10, qmax; 
-    const double gain = 3.19;
-    const double ped = 16.46;
-    const double p0 = 0.01218;
-    const double p1 = 0.711;
-    const double p2 = 203.;
-    const double p3 = 148.;	
-    static double vcal = 47.;	
-    static double vcaloffst = 60.;
+//     const double gain = 3.19;
+//     const double ped = 16.46;
+//     const double p0 = 0.01218;
+//     const double p1 = 0.711;
+//     const double p2 = 203.;
+//     const double p3 = 148.;	
+//     static double vcal = 47.;	
+//     static double vcaloffst = 60.;
 
 
     float sigtmp, qin, yfrac, xfrac;
@@ -86,6 +86,11 @@ int main(int argc, char *argv[])
     fscanf(ifp,"%d %d %f %f %f %f %f %f %f %d", &ndata, &nfile, &noise, &q100, &q101, &q100_frac, &common_frac, &gain_frac, &readout_noise, &non_linear);
     fclose(ifp);
     printf("data file %d, mc file %d noise = %f, threshold0 = %f, threshold1 = %f, rms threshold frac = %f, common_frac = %f, gain fraction = %f, readout noise = %f, nonlinear_resp = %d \n", ndata, nfile, noise, q100, q101, q100_frac, common_frac, gain_frac, readout_noise, non_linear);
+
+    FrontEndModel frontEnd;
+    frontEnd.fe_type       = non_linear;
+    frontEnd.gain_frac     = gain_frac;
+    frontEnd.readout_noise = readout_noise;
 
     //  Calculate 50% of threshold in q units and enc noise in adc units
 
@@ -282,12 +287,13 @@ int main(int argc, char *argv[])
     scanf("%d %d", &ID, &layer);
 
     if(layer == 1) {
-        vcal = 50.;	
-        vcaloffst = 670;
+      printf("using L1 parameters \n");
+      frontEnd.vcal = 50.;
+      frontEnd.vcaloffst = 670.;
     } 
 
 
-    if(fpix) {printf("ID = %d, fpix \n", ID);} else {printf("ID = %d, barrel, vcal = %lf, offset = %lf \n", ID, vcal, vcaloffst);}
+    if(fpix) {printf("ID = %d, fpix \n", ID);} else {printf("ID = %d, barrel, vcal = %lf, offset = %lf \n", ID, frontEnd.vcal, frontEnd.vcaloffst);}
 
 
     // Initialize template store 
@@ -375,13 +381,7 @@ int main(int argc, char *argv[])
                     qpixels += qin;
                     idcol = (TYSIZE-1-i+icol)/2;
                     ++ndhit[idcol];
-                    if(non_linear == 0) {
-                        qin *= (1.+gain_frac*ygauss[i]);
-                        signal = (qin + zgauss[i]*readout_noise)/qscale;
-                    } else {
-                        adc = (double)((int)(p3+p2*tanh(p0*(qin + vcaloffst)/(7.0*vcal) - p1)));
-                        signal = ((float)((1.+gain_frac*ygauss[i])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i]*readout_noise)/qscale;
-                    }	 
+		    signal = frontEnd.apply_model( qin, ygauss[i], zgauss[i] );
                     clust[TXSIZE-1-j][TYSIZE-1-i] = (1.+vgauss[0]*common_frac)*signal;
                 }
             }
