@@ -48,12 +48,16 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
 
     double  pixelt[Nx][Ny],  pixel[Nx][Ny],
     xsum[Nx], ysum[Ny],
-    xpar[nprm][4], spar[nprm][4],
+    xpar[nprm][2], ypar[nprm][2], spar[nprm][2],
     xtemp[Nx][9], xtemp2[Nx][9],
     ytemp[Ny][9], ytemp2[Ny][9],
     xytemp[Nx][Ny][4][4];
 
     int nxntry[9], nyntry[9], nxytry[4][4], jy[Ny];
+    std::vector<float> xsignal1, xssignal1, xsignal2, xssignal2;
+    std::vector<float> xssignal1err, xssignal2err;
+    std::vector<float> ysignal1, yssignal1, ysignal2, yssignal2;
+    std::vector<float>  yssignal1err,  yssignal2err;
 
     //declare larger arrays dynamically to avoid stack overflow
     //should probably make some of these actually 2d or 3d arrays rather than
@@ -101,7 +105,6 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
             "rms threshold frac = %f, common_frac = %f, gain fraction = %f, readout noise = %f, nonlinear_resp = %d \n", 
             num_files, file_start, noise, q100, q101, q100_frac, common_frac, gain_frac, readout_noise, non_linear);
 
-    fclose(f_config);
 
     //define RMS of noise
     double rten = 10.;
@@ -459,7 +462,7 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
 
         //save single pixel info for smallest angle run and most single
         //clusters (used for lorentz drift estimate)
-        if(my1 > 10 && fabs(cota) < cotamn && my1 > ny1max){
+        if(my1 > 10 && fabs(cota) <= cotamn && my1 > ny1max){
             loryw1 = sy1;
             dy1sig = sy12;
             ny1max = my1;
@@ -490,8 +493,20 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         //x projection fits
         double sxmax = 0.;
         double ssxmax = 0.;
-        std::vector<float> xsignal1, xssignal1, xsignal2, xssignal2;
-        std::vector<float> xssignal1err, xssignal2err;
+
+        xsignal1.clear();
+        xssignal1.clear();
+        xsignal2.clear();
+        xssignal2.clear();
+        xssignal1err.clear();
+        xssignal2err.clear();
+
+        ysignal1.clear();
+        yssignal1.clear();
+        ysignal2.clear();
+        yssignal2.clear();
+        yssignal1err.clear();
+        yssignal2err.clear();
 
         //start with zeros to get better fit
         xsignal1.push_back(0.);
@@ -590,8 +605,6 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         //y projection fits
         double symax = 0.;
         double ssymax = 0.;
-        std::vector<float> ysignal1, yssignal1, ysignal2, yssignal2;
-        std::vector<float>  yssignal1err,  yssignal2err;
 
         //start with zeros to anchor fit
         ysignal1.push_back(0.);
@@ -680,9 +693,19 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         for(int p=0; p<nprm; p++){
             xpar[p][0] = f_xtemp1->GetParameter(p);
             xpar[p][1] = f_xtemp2->GetParameter(p);
-            xpar[p][2] = f_ytemp1->GetParameter(p);
-            xpar[p][3] = f_ytemp2->GetParameter(p);
+            ypar[p][0] = f_ytemp1->GetParameter(p);
+            ypar[p][1] = f_ytemp2->GetParameter(p);
         }
+        delete f_ytemp1; 
+        delete f_ytemp2; 
+        delete c_ytemp; 
+        delete g_ytemp1; 
+        delete g_ytemp2;
+        delete f_xtemp1; 
+        delete f_xtemp2; 
+        delete c_xtemp; 
+        delete g_xtemp1; 
+        delete g_xtemp2;
 
         /*
         //print out charges and variances that are being fit (for debugging)
@@ -759,7 +782,7 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
 
         for(int k=0; k <2; k++){
             for(int p=0; p<nprm; p++){
-                fprintf(ptemp_file, "%15.8E ", xpar[p][k]);
+                fprintf(ptemp_file, "%15.8E ", ypar[p][k]);
             }
             fprintf(ptemp_file, "\n");
         }

@@ -62,7 +62,6 @@ void gen_xy_template2d(const int nevents = 32000, const int npt = 300, const int
             "rms threshold frac = %f, common_frac = %f, gain fraction = %f, readout noise = %f, nonlinear_resp = %d \n", 
             num_files, file_start, noise, q100, q101, q100_frac, common_frac, gain_frac, readout_noise, non_linear);
 
-    fclose(f_config);
 
     //define RMS of noise
     double rten = 10.;
