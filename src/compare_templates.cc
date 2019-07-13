@@ -31,7 +31,8 @@ int main(int argc, char *argv[]){
         tolerance = atof(argv[3]);
     }
     double val1, val2;
-    char b1[180], b2[180];
+    const int max_line = 300;
+    char b1[max_line], b2[max_line];
     int checked_vals = 0;
     int line_num=0;
     int fails =0;
@@ -46,7 +47,7 @@ int main(int argc, char *argv[]){
 
 
     //get line by line
-    while((l1 = fgets(b1,180, f1)) != NULL && (l2 = fgets(b2, 180, f2)) != NULL){
+    while((l1 = fgets(b1,max_line, f1)) != NULL && (l2 = fgets(b2, max_line, f2)) != NULL){
         //printf("b1 %s, b2 %s \n", b1, b2);
         line_num++;
         s1 = std::string(b1);
@@ -65,7 +66,10 @@ int main(int argc, char *argv[]){
                 
 
                 double diff = std::fabs((val1 - val2)/val1);
-                if(diff > tolerance){
+                //ignore numbers less than certain amount because too noisy
+                double min_val = 1e-8;
+                bool too_small = std::fabs(val1) < min_val && std::fabs(val2) < min_val;
+                if(diff > tolerance && !too_small){
                     printf("Difference between files found on line %i \n"
                            "%s has %f. " 
                            "%s has %f.\n \n", 

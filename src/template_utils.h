@@ -221,7 +221,7 @@ std::vector<float> fit_pol5(TProfile *h){
     h->SetStats(false);
     TF1 *fit = h->GetFunction("pol5");
     Double_t chi2 = fit->GetChisquare();
-        for(int i=0; i<5; i++){
+        for(int i=0; i<6; i++){
             if(chi2 < 1e6){
                 pars.push_back(fit->GetParameter(i));
             }
