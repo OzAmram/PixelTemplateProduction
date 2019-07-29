@@ -58,95 +58,138 @@ using namespace std;
 //-----------------------------------------------------------------------------
 struct FrontEndModel
 {
-   //--- Variables, read from the config file.
-   int   fe_type       = 0;
-   float gain_frac     = 0.f;
-   float readout_noise = 0.f;
+    //--- Variables, read from the config file.
+    int   fe_type       = 0;
+    float gain_frac     = 0.f;
+    float readout_noise = 0.f;
 
-   //--- Variables we can change, but we start with good default values
-   double vcal = 47.0;	
-   double vcaloffst = 60.0;
+    //--- Variables we can change, but we start with good default values
+    double vcal = 47.0;	
+    double vcaloffst = 60.0;
 
-   //--- Constants (could be made variables later)
-   const double gain  = 3.19;
-   const double ped   = 16.46;
-   const double p0    = 0.01218;
-   const double p1    = 0.711;
-   const double p2    = 203.;
-   const double p3    = 148.;	
+    //--- Constants (could be made variables later)
+    const double gain  = 3.19;
+    const double ped   = 16.46;
+    const double p0    = 0.01218;
+    const double p1    = 0.711;
+    const double p2    = 203.;
+    const double p3    = 148.;	
 
 
-  //-----------------------------------------------------------------------------
-  //  A function to simulate the electronics response: different gains, TOT, etc.
-  //-----------------------------------------------------------------------------
-  float apply_model( float qin, float ygauss, float zgauss )
-  {
-    float signal = 0.f;
-    
-    switch ( fe_type ) {
-    case 0:
-      signal = qin * (1. + gain_frac*ygauss) + zgauss*readout_noise;
-      break;
+    //-----------------------------------------------------------------------------
+    //  A function to simulate the electronics response: different gains, TOT, etc.
+    //-----------------------------------------------------------------------------
+    float apply_model( float qin, float ygauss, float zgauss )
+    {
+        float signal = 0.f;
 
-    case 1:
-      {
-	double adc = (double)((int)(p3+p2*tanh(p0*(qin + vcaloffst)/(7.0*vcal) - p1)));
-	signal = ((float)((1.+gain_frac*ygauss)*(vcal*gain*(adc-ped))) - vcaloffst + zgauss*readout_noise);
-      }
-      break;
+        switch ( fe_type ) {
+            case 0:
+                signal = qin * (1. + gain_frac*ygauss) + zgauss*readout_noise;
+                break;
 
-    default:
-      std::cout << "ElectronicModel::apply_model: illegal fe_type = " << fe_type << std::endl;
-      assert(0);
+            case 1:
+                {
+                    double adc = (double)((int)(p3+p2*tanh(p0*(qin + vcaloffst)/(7.0*vcal) - p1)));
+                    signal = ((float)((1.+gain_frac*ygauss)*(vcal*gain*(adc-ped))) - vcaloffst + zgauss*readout_noise);
+                }
+                break;
+
+            default:
+                std::cout << "ElectronicModel::apply_model: illegal fe_type = " << fe_type << std::endl;
+                assert(0);
+        }
+
+        return signal;
     }
 
-    return signal;
-  }
-  
 };
 
+// Calculates something like a full-width half max for the cluster
+// length
+template <typename TwoD> //template to allow arrays of different sizes
+float get_clust_len(TwoD &temp, int size, float max){
+    float pfrst=0.f, plast=0.f, clsln=0.f;
+    for(int i=0; i<size; ++i) {
+        for (int k=7; k > -1; --k) {
+            if(temp[k][i] > max) {
+                float dzsig = temp[k][i] - temp[k+1][i];
+                float frac;
+                if(dzsig > 0.f) {
+                    frac = (temp[k][i] - max)/dzsig;
+                    if(frac > 1.f) frac = 1.f;
+                    if(frac < 0.f) frac = 0.f;
+                } else {
+                    frac = 0.f;
+                }
+                pfrst = i-(k+frac-4.f)/8.f;
+                goto first;
+            }
+        }
+    }
+first: ;
+       for(int i=size; i>-1; --i) {
+           for (int k=1; k < 9; ++k) {
+               if(temp[k][i] > max) {
+                   float dzsig = temp[k][i] - temp[k-1][i];
+                   float frac;
+                   if(dzsig > 0.f) {
+                       frac = (temp[k][i] - max)/dzsig;
+                       if(frac > 1.f) frac = 1.f;
+                       if(frac < 0.f) frac = 0.f;
+                   } else {
+                       frac = 0.f;
+                   }
+                   plast = i-(k-frac-4.f)/8.f;
+                   goto second;
+               }
+           }
+       }
+second: clsln = plast-pfrst;
+        if(clsln < 0.f) clsln = 0.f;
+        return clsln;
+}
 
 
 
-			 
 
 //vavilov distribution (to fit to)
 Double_t vavilov(Double_t *v, Double_t *par)
 {
-   Float_t arg = 0.;
-   if (par[2] != 0) arg = (float)(v[0] - par[1])/fabs(par[2]);
-   
-   float beta2 = 1.f;   
-   float kappa = (float)par[3];
-   VVIObjF vvidist(kappa, beta2, 0);
-   float xl, xu;
-   vvidist.limits(xl,xu);
-   if(arg < xl) arg = xl;
-   if(arg > xu) arg = xu;
-   Double_t fitval = par[0]*(double)vvidist.fcn(arg);
-   return fitval;
+    Float_t arg = 0.;
+    if (par[2] != 0) arg = (float)(v[0] - par[1])/fabs(par[2]);
+
+    float beta2 = 1.f;   
+    float kappa = (float)par[3];
+    VVIObjF vvidist(kappa, beta2, 0);
+    float xl, xu;
+    vvidist.limits(xl,xu);
+    if(arg < xl) arg = xl;
+    if(arg > xu) arg = xu;
+    Double_t fitval = par[0]*(double)vvidist.fcn(arg);
+    return fitval;
 }
 
 
 Double_t chisquare0(Double_t *v, Double_t *par)
 {
-   Double_t fitval = par[0]*ROOT::Math::chisquared_pdf(par[2]*v[0], par[1]);
-   return fitval;
+    Double_t fitval = par[0]*ROOT::Math::chisquared_pdf(par[2]*v[0], par[1]);
+    return fitval;
 }
 
 Double_t chisquare1(Double_t *v, Double_t *par)
 {
-   Double_t fitval = par[0]*ROOT::Math::chisquared_pdf(par[2]*v[0], par[1]);
-   return fitval;
+    Double_t fitval = par[0]*ROOT::Math::chisquared_pdf(par[2]*v[0], par[1]);
+    return fitval;
 }
 
 int is_empty_str(char *s) {
-  while (*s != '\0') {
-    if (!isspace((unsigned char)*s))
-      return 0;
-    s++;
-  }
-  return 1;
+    while (*s != '\0') {
+        if (!isspace((unsigned char)*s))
+            return 0;
+        s++;
+    }
+    return 1;
 }
 
 void get_label(FILE *ifp, char *label, unsigned int size){
@@ -162,13 +205,13 @@ void get_label(FILE *ifp, char *label, unsigned int size){
 }
 
 void read_cluster(FILE *ifp, float pixin[TXSIZE][TYSIZE]){
-  for (int i=0; i < TXSIZE; i++) {
-      for(int  j=0; j < TYSIZE; j++){
+    for (int i=0; i < TXSIZE; i++) {
+        for(int  j=0; j < TYSIZE; j++){
 
-     fscanf(ifp, " %f ", &pixin[i][j]);
+            fscanf(ifp, " %f ", &pixin[i][j]);
+        }
     }
-  }
-  return;
+    return;
 }
 
 //see https://stackoverflow.com/questions/936687/how-do-i-declare-a-2d-array-in-c-using-new
@@ -180,7 +223,7 @@ float** setup_2d_array(int size1, int size2){
         for(int j=0; j<size2; j++){
             a[i][j] = 0.;
         }
-        
+
     }
     return a;
 }
@@ -221,13 +264,13 @@ std::vector<float> fit_pol5(TProfile *h){
     h->SetStats(false);
     TF1 *fit = h->GetFunction("pol5");
     Double_t chi2 = fit->GetChisquare();
-        for(int i=0; i<6; i++){
-            if(chi2 < 1e6){
-                pars.push_back(fit->GetParameter(i));
-            }
-            else{
-                pars.push_back(0.);
-            }
+    for(int i=0; i<6; i++){
+        if(chi2 < 1e6){
+            pars.push_back(fit->GetParameter(i));
+        }
+        else{
+            pars.push_back(0.);
+        }
 
     }
 
@@ -268,9 +311,9 @@ std::vector<float> get_vavilov_pars(TH1F *h){
         pars.push_back(vfunc->GetParameter(i));
     }
     return pars;
-    
+
 }
-    
+
 
 
 
@@ -352,7 +395,7 @@ int triplg(std::vector<float>& x)
 
 
 
-    
+
     // Local variables 
     static float r1, r2;
     static int i__;
@@ -366,43 +409,43 @@ int triplg(std::vector<float>& x)
 
     // Function Body 
 
-//  Initalize the parameters 
+    //  Initalize the parameters 
 
     if (fcall) {
-	    twopi = 2.*acos((double)-1.);
-	    ibase = TYTEN;
-	    fcall = 0;
+        twopi = 2.*acos((double)-1.);
+        ibase = TYTEN;
+        fcall = 0;
 #ifdef TEMPL_DEBUG
         rluxgo_(&lux, &seed, &k1, &k2);
 #endif
     }
 
-//  If all random numbers used up, generate 210 more 
+    //  If all random numbers used up, generate 210 more 
 
     if (ibase == TYTEN) {
 
 #ifdef TEMPL_DEBUG
-       ranlux_(rlux_out, &size);
+        ranlux_(rlux_out, &size);
 #endif
-	   for (i__ = 0; i__ < TYTEN-1; i__ += 2) {
+        for (i__ = 0; i__ < TYTEN-1; i__ += 2) {
 #ifdef TEMPL_DEBUG
-          r1 = rlux_out[i__];
-          r2 = rlux_out[i__+1];
+            r1 = rlux_out[i__];
+            r2 = rlux_out[i__+1];
 #else
-	      r1 = ((float)random())/((float)RAND_MAX);
-	      r2 = ((float)random())/((float)RAND_MAX);
+            r1 = ((float)random())/((float)RAND_MAX);
+            r2 = ((float)random())/((float)RAND_MAX);
 #endif
-	      arg = (double)(1. - r1);
-	      if (arg < 1.e-30) {arg = 1.e-30;}
-	      r__ = sqrt(log(arg) * (-2.));
-	      phi = twopi * r2;
-	      rbuff[i__] = r__ * cos(phi);
-	      rbuff[i__+1] = r__ * sin(phi);
-	   }
-	   ibase = 0;
+            arg = (double)(1. - r1);
+            if (arg < 1.e-30) {arg = 1.e-30;}
+            r__ = sqrt(log(arg) * (-2.));
+            phi = twopi * r2;
+            rbuff[i__] = r__ * cos(phi);
+            rbuff[i__+1] = r__ * sin(phi);
+        }
+        ibase = 0;
     }
     for (i__ = 0; i__ < TYSIZE; ++i__) {
-	   x[i__] = rbuff[ibase + i__];
+        x[i__] = rbuff[ibase + i__];
     }
     ibase += TYSIZE;
     return 0;

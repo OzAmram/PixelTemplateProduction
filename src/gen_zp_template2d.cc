@@ -26,6 +26,7 @@
  *   Write integers for the templates
  */
 
+#define TEMPL_DEBUG
 #include "template_utils.h"
 
 
@@ -43,35 +44,25 @@ int main(int argc, char *argv[])
     float ztemp[9][TYSIZE], ptemp[9][TXSIZE], xpar[4][5];
     float dummy[T2YSIZE];
     float sxmax, symax, sxmaxx, symaxx, cosx, cosy, cosz;
-    static float thick, xsize, ysize, noise, zcen, gain_frac, q100_frac, common_frac, readout_noise, qscale, qperbit;
+    static float thick, xsize, ysize, noise, zcen, gain_frac, q100_frac, common_frac, readout_noise, qscale;
     static float qavg, qxyavg, clslnx, clslny, fbin[3] = {1.5f, 1.0f, 0.85f};
     static float xhit, yhit, xrec, yrec, sigmax, sigmay, signal, cotalpha, cotbeta, qclust, locBz, locBx, probxy, probQ, pixmax;
     static float pixmaxy, pixmaxx;
-    static int startfile, neh, nevent, tempID, nbad, non_linear, icol, ndcol, numrun; 
-    int  id,NTyx,NTxx,IDtype;
+    static int startfile, neh, nevent, tempID, nbad, fe_model_type, icol, ndcol, numrun; 
+    int  id,NTy, NTyx,NTxx,IDtype;
     static float Bfield,Vbias,temp,fluenc;
     static vector<int> nbin(5,0);
     float deltay;
     int ierr, qbin, qb, jmin, jmax, imin, imax, numadd, idcol, edgeflagx, edgeflagy, npixels;
     int mrow = TXSIZE, mcol = TYSIZE;
     const int TXSHIFT = (TXSIZE - T2XSIZE)/2;
-    double dx, dy,  adc;
+    double dx, dy;  
     float scaley, scalex, scalx[4], scaly[4], delyavg, delysig, offsetx[4], offsety[4];
-    static int numbits = 6;
     static float q100, q101, q50, q51,  qmax; 
-    const double gain = 3.19;
-    const double ped = 16.46;
-    const double p0 = 0.01218;
-    const double p1 = 0.711;
-    const double p2 = 203.;
-    const double p3 = 148.;	
-    static double vcal = 47.;	
-    static double vcaloffst = 60.;
     const float fmax = 0.5f;
     int write_temp_header, use_l1_offset;
 
     const int nvers = 21;
-    const int NTy = 0;
 
     float qin;
     static char infile[120], label[160], header[120],  outfile0[120], outfile1[120], outfile2[120];
@@ -106,17 +97,37 @@ int main(int argc, char *argv[])
 
 
     char extra[80];
-    fscanf(config_file,"%d %d %f %f %f %f %f %f %f %d %f %s", &startfile, &numrun, &noise, &q100, 
-            &q101, &q100_frac, &common_frac, &gain_frac, &readout_noise, &non_linear, &qscale, &extra[0]);
+    char line[160];
+    fgets(line, 160, config_file);
+
+    int num_read = sscanf(line,"%d %d %f %f %f %f %f %f %f %d %f %s", &startfile, &numrun, &noise, &q100, 
+            &q101, &q100_frac, &common_frac, &gain_frac, &readout_noise, &fe_model_type, &qscale, &extra[0]);
     printf("processing %d files starting from %d, noise = %f, threshold0 = %f, threshold1 = %f," 
-            "rms threshold frac = %f, common_frac = %f, gain fraction = %f, readout noise = %f, nonlinear_resp = %d \n", 
-            numrun, startfile, noise, q100, q101, q100_frac, common_frac, gain_frac, readout_noise, non_linear);
+            "rms threshold frac = %f, common_frac = %f, gain fraction = %f, readout noise = %f, front end model type = %d, extra = %s \n", 
+            numrun, startfile, noise, q100, q101, q100_frac, common_frac, gain_frac, readout_noise, fe_model_type, extra);
+    if(num_read < 10){
+        printf("Error reading config file !. Only read %i params \n", num_read);
+        return 0;
+    }
 
 
-    fscanf(config_file, " %d %d ", &use_l1_offset, &write_temp_header);
-    fscanf(config_file, " %d %d %d %d %f %f %f %f %f",  &id, &NTyx, &NTxx, &IDtype, &Bfield, &Vbias, &temp, &fluenc, &qscale);
-    printf("Using params: Use_l1_offset=%d, write_temp_header=%d, ID=%d NTyx=%d NTxx=%d Dtype=%d Bfield=%.2f Bias Voltage = %.1f temparature = %.0f fluence = %.2f q-scale = %.4f \n",
-            use_l1_offset, write_temp_header, id, NTyx, NTxx, IDtype, Bfield, Vbias, temp, fluenc, qscale);
+    fgets(line, 160, config_file);
+    num_read = sscanf(line, " %d %d ", &use_l1_offset, &write_temp_header);
+    if(num_read != 2){
+        printf("Error reading config file !\n");
+        printf("Line was %s \n", line);
+        return 0;
+    }
+    fgets(line, 160, config_file);
+    num_read = sscanf(line, " %d %d %d %d %d %f %f %f %f %f",  &id, &NTy, &NTyx,&NTxx, &IDtype, &Bfield, &Vbias, &temp, &fluenc, &qscale);
+    NTy =0 ;
+    printf("Using params: Use_l1_offset=%d, write_temp_header=%d, ID=%d NTy=%d NTyx=%d NTxx=%d Dtype=%d Bfield=%.2f Bias Voltage = %.1f temparature = %.0f fluence = %.2f q-scale = %.4f \n",
+            use_l1_offset, write_temp_header, id, NTy, NTyx, NTxx, IDtype, Bfield, Vbias, temp, fluenc, qscale);
+    if(num_read != 10){
+        printf("Error reading config file !\n");
+        printf("Line was %s \n", line);
+        return 0;
+    }
 
     fclose(config_file);
 
@@ -151,11 +162,14 @@ int main(int argc, char *argv[])
     lorwdx = -lorwdx;
     lorbsx = -lorbsx;
 
-    printf("Use L1 vcal/offset? (1=yes) \n");
+    FrontEndModel frontEnd;
+    frontEnd.fe_type       = fe_model_type;
+    frontEnd.gain_frac     = gain_frac;
+    frontEnd.readout_noise = readout_noise;
     if(use_l1_offset) {
         printf("using L1 parameters \n");
-        vcal = 50.;	
-        vcaloffst = 670.;
+        frontEnd.vcal = 50.;	
+        frontEnd.vcaloffst = 670.;
     }
 
     // Define the histograms to be used at each angle pair
@@ -262,569 +276,485 @@ int main(int argc, char *argv[])
 
 
         // Calculate the mean cluster size in pixels
+        clslny = get_clust_len(ztemp, TYSIZE, symaxx);
 
-        float pzfrst=0.f, pzlast=0.f;
-        for(int i=0; i<TYSIZE; ++i) {
-            for (int k=7; k > -1; --k) {
-                if(ztemp[k][i] > symaxx) {
-                    float dzsig = ztemp[k][i] - ztemp[k+1][i];
-                    float frac;
-                    if(dzsig > 0.f) {
-                        frac = (ztemp[k][i] - symaxx)/dzsig;
-                        if(frac > 1.f) frac = 1.f;
-                        if(frac < 0.f) frac = 0.f;
-                    } else {
-                        frac = 0.f;
-                    }
-                    pzfrst = i-(k+frac-4.f)/8.f;
-                    goto firstz;
+
+        //  Read in 1D p template information first
+
+        sprintf(infile,"./ptemp_%5.5d.txt",ifile);
+
+        //  Open input file and read header info 
+
+        FILE *ptemp_file = fopen(infile, "r");
+        if (ptemp_file==NULL) {
+            printf("no p-template file %s \n", infile);
+            return 0;
+        }
+
+        fscanf(ptemp_file,"%f  %f  %f", &cosx, &cosy, &cosz);
+        //	   printf("cosx/cosy/cosz = %f/%f/%f \n", cosx, cosy, cosz);
+
+        fscanf(ptemp_file,"%f  %f  %f", &qavg, &sxmax, &pixmaxx);
+        printf("qavg/sxmax/pixmaxx = %f/%f/%f \n", qavg, sxmax, pixmaxx);
+
+
+        sxmaxx = fmax*sxmax;
+
+        for(int i = 3; i > 1; --i) {
+            fscanf(ptemp_file,"%f %f %f %f %f", &xpar[i][0], &xpar[i][1], &xpar[i][2], &xpar[i][3], &xpar[i][4]);
+        }
+
+        for (int k=0; k < 9; ++k) {
+            // Skip labels   
+            get_label(ptemp_file, label, 160);
+            printf("%s\n", label);
+            for(int i=0; i<TXSIZE; i++){
+                fscanf(ptemp_file, " %f ", &ptemp[k][i]);
+            }
+        }
+        fclose(ptemp_file);
+
+        // Calculate the mean cluster size in pixels
+        clslnx = get_clust_len(ptemp, TXSIZE, sxmaxx);
+
+
+        //  Read in 2D template information
+
+        sprintf(infile,"./zptemp_%5.5d.txt",ifile);
+
+        //  Open input file and read header info 
+
+        FILE *ztemp2d_file = fopen(infile, "r");
+        if (ztemp2d_file==NULL) {
+            printf("no zp-template file %s \n", infile);
+            return 0;
+        }
+
+
+        SiPixelTemplateEntry2D * slice = new SiPixelTemplateEntry2D;
+
+        // Copy info into the slice and reformat from pixelav coordinates to CMSSW local coordinates
+
+        slice->runnum = ifile;
+
+        for(int i = 0; i < 2; ++i) {
+            for(int j=0; j<5; ++j) {slice->xypar[i][j] = xpar[i][j];}
+        }
+
+        slice->clslenx = clslnx;
+        slice->clsleny = clslny;
+
+        fscanf(ztemp2d_file,"%f  %f  %f", &cosx, &cosy, &cosz);
+        //	   printf("cosx/cosy/cosz = %f/%f/%f \n", cosx, cosy, cosz);
+
+        slice->costrk[0] = -cosy;
+        slice->costrk[1] = -cosx;
+        slice->costrk[2] = -cosz;
+        slice->cotalpha = cosy/cosz;
+        slice->cotbeta = cosx/cosz;
+
+        fscanf(ztemp2d_file,"%f %f %d %d %d %d", &qxyavg, &pixmax, &imin, &imax, &jmin, &jmax);
+        printf("qxyavg/pixmax/imin/imax/jmin/jmax = %f/%f/%d/%d/%d/%d \n", qxyavg, pixmax, imin, imax, jmin, jmax);
+
+        slice->qavg = qxyavg;
+        slice->pixmax = pixmax;
+        slice->sxymax = symax;
+
+        slice->iymin = TYSIZE - imax;
+        slice->iymax = TYSIZE - imin;
+        slice->jxmin = TXSIZE - jmax - TXSHIFT;
+        slice->jxmax = TXSIZE - jmin - TXSHIFT;
+
+        for(int i = 1; i > -1; --i) {
+            fscanf(ztemp2d_file,"%f %f %f %f %f", &slice->lanpar[i][0], &slice->lanpar[i][1], &slice->lanpar[i][2], 
+                    &slice->lanpar[i][3], &slice->lanpar[i][4]);
+        }
+
+        for(int l=6; l>-1; --l) {
+            for(int k=6; k>-1; --k) {
+                // Skip labels   
+                get_label(ztemp2d_file, label, 160);
+                printf("%d %s\n", k, label);
+                for(int j=0; j<TXSHIFT; ++j) {
+                    fscanf(ztemp2d_file,"%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
+                            &dummy[20],&dummy[19],&dummy[18],&dummy[17],&dummy[16],&dummy[15],
+                            &dummy[14],&dummy[13],&dummy[12],&dummy[11],&dummy[10],&dummy[9],
+                            &dummy[8],&dummy[7],&dummy[6],&dummy[5],&dummy[4],&dummy[3],&dummy[2],&dummy[1],&dummy[0]);
+                }
+                for(int j=T2XSIZE-1; j>-1; --j) {
+                    fscanf(ztemp2d_file,"%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
+                            &dummy[20],&dummy[19],&dummy[18],&dummy[17],&dummy[16],&dummy[15],
+                            &dummy[14],&dummy[13],&dummy[12],&dummy[11],&dummy[10],&dummy[9],
+                            &dummy[8],&dummy[7],&dummy[6],&dummy[5],&dummy[4],&dummy[3],&dummy[2],&dummy[1],&dummy[0]);
+                    for(int i=0; i<21; ++i) {slice->xytemp[k][l][i][j] = (short int)dummy[i];}
+                }
+                for(int j=0; j<TXSHIFT; ++j) {
+                    fscanf(ztemp2d_file,"%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
+                            &dummy[20],&dummy[19],&dummy[18],&dummy[17],&dummy[16],&dummy[15],
+                            &dummy[14],&dummy[13],&dummy[12],&dummy[11],&dummy[10],&dummy[9],
+                            &dummy[8],&dummy[7],&dummy[6],&dummy[5],&dummy[4],&dummy[3],&dummy[2],&dummy[1],&dummy[0]);
                 }
             }
         }
-firstz: ;
-        for(int i=TYSIZE-1; i>-1; --i) {
-            for (int k=1; k < 9; ++k) {
-                if(ztemp[k][i] > symaxx) {
-                    float dzsig = ztemp[k][i] - ztemp[k-1][i];
-                    float frac;
-                    if(dzsig > 0.f) {
-                        frac = (ztemp[k][i] - symaxx)/dzsig;
-                        if(frac > 1.f) frac = 1.f;
-                        if(frac < 0.f) frac = 0.f;
+
+        slice->scalexavg = 1.f;
+        slice->scaleyavg = 1.f;
+
+        fclose(ztemp2d_file);
+
+        //  Create an input filename for this run 
+
+
+        sprintf(infile,"template_events_d%d.out",ifile);
+
+
+
+
+        //  Open input file and read header info 
+
+        FILE *events_file = fopen(infile, "r");
+        if (events_file==NULL) {
+            printf("no pixel data file found: %s \n", infile);
+            return 0;
+        }
+
+        // Read-in a header string first and print it    
+
+        get_label(events_file, header, 80);
+        printf("Header: %s\n", header);
+
+
+        fscanf(events_file,"%f  %f  %f", &ysize, &xsize, &thick);
+        zcen = thick/2.;
+        printf("xsize/ysize/thick = %f/%f/%f \n", xsize, ysize, thick);
+        fpix = false;
+        if(thick > 285.) {fpix = true;}
+
+        nevent=0;
+        nbad = 0;
+
+        if(write_temp_header && ifile==startfile) {
+            fprintf(output_file,"%s", header);
+            printf("Using params: ID=%d NTyx=%d NTxx=%d Dtype=%d Bfield=%.2f Bias Voltage = %.1f temparature = %.0f fluence = %.2f q-scale = %.4f \n",
+                    id, NTyx, NTxx, IDtype, Bfield, Vbias, temp, fluenc, qscale);
+
+
+            fprintf(output_file,"%d %d %4.2f %d %d %d %d %5.1f %5.1f %4.2f %5.3f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %f %4.2f %4.2f %4.2f \n",
+                    id,nvers,Bfield,NTy,NTyx,NTxx,IDtype,Vbias, temp,fluenc,qscale,q50,lorwdy,
+                    lorwdx,ysize,xsize,thick,q51,lorbsy,lorbsx,1.5f,1.0f,0.85f);
+        }
+        else {
+            for(int i=0; i<26; ++i) { hp[i]->Reset();}
+        }  
+
+
+        float rnelec = 0.f;
+
+        ndcol = TYSIZE/2 +1;
+        std::vector<int> ndhit(ndcol, 0);
+
+        // Loop until end of input file 
+
+        while(fscanf(events_file,"%f %f %f %f %f %f %d", &pvec[0], &pvec[1], &pvec[2], &pvec[3], &pvec[4], &pvec[5], &neh) != EOF) {
+
+            // read the input cluster 
+
+            read_cluster(events_file, pixin);
+            ++nevent;
+
+            //	   if(nevent > 100) break;
+
+            // Add noise and analog response to cluster, reformat for flipped barrel coordinate system 
+
+            triplg(vgauss);
+            pixlst.clear();
+            for(int i=0; i<ndcol; ++i) {ndhit[i] = 0;}
+            icol = 0;
+            if(vgauss[1] < 0.) {icol = 1;}
+            for(int j=0; j<TXSIZE; ++j) {
+                triplg(wgauss);
+                triplg(xgauss);
+                triplg(ygauss);
+                triplg(zgauss);
+                for(int i=0; i<TYSIZE; ++i) {
+                    bclust[j][i] = false;
+                    qin = (10.*pixin[j][i] + xgauss[i]*noise);
+                    rclust[TXSIZE-1-j][TYSIZE-1-i] = qin;
+                    if(qin < q100*(1.+wgauss[i]*q100_frac)) {
+                        clust[TXSIZE-1-j][TYSIZE-1-i] = 0.;
                     } else {
-                        frac = 0.f;
+                        idcol = (TYSIZE-1-i+icol)/2;
+                        ++ndhit[idcol];
+                        signal = frontEnd.apply_model( qin, ygauss[i], zgauss[i] );
+                        clust[TXSIZE-1-j][TYSIZE-1-i] = (1.+vgauss[0]*common_frac)*signal;
                     }
-                    pzlast = i-(k-frac-4.f)/8.f;
-                    goto secondz;
+                }
+            }
+
+            // Simulate the second, higher threshold in single dcol hits
+
+            for(int j=0; j<TXSIZE; ++j) {
+                for(int i=0; i<TYSIZE; ++i) {
+                    if(clust[j][i] > 0.) {
+                        idcol = (i+icol)/2;
+                        if(ndhit[idcol] == 1) {
+                            // Apply higher threshold on single hits in double columns
+                            if(rclust[j][i] < q101*(1.+wgauss[i]*q100_frac)) {
+                                clust[j][i] = 0.;
+                            }
+                        }
+                    }
+                }
+            }
+
+
+            // Simulate the seed finding
+
+            qmax = 0.;
+            for(int j=0; j<TXSIZE; ++j) {
+                for(int i=0; i<TYSIZE; ++i) {
+                    if(clust[j][i] > qmax) {
+                        qmax = clust[j][i];
+                        max.first = j; max.second = i;
+
+                    }
+                }
+            }
+
+            if(qmax < 1500.) continue;
+
+
+            // Simulate clustering around maximum signal (seed)
+
+
+            pixlst.push_back(max);
+            bclust[max.first][max.second] = true;
+
+            std::vector<std::pair<int, int> > pixlst_copy;
+
+
+
+            numadd = 1;
+            //iterively find all non zero pixels near our seed
+            while(numadd > 0){
+                //use copy of vector to avoid modifying vector as we loop through it
+                pixlst_copy = pixlst;
+                numadd = 0;
+                for ( auto pixIter = pixlst_copy.begin(); pixIter != pixlst_copy.end(); ++pixIter ) {
+                    //max's are +2 because we are doing <max in the loop
+                    jmin = pixIter->first-1; 
+                    jmax = pixIter->first+2;
+                    imin = pixIter->second-1;
+                    imax = pixIter->second+2;
+                    if(jmin < 0) {jmin = 0;}
+                    if(jmax > TXSIZE) {jmax = TXSIZE;}
+                    if(imin < 0) {imin = 0;}
+                    if(imax > TYSIZE) {imax = TYSIZE;}
+                    for(int j=jmin; j<jmax; ++j) {
+                        for(int i=imin; i<imax; ++i) {
+                            if(clust[j][i] > 0.) {
+                                if(!bclust[j][i]) {
+                                    bclust[j][i] = true;
+                                    pixel.first = j; pixel.second = i;
+                                    pixlst.push_back(pixel);
+                                    ++numadd;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            //only add pixels we 'found' when clustering to final cluster
+            memset(cluster, 0., sizeof(cluster));
+
+            qclust=0.;
+            imin = TYSIZE;
+            imax = 0;
+            for (auto pixIter = pixlst.begin() ; pixIter != pixlst.end(); ++pixIter ) {
+                int j = pixIter->first; 
+                int i = pixIter->second;
+                cluster[j][i] = clust[j][i];
+                qclust += clust[j][i];
+                if(cluster[j][i] > 0.f) {
+                    if(i < imin) imin = i;
+                    if(i > imax) imax = i;
+                }
+            }
+
+            hp[25]->Fill((double)qclust, 1.);
+
+            rnelec += qclust;
+
+            // Calculate the hit coordinates in the flipped coordinate system 
+
+            yhit = -(pvec[0] + (zcen-pvec[2])*pvec[3]/pvec[5]);
+            xhit = -(pvec[1] + (zcen-pvec[2])*pvec[4]/pvec[5]);
+
+            // Do the template analysis on the cluster 
+
+            cotalpha = pvec[4]/pvec[5];
+            cotbeta = pvec[3]/pvec[5];
+
+            // No double pixels 
+
+            for(int i=0; i<TYSIZE; ++i) {
+                ydouble[i] = false;
+            }
+
+            for(int j=0; j<TXSIZE; ++j) {
+                xdouble[j] = false;
+            }
+
+            // No dead columns or module edges
+
+            edgeflagy = 0;
+            edgeflagx = 0;
+
+
+            //        if(fabs(cotbeta) < 2.1) continue;
+            // Do the template analysis on the cluster 
+            SiPixelTemplateReco2D::ClusMatrix clusterPayload{&cluster[0][0], xdouble, ydouble, mrow,mcol};
+            locBx = 1.;
+            if(cotbeta < 0.) locBx = -1.;
+            locBz = locBx;
+            if(cotalpha < 0.) locBz = -locBx;
+
+            //  Sideload this template slice
+
+            templ.sideload(slice, IDtype, locBx, locBz, lorwdy, lorwdx, q50, fbin, xsize, ysize, thick);
+            ierr = PixelTempReco2D(tempID, cotalpha, cotbeta, locBz, locBx, edgeflagy, edgeflagx, clusterPayload, templ, yrec, sigmay, xrec, sigmax, probxy, probQ, qbin, deltay, npixels);
+            if(ierr != 0) {
+                ++nbad; 
+                //	      printf("reconstruction failed with error %d \n", ierr);
+            } else {
+                qb = qbin;
+                ++nbin[qb];
+                dy = yrec - (TYSIZE/2)*ysize - yhit;
+                hp[0]->Fill(dy);
+                if(sigmay > 0.f) hp[5]->Fill(dy/sigmay);
+                hp[20]->Fill((double)deltay);
+                hp[1+qbin]->Fill(dy, 1.);
+                if(sigmay > 0.f) hp[6+qbin]->Fill(dy/sigmay);
+                dx = xrec - (TXSIZE/2)*xsize - xhit;
+                hp[10]->Fill(dx);
+                if(sigmax > 0.f) hp[15]->Fill(dx/sigmax);
+                hp[11+qbin]->Fill(dx);
+                if(sigmax > 0.f) hp[16+qbin]->Fill(dx/sigmax);
+                hp[22]->Fill((double)probxy);
+                hp[24]->Fill((double)npixels);
+                hp[23]->Fill((double)(probxy/npixels));
+
+            }
+
+        }
+
+        fclose(events_file);
+        printf(" low q failures = %d, malformed clusters = %d \n", nbin[4], nbad);	   
+
+        /*
+         * Histograms plotting
+         */
+
+
+        for(int i=0; i<20; ++i) {hp[i]->Fit("gaus");}
+
+        scaley = hp[5]->GetRMS();
+        scalex = hp[15]->GetRMS();   
+        delyavg = (float)hp[20]->GetMean();
+        delysig = (float)hp[20]->GetRMS();    
+        for(int i=0; i<4; ++i) {
+            scaly[i] = hp[6+i]->GetRMS();
+            scalx[i] = hp[16+i]->GetRMS();
+            offsety[i] = hp[1+i]->GetMean();
+            offsetx[i] = hp[11+i]->GetMean();
+        }    
+
+        //create a function with 2 parameters in the range [0.,100.]
+
+        TF1 *cfunc0 = new TF1("chisquare0",chisquare0,0.,100.,3);
+        cfunc0->SetParLimits(1,0.01,50);
+        cfunc0->SetParNames("norm","mean","scale");
+        Double_t cp01 = hp[22]->GetMean()/2.;
+        Double_t cp02 = 0.75;
+        Double_t cp00 = hp[22]->GetEntries()*2./cp01; 
+        cfunc0->SetParameters(cp00,cp01,cp02);
+        hp[22]->Fit("chisquare0");
+        Double_t cpar0[3];
+        cfunc0->GetParameters(cpar0);
+        printf("cpar0 = %lf/%lf/%lf \n", cpar0[0], cpar0[1], cpar0[2]);
+
+
+        TF1 *cfunc1 = new TF1("chisquare1",chisquare1,0.,50.,3);
+        cfunc1->SetParNames("norm","mean","scale");
+        double pixels = hp[24]->GetMean();
+        Double_t cp11 = cpar0[1]/pixels;
+        Double_t cp12 = cpar0[2];
+        Double_t cp10 = hp[23]->GetEntries()*2./cp11; 
+        cfunc1->SetParameters(cp10,cp11,cp12);
+        cfunc1->SetParLimits(1,cp11,cp11);
+        cfunc1->SetParLimits(2,cp12,cp12);
+        hp[23]->Fit("chisquare1");
+
+        //create a function with 4 parameters in the range [-10,50]
+
+        TF1 *vfunc = new TF1("vavilov",vavilov,-10.,50.,4);
+        vfunc->SetParNames("norm","mean","sigma","kappa");
+        Double_t p1 = hp[25]->GetMean();
+        Double_t p2 = 0.1*p1;
+        Double_t p3 = 0.02*p1/20000.;
+        Double_t p0 = hp[25]->GetEntries()*20000./p1; 
+        vfunc->SetParameters(p0,p1,p2,p3);
+        hp[25]->Fit("vavilov");
+        Double_t par[4];
+        vfunc->GetParameters(par);
+
+        //  Create an output filename for this run 
+
+        sprintf(outfile0,"template2d_histos%5.5d.pdf[",ifile);
+        sprintf(outfile1,"template2d_histos%5.5d.pdf",ifile);
+        sprintf(outfile2,"template2d_histos%5.5d.pdf]",ifile);
+        c1->Clear();
+        c1->Print(outfile0);
+        for(int i=0; i<26; ++i) {
+            hp[i]->Draw();
+            c1->Print(outfile1);
+            c1->Clear();
+        }
+        c1->Print(outfile2);
+        c1->Clear();
+        // Write this template entry to the output file
+
+        fprintf(output_file,"%d %8.6f %8.6f %8.6f \n", ifile, -cosy, -cosx, -cosz);
+        rnelec /=float(nevent);
+        fprintf(output_file,"%7.1f %5.1f %5.1f %d %d %d %d \n", rnelec, pixmax, symax, slice->iymin, slice->iymax, slice->jxmin, slice->jxmax);
+        for(int i = 0; i < 2; ++i) {
+            fprintf(output_file,"%e %e %e %e %e \n", slice->xypar[i][0], slice->xypar[i][1], slice->xypar[i][2], 
+                    slice->xypar[i][3], slice->xypar[i][4]);
+        }
+        for(int i = 0; i < 2; ++i) {
+            fprintf(output_file,"%e %e %e %e %e \n", slice->lanpar[i][0], slice->lanpar[i][1], slice->lanpar[i][2], 
+                    slice->lanpar[i][3], slice->lanpar[i][4]);
+        }
+        for(int l=0; l<7; ++l) {
+            for(int k=0; k<7; ++k) {
+                for(int j=0; j<T2XSIZE; ++j) {
+                    fprintf(output_file," %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d \n", 
+                            slice->xytemp[k][l][0][j],slice->xytemp[k][l][1][j],slice->xytemp[k][l][2][j],
+                            slice->xytemp[k][l][3][j],slice->xytemp[k][l][4][j],slice->xytemp[k][l][5][j],
+                            slice->xytemp[k][l][6][j],slice->xytemp[k][l][7][j],slice->xytemp[k][l][8][j],
+                            slice->xytemp[k][l][9][j],slice->xytemp[k][l][10][j],slice->xytemp[k][l][11][j],
+                            slice->xytemp[k][l][12][j],slice->xytemp[k][l][13][j],slice->xytemp[k][l][14][j],
+                            slice->xytemp[k][l][15][j],slice->xytemp[k][l][16][j],slice->xytemp[k][l][17][j],
+                            slice->xytemp[k][l][18][j],slice->xytemp[k][l][19][j],slice->xytemp[k][l][20][j]);
                 }
             }
         }
-secondz: clslny = pzlast-pzfrst;
-         if(clslny < 0.f) clslny = 0.f;
 
-         //  Read in 1D p template information first
-
-         sprintf(infile,"./ptemp_%5.5d.txt",ifile);
-
-         //  Open input file and read header info 
-
-         FILE *ptemp_file = fopen(infile, "r");
-         if (ptemp_file==NULL) {
-             printf("no p-template file %s \n", infile);
-             return 0;
-         }
-
-         fscanf(ptemp_file,"%f  %f  %f", &cosx, &cosy, &cosz);
-         //	   printf("cosx/cosy/cosz = %f/%f/%f \n", cosx, cosy, cosz);
-
-         fscanf(ptemp_file,"%f  %f  %f", &qavg, &sxmax, &pixmaxx);
-         printf("qavg/sxmax/pixmaxx = %f/%f/%f \n", qavg, sxmax, pixmaxx);
-
-
-         sxmaxx = fmax*sxmax;
-
-         for(int i = 3; i > 1; --i) {
-             fscanf(ptemp_file,"%f %f %f %f %f", &xpar[i][0], &xpar[i][1], &xpar[i][2], &xpar[i][3], &xpar[i][4]);
-         }
-
-         for (int k=0; k < 9; ++k) {
-             // Skip labels   
-             get_label(ptemp_file, label, 160);
-             printf("%s\n", label);
-             for(int i=0; i<TXSIZE; i++){
-                 fscanf(ptemp_file, " %f ", &ptemp[k][i]);
-             }
-         }
-         fclose(ptemp_file);
-
-         // Calculate the mean cluster size in pixels
-
-         float ppfrst=0.f, pplast=0.f;
-         for(int i=0; i<TXSIZE; ++i) {
-             for (int k=7; k > -1; --k) {
-                 if(ptemp[k][i] > sxmaxx) {
-                     float dpsig = ptemp[k][i] - ptemp[k+1][i];
-                     float frac;
-                     if(dpsig > 0.f) {
-                         frac = (ptemp[k][i] - sxmaxx)/dpsig;
-                         if(frac > 1.f) frac = 1.f;
-                         if(frac < 0.f) frac = 0.f;
-                     } else {
-                         frac = 0.f;
-                     }
-                     ppfrst = i-(k+frac-4.f)/8.f;
-                     goto firstp;
-                 }
-             }
-         }
-firstp: ;
-        for(int i=TXSIZE-1; i>-1; --i) {
-            for (int k=1; k < 9; ++k) {
-                if(ptemp[k][i] > sxmaxx) {
-                    float dpsig = ptemp[k][i] - ptemp[k-1][i];
-                    float frac;
-                    if(dpsig > 0.f) {
-                        frac = (ptemp[k][i] - sxmaxx)/dpsig;
-                        if(frac > 1.f) frac = 1.f;
-                        if(frac < 0.f) frac = 0.f;
-                    } else {
-                        frac = 0.f;
-                    }
-                    pplast = i-(k-frac-4.f)/8.f;
-                    goto secondp;
-                }
-            }
-        }
-secondp: clslnx = pplast-ppfrst;
-         if(clslnx < 0.f) clslnx = 0.f;
-
-         //  Read in 2D template information
-
-         sprintf(infile,"./zptemp_%5.5d.txt",ifile);
-
-         //  Open input file and read header info 
-
-         FILE *ztemp2d_file = fopen(infile, "r");
-         if (ztemp2d_file==NULL) {
-             printf("no zp-template file %s \n", infile);
-             return 0;
-         }
-
-
-         SiPixelTemplateEntry2D * slice = new SiPixelTemplateEntry2D;
-
-         // Copy info into the slice and reformat from pixelav coordinates to CMSSW local coordinates
-
-         slice->runnum = ifile;
-
-         for(int i = 0; i < 2; ++i) {
-             for(int j=0; j<5; ++j) {slice->xypar[i][j] = xpar[i][j];}
-         }
-
-         slice->clslenx = clslnx;
-         slice->clsleny = clslny;
-
-         fscanf(ztemp2d_file,"%f  %f  %f", &cosx, &cosy, &cosz);
-         //	   printf("cosx/cosy/cosz = %f/%f/%f \n", cosx, cosy, cosz);
-
-         slice->costrk[0] = -cosy;
-         slice->costrk[1] = -cosx;
-         slice->costrk[2] = -cosz;
-         slice->cotalpha = cosy/cosz;
-         slice->cotbeta = cosx/cosz;
-
-         fscanf(ztemp2d_file,"%f %f %d %d %d %d", &qxyavg, &pixmax, &imin, &imax, &jmin, &jmax);
-         printf("qxyavg/pixmax/imin/imax/jmin/jmax = %f/%f/%d/%d/%d/%d \n", qxyavg, pixmax, imin, imax, jmin, jmax);
-
-         slice->qavg = qxyavg;
-         slice->pixmax = pixmax;
-         slice->sxymax = symax;
-
-         slice->iymin = TYSIZE - imax;
-         slice->iymax = TYSIZE - imin;
-         slice->jxmin = TXSIZE - jmax - TXSHIFT;
-         slice->jxmax = TXSIZE - jmin - TXSHIFT;
-
-         for(int i = 1; i > -1; --i) {
-             fscanf(ztemp2d_file,"%f %f %f %f %f", &slice->lanpar[i][0], &slice->lanpar[i][1], &slice->lanpar[i][2], 
-                     &slice->lanpar[i][3], &slice->lanpar[i][4]);
-         }
-
-         for(int l=6; l>-1; --l) {
-             for(int k=6; k>-1; --k) {
-                 // Skip labels   
-                 get_label(ztemp2d_file, label, 160);
-                 printf("%d %s\n", k, label);
-                 for(int j=0; j<TXSHIFT; ++j) {
-                     fscanf(ztemp2d_file,"%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
-                             &dummy[20],&dummy[19],&dummy[18],&dummy[17],&dummy[16],&dummy[15],
-                             &dummy[14],&dummy[13],&dummy[12],&dummy[11],&dummy[10],&dummy[9],
-                             &dummy[8],&dummy[7],&dummy[6],&dummy[5],&dummy[4],&dummy[3],&dummy[2],&dummy[1],&dummy[0]);
-                 }
-                 for(int j=T2XSIZE-1; j>-1; --j) {
-                     fscanf(ztemp2d_file,"%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
-                             &dummy[20],&dummy[19],&dummy[18],&dummy[17],&dummy[16],&dummy[15],
-                             &dummy[14],&dummy[13],&dummy[12],&dummy[11],&dummy[10],&dummy[9],
-                             &dummy[8],&dummy[7],&dummy[6],&dummy[5],&dummy[4],&dummy[3],&dummy[2],&dummy[1],&dummy[0]);
-                     for(int i=0; i<21; ++i) {slice->xytemp[k][l][i][j] = (short int)dummy[i];}
-                 }
-                 for(int j=0; j<TXSHIFT; ++j) {
-                     fscanf(ztemp2d_file,"%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
-                             &dummy[20],&dummy[19],&dummy[18],&dummy[17],&dummy[16],&dummy[15],
-                             &dummy[14],&dummy[13],&dummy[12],&dummy[11],&dummy[10],&dummy[9],
-                             &dummy[8],&dummy[7],&dummy[6],&dummy[5],&dummy[4],&dummy[3],&dummy[2],&dummy[1],&dummy[0]);
-                 }
-             }
-         }
-
-         slice->scalexavg = 1.f;
-         slice->scaleyavg = 1.f;
-
-         fclose(ztemp2d_file);
-
-         //  Create an input filename for this run 
-
-
-         sprintf(infile,"template_events_d%d.out",ifile);
-
-
-
-
-         //  Open input file and read header info 
-
-         FILE *events_file = fopen(infile, "r");
-         if (events_file==NULL) {
-             printf("no pixel data file found: %s \n", infile);
-             return 0;
-         }
-
-         // Read-in a header string first and print it    
-
-         get_label(events_file, header, 80);
-         printf("Header: %s\n", header);
-
-
-         fscanf(events_file,"%f  %f  %f", &ysize, &xsize, &thick);
-         zcen = thick/2.;
-         printf("xsize/ysize/thick = %f/%f/%f \n", xsize, ysize, thick);
-         fpix = false;
-         if(thick > 285.) {fpix = true;}
-
-         nevent=0;
-         nbad = 0;
-
-         if(write_temp_header && ifile==startfile) {
-             fprintf(output_file,"%s", header);
-             printf("Using params: ID=%d NTyx=%d NTxx=%d Dtype=%d Bfield=%.2f Bias Voltage = %.1f temparature = %.0f fluence = %.2f q-scale = %.4f \n",
-                     id, NTyx, NTxx, IDtype, Bfield, Vbias, temp, fluenc, qscale);
-
-
-             fprintf(output_file,"%d %d %4.2f %d %d %d %d %5.1f %5.1f %4.2f %5.3f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %5.1f %f %4.2f %4.2f %4.2f \n",
-                     id,nvers,Bfield,NTy,NTyx,NTxx,IDtype,Vbias, temp,fluenc,qscale,q50,lorwdy,
-                     lorwdx,ysize,xsize,thick,q51,lorbsy,lorbsx,1.5f,1.0f,0.85f);
-         }
-         else {
-             for(int i=0; i<26; ++i) { hp[i]->Reset();}
-         }  
-
-         qperbit = pixmax/(pow(2.,(double)(numbits)-1.));
-         printf("qperbit is %.5f \n", qperbit);
-
-         float rnelec = 0.f;
-
-         ndcol = TYSIZE/2 +1;
-         std::vector<int> ndhit(ndcol, 0);
-
-         // Loop until end of input file 
-
-         while(fscanf(events_file,"%f %f %f %f %f %f %d", &pvec[0], &pvec[1], &pvec[2], &pvec[3], &pvec[4], &pvec[5], &neh) != EOF) {
-
-             // read the input cluster 
-
-             read_cluster(events_file, pixin);
-             ++nevent;
-
-             //	   if(nevent > 100) break;
-
-             // Add noise and analog response to cluster, reformat for flipped barrel coordinate system 
-
-             triplg(vgauss);
-             pixlst.clear();
-             for(int i=0; i<ndcol; ++i) {ndhit[i] = 0;}
-             icol = 0;
-             if(vgauss[1] < 0.) {icol = 1;}
-             for(int j=0; j<TXSIZE; ++j) {
-                 triplg(wgauss);
-                 triplg(xgauss);
-                 triplg(ygauss);
-                 triplg(zgauss);
-                 for(int i=0; i<TYSIZE; ++i) {
-                     bclust[j][i] = false;
-                     qin = (10.*pixin[j][i] + xgauss[i]*noise);
-                     rclust[TXSIZE-1-j][TYSIZE-1-i] = qin;
-                     if(qin < q100*(1.+wgauss[i]*q100_frac)) {
-                         clust[TXSIZE-1-j][TYSIZE-1-i] = 0.;
-                     } else {
-                         idcol = (TYSIZE-1-i+icol)/2;
-                         ++ndhit[idcol];
-                         if(non_linear == 0) {
-                             qin *= (1.+gain_frac*ygauss[i]);
-                             signal = qperbit*((int)((qin + zgauss[i]*readout_noise)/qscale/qperbit) + 0.5);
-                         } else {
-                             adc = (double)((int)(p3+p2*tanh(p0*(qin + vcaloffst)/(7.0*vcal) - p1)));
-                             // The simulated clusters assume that qscale = 1 [no charge scaling here]
-                             //						 signal = ((float)((1.+gain_frac*ygauss[i])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i]*readout_noise)/qscale;		
-                             signal = ((float)((1.+gain_frac*ygauss[i])*(vcal*gain*(adc-ped))) - vcaloffst + zgauss[i]*readout_noise);							 
-                         }	 
-                         clust[TXSIZE-1-j][TYSIZE-1-i] = (1.+vgauss[0]*common_frac)*signal;
-                     }
-                 }
-             }
-
-             // Simulate the second, higher threshold in single dcol hits
-
-             for(int j=0; j<TXSIZE; ++j) {
-                 for(int i=0; i<TYSIZE; ++i) {
-                     if(clust[j][i] > 0.) {
-                         idcol = (i+icol)/2;
-                         if(ndhit[idcol] == 1) {
-                             // Apply higher threshold on single hits in double columns
-                             if(rclust[j][i] < q101*(1.+wgauss[i]*q100_frac)) {
-                                 clust[j][i] = 0.;
-                             }
-                         }
-                     }
-                 }
-             }
-
-
-             // Simulate the seed finding
-
-             qmax = 0.;
-             for(int j=0; j<TXSIZE; ++j) {
-                 for(int i=0; i<TYSIZE; ++i) {
-                     if(clust[j][i] > qmax) {
-                         qmax = clust[j][i];
-                         max.first = j; max.second = i;
-
-                     }
-                 }
-             }
-
-             if(qmax < 1500.) continue;
-
-
-             // Simulate clustering around maximum signal (seed)
-
-
-             pixlst.push_back(max);
-             bclust[max.first][max.second] = true;
-
-             std::vector<std::pair<int, int> > pixlst_copy;
-
-
-
-             numadd = 1;
-             //iterively find all non zero pixels near our seed
-             while(numadd > 0){
-                 //use copy of vector to avoid modifying vector as we loop through it
-                 pixlst_copy = pixlst;
-                 numadd = 0;
-                 for ( auto pixIter = pixlst_copy.begin(); pixIter != pixlst_copy.end(); ++pixIter ) {
-                     //max's are +2 because we are doing <max in the loop
-                     jmin = pixIter->first-1; 
-                     jmax = pixIter->first+2;
-                     imin = pixIter->second-1;
-                     imax = pixIter->second+2;
-                     if(jmin < 0) {jmin = 0;}
-                     if(jmax > TXSIZE) {jmax = TXSIZE;}
-                     if(imin < 0) {imin = 0;}
-                     if(imax > TYSIZE) {imax = TYSIZE;}
-                     for(int j=jmin; j<jmax; ++j) {
-                         for(int i=imin; i<imax; ++i) {
-                             if(clust[j][i] > 0.) {
-                                 if(!bclust[j][i]) {
-                                     bclust[j][i] = true;
-                                     pixel.first = j; pixel.second = i;
-                                     pixlst.push_back(pixel);
-                                     ++numadd;
-                                 }
-                             }
-                         }
-                     }
-                 }
-             }
-
-             //only add pixels we 'found' when clustering to final cluster
-             memset(cluster, 0., sizeof(cluster));
-
-             qclust=0.;
-             imin = TYSIZE;
-             imax = 0;
-             for (auto pixIter = pixlst.begin() ; pixIter != pixlst.end(); ++pixIter ) {
-                 int j = pixIter->first; 
-                 int i = pixIter->second;
-                 cluster[j][i] = clust[j][i];
-                 qclust += clust[j][i];
-                 if(cluster[j][i] > 0.f) {
-                     if(i < imin) imin = i;
-                     if(i > imax) imax = i;
-                 }
-             }
-
-             hp[25]->Fill((double)qclust, 1.);
-
-             rnelec += qclust;
-
-             // Calculate the hit coordinates in the flipped coordinate system 
-
-             yhit = -(pvec[0] + (zcen-pvec[2])*pvec[3]/pvec[5]);
-             xhit = -(pvec[1] + (zcen-pvec[2])*pvec[4]/pvec[5]);
-
-             // Do the template analysis on the cluster 
-
-             cotalpha = pvec[4]/pvec[5];
-             cotbeta = pvec[3]/pvec[5];
-
-             // No double pixels 
-
-             for(int i=0; i<TYSIZE; ++i) {
-                 ydouble[i] = false;
-             }
-
-             for(int j=0; j<TXSIZE; ++j) {
-                 xdouble[j] = false;
-             }
-
-             // No dead columns or module edges
-
-             edgeflagy = 0;
-             edgeflagx = 0;
-
-
-             //        if(fabs(cotbeta) < 2.1) continue;
-             // Do the template analysis on the cluster 
-             SiPixelTemplateReco2D::ClusMatrix clusterPayload{&cluster[0][0], xdouble, ydouble, mrow,mcol};
-             locBx = 1.;
-             if(cotbeta < 0.) locBx = -1.;
-             locBz = locBx;
-             if(cotalpha < 0.) locBz = -locBx;
-
-             //  Sideload this template slice
-
-             templ.sideload(slice, IDtype, locBx, locBz, lorwdy, lorwdx, q50, fbin, xsize, ysize, thick);
-             ierr = PixelTempReco2D(tempID, cotalpha, cotbeta, locBz, locBx, edgeflagy, edgeflagx, clusterPayload, templ, yrec, sigmay, xrec, sigmax, probxy, probQ, qbin, deltay, npixels);
-             if(ierr != 0) {
-                 ++nbad; 
-                 //	      printf("reconstruction failed with error %d \n", ierr);
-             } else {
-                 qb = qbin;
-                 ++nbin[qb];
-                 dy = yrec - (TYSIZE/2)*ysize - yhit;
-                 hp[0]->Fill(dy);
-                 if(sigmay > 0.f) hp[5]->Fill(dy/sigmay);
-                 hp[20]->Fill((double)deltay);
-                 hp[1+qbin]->Fill(dy, 1.);
-                 if(sigmay > 0.f) hp[6+qbin]->Fill(dy/sigmay);
-                 dx = xrec - (TXSIZE/2)*xsize - xhit;
-                 hp[10]->Fill(dx);
-                 if(sigmax > 0.f) hp[15]->Fill(dx/sigmax);
-                 hp[11+qbin]->Fill(dx);
-                 if(sigmax > 0.f) hp[16+qbin]->Fill(dx/sigmax);
-                 hp[22]->Fill((double)probxy);
-                 hp[24]->Fill((double)npixels);
-                 hp[23]->Fill((double)(probxy/npixels));
-
-             }
-
-         }
-
-         fclose(events_file);
-         printf(" low q failures = %d, malformed clusters = %d \n", nbin[4], nbad);	   
-
-         /*
-          * Histograms plotting
-          */
-
-
-         for(int i=0; i<20; ++i) {hp[i]->Fit("gaus");}
-
-         scaley = hp[5]->GetRMS();
-         scalex = hp[15]->GetRMS();   
-         delyavg = (float)hp[20]->GetMean();
-         delysig = (float)hp[20]->GetRMS();    
-         for(int i=0; i<4; ++i) {
-             scaly[i] = hp[6+i]->GetRMS();
-             scalx[i] = hp[16+i]->GetRMS();
-             offsety[i] = hp[1+i]->GetMean();
-             offsetx[i] = hp[11+i]->GetMean();
-         }    
-
-         //create a function with 2 parameters in the range [0.,100.]
-
-         TF1 *cfunc0 = new TF1("chisquare0",chisquare0,0.,100.,3);
-         cfunc0->SetParLimits(1,0.01,50);
-         cfunc0->SetParNames("norm","mean","scale");
-         Double_t cp01 = hp[22]->GetMean()/2.;
-         Double_t cp02 = 0.75;
-         Double_t cp00 = hp[22]->GetEntries()*2./cp01; 
-         cfunc0->SetParameters(cp00,cp01,cp02);
-         hp[22]->Fit("chisquare0");
-         Double_t cpar0[3];
-         cfunc0->GetParameters(cpar0);
-         printf("cpar0 = %lf/%lf/%lf \n", cpar0[0], cpar0[1], cpar0[2]);
-
-
-         TF1 *cfunc1 = new TF1("chisquare1",chisquare1,0.,50.,3);
-         cfunc1->SetParNames("norm","mean","scale");
-         double pixels = hp[24]->GetMean();
-         Double_t cp11 = cpar0[1]/pixels;
-         Double_t cp12 = cpar0[2];
-         Double_t cp10 = hp[23]->GetEntries()*2./cp11; 
-         cfunc1->SetParameters(cp10,cp11,cp12);
-         cfunc1->SetParLimits(1,cp11,cp11);
-         cfunc1->SetParLimits(2,cp12,cp12);
-         hp[23]->Fit("chisquare1");
-
-         //create a function with 4 parameters in the range [-10,50]
-
-         TF1 *vfunc = new TF1("vavilov",vavilov,-10.,50.,4);
-         vfunc->SetParNames("norm","mean","sigma","kappa");
-         Double_t p1 = hp[25]->GetMean();
-         Double_t p2 = 0.1*p1;
-         Double_t p3 = 0.02*p1/20000.;
-         Double_t p0 = hp[25]->GetEntries()*20000./p1; 
-         vfunc->SetParameters(p0,p1,p2,p3);
-         hp[25]->Fit("vavilov");
-         Double_t par[4];
-         vfunc->GetParameters(par);
-
-         //  Create an output filename for this run 
-
-         sprintf(outfile0,"template2d_histos%5.5d.pdf[",ifile);
-         sprintf(outfile1,"template2d_histos%5.5d.pdf",ifile);
-         sprintf(outfile2,"template2d_histos%5.5d.pdf]",ifile);
-         c1->Clear();
-         c1->Print(outfile0);
-         for(int i=0; i<26; ++i) {
-             hp[i]->Draw();
-             c1->Print(outfile1);
-             c1->Clear();
-         }
-         c1->Print(outfile2);
-         c1->Clear();
-         // Write this template entry to the output file
-
-         fprintf(output_file,"%d %8.6f %8.6f %8.6f \n", ifile, -cosy, -cosx, -cosz);
-         rnelec /=float(nevent);
-         fprintf(output_file,"%7.1f %5.1f %5.1f %d %d %d %d \n", rnelec, pixmax, symax, slice->iymin, slice->iymax, slice->jxmin, slice->jxmax);
-         for(int i = 0; i < 2; ++i) {
-             fprintf(output_file,"%e %e %e %e %e \n", slice->xypar[i][0], slice->xypar[i][1], slice->xypar[i][2], 
-                     slice->xypar[i][3], slice->xypar[i][4]);
-         }
-         for(int i = 0; i < 2; ++i) {
-             fprintf(output_file,"%e %e %e %e %e \n", slice->lanpar[i][0], slice->lanpar[i][1], slice->lanpar[i][2], 
-                     slice->lanpar[i][3], slice->lanpar[i][4]);
-         }
-         for(int l=0; l<7; ++l) {
-             for(int k=0; k<7; ++k) {
-                 for(int j=0; j<T2XSIZE; ++j) {
-                     fprintf(output_file," %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d \n", 
-                             slice->xytemp[k][l][0][j],slice->xytemp[k][l][1][j],slice->xytemp[k][l][2][j],
-                             slice->xytemp[k][l][3][j],slice->xytemp[k][l][4][j],slice->xytemp[k][l][5][j],
-                             slice->xytemp[k][l][6][j],slice->xytemp[k][l][7][j],slice->xytemp[k][l][8][j],
-                             slice->xytemp[k][l][9][j],slice->xytemp[k][l][10][j],slice->xytemp[k][l][11][j],
-                             slice->xytemp[k][l][12][j],slice->xytemp[k][l][13][j],slice->xytemp[k][l][14][j],
-                             slice->xytemp[k][l][15][j],slice->xytemp[k][l][16][j],slice->xytemp[k][l][17][j],
-                             slice->xytemp[k][l][18][j],slice->xytemp[k][l][19][j],slice->xytemp[k][l][20][j]);
-                 }
-             }
-         }
-
-         fprintf(output_file,"%7.5lf %7.5lf %3.1f %3.1f %3.1f %3.1f %3.1f %3.1f %3.1f %3.1f\n", cp11,cp12,offsetx[0],offsetx[1],
-                 offsetx[2],offsetx[3],offsety[0],offsety[1],offsety[2],offsety[3]);
-         fprintf(output_file,"%3.1f %3.1f %3.1lf %3.1lf %6.3lf %6.3f %6.3f %4.2f %4.2f %3.1f\n", clslny,clslnx,par[1],par[2],par[3],scalex,scaley,delyavg,delysig,1.);
-         fprintf(output_file,"%4.2f %4.2f %4.2f %4.2f %4.2f %4.2f %4.2f %4.2f %3.1f %3.1f\n", scalx[0],scalx[1],scalx[2],scalx[3],scaly[0],scaly[1],scaly[2],scaly[3],1.,qavg);
+        fprintf(output_file,"%7.5lf %7.5lf %3.1f %3.1f %3.1f %3.1f %3.1f %3.1f %3.1f %3.1f\n", cp11,cp12,offsetx[0],offsetx[1],
+                offsetx[2],offsetx[3],offsety[0],offsety[1],offsety[2],offsety[3]);
+        fprintf(output_file,"%3.1f %3.1f %3.1lf %3.1lf %6.3lf %6.3f %6.3f %4.2f %4.2f %3.1f\n", clslny,clslnx,par[1],par[2],par[3],scalex,scaley,delyavg,delysig,1.);
+        fprintf(output_file,"%4.2f %4.2f %4.2f %4.2f %4.2f %4.2f %4.2f %4.2f %3.1f %3.1f\n", scalx[0],scalx[1],scalx[2],scalx[3],scaly[0],scaly[1],scaly[2],scaly[3],1.,qavg);
     }
     // Close output file   
 
