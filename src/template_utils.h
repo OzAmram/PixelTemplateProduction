@@ -213,6 +213,15 @@ void read_cluster(FILE *ifp, float pixin[TXSIZE][TYSIZE]){
     }
     return;
 }
+void print_cluster(float **clust){
+    for (int i=0; i < TXSIZE; i++) {
+        for(int  j=0; j < TYSIZE; j++){
+
+            printf("%.1f ", clust[i][j]);
+        }
+        printf("\n");
+    }
+}
 
 //see https://stackoverflow.com/questions/936687/how-do-i-declare-a-2d-array-in-c-using-new
 float** setup_2d_array(int size1, int size2){
@@ -231,7 +240,6 @@ float** setup_2d_array(int size1, int size2){
 //return 4 parameters for template output
 //first two are always mean and std dev
 //second two are fitted mean and sigma of gaussian if fit went well
-//fit must have already been done
 std::vector<float> get_gaussian_pars(TH1F *h, double min_std = 3.){
     std::vector<float> pars;
     double h_mean = h->GetMean();

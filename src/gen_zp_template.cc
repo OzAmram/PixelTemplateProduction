@@ -378,10 +378,10 @@ int main(int argc, char *argv[])
         memset(nelec, 0., sizeof(nelec));
         memset(qbins, 0., sizeof(qbins));
         memset(qbin_merge, 0., sizeof(qbin_merge));
-        memset(xwidth, 0., sizeof(xwidth));
-        memset(xstart, 0., sizeof(xstart));
-        memset(ywidth, 0., sizeof(ywidth));
-        memset(ystart, 0., sizeof(ystart));
+        memset(xwidth, 0, sizeof(xwidth));
+        memset(xstart, 0, sizeof(xstart));
+        memset(ywidth, 0, sizeof(ywidth));
+        memset(ystart, 0, sizeof(ystart));
         zero_3d_array(cluster, nevents, TXSIZE, TYSIZE);
         zero_2d_array(xsum1, nevents, TXSIZE);
         zero_2d_array(xsum2, nevents, TXSIZE);
@@ -453,6 +453,7 @@ int main(int argc, char *argv[])
         fscanf(ptemp_file,"%f  %f  %f", &qavg_raw, &sxmax, &pixmaxx);
         printf("qavg_raw/sxmax/pixmaxx = %f/%f/%f \n", qavg_raw, sxmax, pixmaxx);
 
+        pixmax = std::max(pixmaxx, pixmaxy);
 
         sxmaxx = fmax*sxmax;
 
@@ -679,8 +680,8 @@ int main(int argc, char *argv[])
             for (auto pixIter = pixlst.begin() ; pixIter != pixlst.end(); ++pixIter ) {
                 int i = pixIter->first; 
                 int j = pixIter->second;
-                cluster[n][i][j] = clust[i][j];
                 qmeas += clust[i][j];
+                cluster[n][i][j] = clust[i][j];
                 npix[n] += 1.;
             }
             qtotal[n] = qmeas;
@@ -828,8 +829,10 @@ int main(int argc, char *argv[])
             memset(ysum, 0., sizeof(ysum));
             for(int i=0; i<TXSIZE; i++){
                 for(int j=0; j<TYSIZE; j++){
-                    xsum[i] += cluster[n][i][j];
-                    ysum[j] += cluster[n][i][j];
+                    //smooth cluster charge by applying cap of pixmax
+                    float q = std::min(cluster[n][i][j], pixmax);
+                    xsum[i] += q;
+                    ysum[j] += q;
                 }
             }
 
@@ -842,38 +845,38 @@ int main(int argc, char *argv[])
             int xw1(0), xw2(0), yw1(0), yw2(0);
             int xc1(0), xc2(0), yc1(0), yc2(0);
 
-            for(int j=0; j<TXSIZE; j++){
-                if(xsum[j] >0.){
-                    if(xstart[n]==0) xstart[n] = j;
+            for(int i=0; i<TXSIZE; i++){
+                if(xsum[i] >0.){
+                    if(xstart[n]==0) xstart[n] = i;
                     xwidth[n]++;
                 }
             }
-            for(int i=0; i<TYSIZE; i++){
-                if(ysum[i] >0.){
-                    if(ystart[n]==0) ystart[n] = i;
+            for(int j=0; j<TYSIZE; j++){
+                if(ysum[j] >0.){
+                    if(ystart[n]==0) ystart[n] = j;
                     ywidth[n]++;
                 }
             }
 
 
             //do double col version
-            for(int j=0; j<TXSIZE/2; j++){
-                if(xsum1[n][j] >0.){
-                    if(xc1 == 0) xc1 = j;
+            for(int i=0; i<TXSIZE/2; i++){
+                if(xsum1[n][i] >0.){
+                    if(xc1 == 0) xc1 = i;
                     xw1++;
                 }
-                if(xsum2[n][j] >0.){
-                    if(xc2 == 0) xc2 = j;
+                if(xsum2[n][i] >0.){
+                    if(xc2 == 0) xc2 = i;
                     xw2++;
                 }
             }
-            for(int i=0; i<TYSIZE/2; i++){
-                if(ysum1[n][i] >0.){
-                    if(yc1 == 0) yc1 = i;
+            for(int j=0; j<TYSIZE/2; j++){
+                if(ysum1[n][j] >0.){
+                    if(yc1 == 0) yc1 = j;
                     yw1++;
                 }
-                if(ysum2[n][i] >0.){
-                    if(yc2 == 0) yc2 = i;
+                if(ysum2[n][j] >0.){
+                    if(yc2 == 0) yc2 = j;
                     yw2++;
                 }
             }
@@ -881,9 +884,7 @@ int main(int argc, char *argv[])
 
 
             //compute front and back signal fractions
-            //Fraction of charge loss between front and back, for
-            //non-irradiated sensor should average to zero but for rad.
-            //damaged you lose charge on one side due to trapping
+            //Fraction of charge loss between front and back
             int xlast = xstart[n] + xwidth[n] -1;
             int ylast = ystart[n] + ywidth[n] -1;
 
@@ -1039,7 +1040,6 @@ int main(int argc, char *argv[])
         slice->cotalpha = cosx/cosz;
         slice->cotbeta = cosy/cosz;
 
-        pixmax = std::max(pixmaxx, pixmaxy);
         printf("qavg/sxmax/pixmax = %f/%f/%f \n", qavg, sxmax, pixmax);
 
         slice->qavg = qavg;
@@ -1093,12 +1093,17 @@ int main(int argc, char *argv[])
 
             float xsum[TXSIZE], ysum[TYSIZE];
 
+            //print_cluster(cluster[n]);
+
             memset(xsum, 0., sizeof(xsum));
             memset(ysum, 0., sizeof(ysum));
-            for(int j=0; j<TXSIZE; j++){
-                for(int i=0; i<TYSIZE; i++){
-                    xsum[j] += cluster[n][j][i];
-                    ysum[i] += cluster[n][j][i];
+            for(int i=0; i<TXSIZE; i++){
+                for(int j=0; j<TYSIZE; j++){
+                    //smooth cluster charge
+                    //float q = std::min(cluster[n][i][j], pixmax);
+                    float q = cluster[n][i][j];
+                    xsum[i] += q;
+                    ysum[j] += q;
                 }
             }
             int xend = xstart[n] + xwidth[n] -1;
@@ -1136,6 +1141,7 @@ int main(int argc, char *argv[])
                     xsize, isBigPix, isBigPix,
                     eff_charge_cut_lowX, eff_charge_cut_highX,
                     size_cutX) - lorbsx;
+
             float yrec_gen = SiPixelUtils::generic_position_formula(ywidth[n], Q_f_y, Q_l_y, e_f_y, e_l_y,
                     lorwdy, thick, cotbeta,
                     ysize, isBigPix, isBigPix,
@@ -1151,12 +1157,17 @@ int main(int argc, char *argv[])
             float dx_gen = xrec_gen - (TXSIZE/2.)*xsize - xhit[n];
             float dy_gen = yrec_gen - (TYSIZE/2.)*ysize - yhit[n];
 
+
             if(ywidth[n] > 1){
+                //printf("Y: dy %.1f Size %i Q %.0f %.0f e %.1f %.1f lordwy %.2f cotbeta %.2f lorbsy %.2f \n",
+                    //dy_gen, ywidth[n], Q_f_y, Q_l_y, e_f_y, e_l_y, lorwdy, cotbeta, lorbsy);
                 hp[y_generic_idx]->Fill(dy_gen);
                 hp[y_generic_idx+1 +qbins[n]]->Fill(dy_gen);
             }
 
             if(xwidth[n] > 1){
+                //printf("X: xgeneric %.1f dx %.1f Size %i Q %.0f %.0f e %.1f %.1f lordwx %.2f cotalpha %.2f lorbsx %.2f \n",
+                    //xrec_gen, dx_gen, xwidth[n], Q_f_x, Q_l_x, e_f_x, e_l_x, lorwdx, cotalpha, lorbsx);
                 hp[x_generic_idx]->Fill(dx_gen);
                 hp[x_generic_idx+1 +qbins[n]]->Fill(dx_gen);
             }
@@ -1360,7 +1371,7 @@ int main(int argc, char *argv[])
         //
         fprintf(temp_output_file, "%i %8.6f %8.6f %8.6f \n", ifile, slice->costrk[0], slice->costrk[1], slice->costrk[2]);
 
-        fprintf(temp_output_file, "%.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f \n",
+        fprintf(temp_output_file, "%.1f %.1f %.1f %.1f %.1f %.1f %.1f %.1f \n",
                 qavg, pixmax, symax, dyone, syone, sxmax, dxone, sxone);
         //grab 30th smallest charge (0.1%)
         auto it = std::next(qmsort.begin(), 29);
@@ -1369,7 +1380,7 @@ int main(int argc, char *argv[])
         it = std::next(qmsort.begin(), 59);
         float qmin60 = *it;
 
-        fprintf(temp_output_file, "%.2f %.2f %.2f %.2f %.2f %.2f %.2f \n",
+        fprintf(temp_output_file, "%.1f %.1f %.1f %.1f %.1f %.2f %.2f \n",
                 dytwo, sytwo, dxtwo, sxtwo, qmin30, clslny, clslnx );
 
         //y charge variance fit
@@ -1461,7 +1472,7 @@ int main(int argc, char *argv[])
 
         //y generic reisduals info
         for(int i=0; i<4; i++){
-            auto pars = get_gaussian_pars(hp[y_generic_idx +1 +i]);
+            auto pars = get_gaussian_pars(hp[y_generic_idx +1 +i], 5.);
             for(int j=0; j<4; j++){
                 fprintf(temp_output_file, "%9.1f ", pars[j]);
             }
@@ -1470,7 +1481,7 @@ int main(int argc, char *argv[])
 
         //x generic reisduals info
         for(int i=0; i<4; i++){
-            auto pars = get_gaussian_pars(hp[x_generic_idx +1 +i]);
+            auto pars = get_gaussian_pars(hp[x_generic_idx +1 +i], 5.);
             for(int j=0; j<4; j++){
                 fprintf(temp_output_file, "%9.1f ", pars[j]);
             }
@@ -1499,7 +1510,7 @@ int main(int argc, char *argv[])
         auto vav_pars1 = get_vavilov_pars(hp[charge_idx + 1]);
         float avg_qratio = hp[charge_idx + 7]->GetMean();
 
-        fprintf(temp_output_file, "%8.5f %8.5f %8.5f %8.5f %8.5f %8.5f \n", 
+        fprintf(temp_output_file, "%8.1f %8.1f %8.1f %8.5f %8.5f %8.1f \n", 
                 qmin60, vav_pars1[0], vav_pars1[1], vav_pars1[2], avg_qratio, 1.0  );
 
 
@@ -1522,8 +1533,8 @@ int main(int argc, char *argv[])
 
         //x and y generic reisduals info
         for(int i=0; i<4; i++){
-            auto y_pars = get_gaussian_pars(hp[y_generic_idx +1 +i]);
-            auto x_pars = get_gaussian_pars(hp[x_generic_idx +1 +i]);
+            auto y_pars = get_gaussian_pars(hp[y_generic_idx +1 +i], 5.);
+            auto x_pars = get_gaussian_pars(hp[x_generic_idx +1 +i], 5.);
             fprintf(generr_output_file, "%9.1f %9.1f %9.1f %9.1f \n", 
                     y_pars[0], y_pars[1], x_pars[0], x_pars[1]);
         }
