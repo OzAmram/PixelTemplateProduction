@@ -7,7 +7,9 @@
 # Note that first two steps (gen_xy_template and gen_xy_template2d) can actually be run in parallel 
 # So if you are pressed for time you can do that
 
-exec_dir=../bin/
+# Takes one argument, which is the location of the directory with executables in it 
+
+exec_dir=$1
 
 ./${exec_dir}gen_xy_template
 ./${exec_dir}gen_xy_template2d

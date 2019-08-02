@@ -130,8 +130,8 @@ int main(int argc, char *argv[])
     char line[160];
     fgets(line, 160, config_file);
 
-    int num_read = sscanf(line,"%d %d %f %f %f %f %f %f %f %d %f %s", &startfile, &numrun, &noise, &q100, 
-            &q101, &q100_frac, &common_frac, &gain_frac, &readout_noise, &fe_model_type, &qscale, &extra[0]);
+    int num_read = sscanf(line,"%d %d %f %f %f %f %f %f %f %d %s", &startfile, &numrun, &noise, &q100, 
+            &q101, &q100_frac, &common_frac, &gain_frac, &readout_noise, &fe_model_type, &extra[0]);
     printf("processing %d files starting from %d, noise = %f, threshold0 = %f, threshold1 = %f," 
             "rms threshold frac = %f, common_frac = %f, gain fraction = %f, readout noise = %f, front end model type = %d, extra = %s \n", 
             numrun, startfile, noise, q100, q101, q100_frac, common_frac, gain_frac, readout_noise, fe_model_type, extra);
@@ -567,6 +567,10 @@ int main(int argc, char *argv[])
             memset(clust, 0., sizeof(clust));
 
             // Add noise and analog response to cluster, reformat for flipped barrel coordinate system 
+            //
+
+            //saw random numbers used so can use again for double sized version
+            float wgraw[TXSIZE][TYSIZE], xgraw[TXSIZE][TYSIZE], ygraw[TXSIZE][TYSIZE], zgraw[TXSIZE][TYSIZE];
 
 
             triplg(vgauss);
@@ -575,14 +579,19 @@ int main(int argc, char *argv[])
             for(int i=0; i<ndcol; ++i) {ndhit[i] = 0;}
             int icol = 0;
             if(vgauss[1] < 0.) {icol = 1;}
+            
+            //do main cluster
             for(int j=0; j<TXSIZE; ++j) {
                 triplg(wgauss);
                 triplg(xgauss);
                 triplg(ygauss);
                 triplg(zgauss);
-
-                //do main cluster
                 for(int i=0; i<TYSIZE; ++i) {
+                    wgraw[i][j] = wgauss[i];
+                    xgraw[i][j] = xgauss[i];
+                    ygraw[i][j] = ygauss[i];
+                    zgraw[i][j] = zgauss[i];
+
                     sigraw[TXSIZE-1-j][TYSIZE-1-i] = rten * pixin[j][i];
                     if(rten * pixin[j][i] > 200.) 
                         qin = (rten*pixin[j][i] + xgauss[i]*noise);
@@ -709,16 +718,16 @@ int main(int argc, char *argv[])
 
                     //sigraw padded with extra 0's to allow overflow
                     qin = (sigraw[j1][i] + sigraw[j1+1][i]);
-                    qin += xgauss[i]*noise;
-                    if(qin > q101*(1.+wgauss[i]*q100_frac)) {
-                        signal = frontEnd.apply_model( qin, ygauss[i], zgauss[i] );
+                    qin += xgraw[j1][i]*noise;
+                    if(qin > q100*(1.+wgraw[j1][i]*q100_frac)) {
+                        signal = frontEnd.apply_model( qin, ygraw[j1][i], zgraw[j1][i] );
                         xsum1[n][j] += qsmear[n]*signal;
                     }
 
                     qin = (sigraw[j2][i] + sigraw[j2+1][i]);
-                    qin += xgauss[i]*noise;
-                    if(qin > q101*(1.+wgauss[i]*q100_frac)) {
-                        signal = frontEnd.apply_model( qin, ygauss[i], zgauss[i] );
+                    qin += xgraw[j1][i]*noise;
+                    if(qin > q100*(1.+wgraw[j2][i]*q100_frac)) {
+                        signal = frontEnd.apply_model( qin, ygraw[j2][i], zgraw[j2][i] );
                         xsum2[n][j] += qsmear[n]*signal;
                     }
                 }
@@ -728,28 +737,27 @@ int main(int argc, char *argv[])
             //do y double col projections 
             for(int i=0; i<TYSIZE/2; ++i) {
                 ysum1[n][i] = ysum2[n][i] = 0.;
+                int i1 = 2*i;
+                int i2 = 2*i+1;
                 for(int j=0; j<TXSIZE; j++){
-                    int i1 = 2*i;
-                    int i2 = 2*i+1;
 
                     //sigraw padded with extra 0's to allow overflow
                     qin = (sigraw[j][i1] + sigraw[j][i1+1]);
-                    qin += xgauss[i1]*noise;
-                    if(qin > q101*(1.+wgauss[i1]*q100_frac)) {
-                        signal = frontEnd.apply_model( qin, ygauss[i], zgauss[i] );
+                    qin += xgraw[j][i1]*noise;
+                    if(qin > q100*(1.+wgraw[j][i1]*q100_frac)) {
+                        signal = frontEnd.apply_model( qin, ygraw[j][i1], zgraw[j][i1] );
                         ysum1[n][i] += qsmear[n]*signal;
                     }
 
                     //sigraw padded with extra 0's to allow overflow
                     qin = (sigraw[j][i2] + sigraw[j][i2+1]);
-                    qin += xgauss[i2]*noise;
-                    if(qin > q101*(1.+wgauss[i2]*q100_frac)) {
-                        signal = frontEnd.apply_model( qin, ygauss[i], zgauss[i] );
+                    qin += xgraw[j][i2]*noise;
+                    if(qin > q100*(1.+wgraw[j][i2]*q100_frac)) {
+                        signal = frontEnd.apply_model( qin, ygraw[j][i2], zgraw[j][i2] );
                         ysum2[n][i] += qsmear[n]*signal;
                     }
                 }
             }
-
 
         }
 
@@ -830,7 +838,8 @@ int main(int argc, char *argv[])
             for(int i=0; i<TXSIZE; i++){
                 for(int j=0; j<TYSIZE; j++){
                     //smooth cluster charge by applying cap of pixmax
-                    float q = std::min(cluster[n][i][j], pixmax);
+                    //float q = std::min(cluster[n][i][j], pixmax);
+                    float q = cluster[n][i][j];
                     xsum[i] += q;
                     ysum[j] += q;
                 }
@@ -976,7 +985,7 @@ int main(int argc, char *argv[])
 
         if(nxone <= 10){
             dxone=lorbsx;
-            sxone = 2.*xsize/sqrt(12);
+            sxone =xsize/sqrt(12);
         }
         else{
             dxone /= float(nxone);
@@ -987,7 +996,7 @@ int main(int argc, char *argv[])
 
         if(nxtwo <= 10){
             dxtwo=lorbsx;
-            sxtwo = xsize/sqrt(12);
+            sxtwo = 2.0*xsize/sqrt(12);
         }
         else{
             dxtwo /= float(nxtwo);
@@ -1135,15 +1144,17 @@ int main(int argc, char *argv[])
             float size_cutX = 3.0;
             float size_cutY = 3.0;
 
+            //lorentz widths are passed with a negative sign to get combination
+            //with the sign of angle correct (we want to 'add' them) 
 
             float xrec_gen = SiPixelUtils::generic_position_formula(xwidth[n], Q_f_x, Q_l_x, e_f_x, e_l_x,
-                    lorwdx, thick, cotalpha,
+                    -lorwdx, thick, cotalpha,
                     xsize, isBigPix, isBigPix,
                     eff_charge_cut_lowX, eff_charge_cut_highX,
                     size_cutX) - lorbsx;
 
             float yrec_gen = SiPixelUtils::generic_position_formula(ywidth[n], Q_f_y, Q_l_y, e_f_y, e_l_y,
-                    lorwdy, thick, cotbeta,
+                    -lorwdy, thick, cotbeta,
                     ysize, isBigPix, isBigPix,
                     eff_charge_cut_lowY, eff_charge_cut_highY,
                     size_cutY) - lorbsy;

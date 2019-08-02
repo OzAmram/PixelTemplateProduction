@@ -26,13 +26,13 @@ All of the source code is in the src/ directory which contains a Makefile. So yo
 
 There are two simple bash scripts that run the necessary executables to make templates: **make\_1d\_templates.sh** and **make\_2d\_templates.sh**. 
 
-They should be run inside a directory containing pixelav events and a config file named `pix_2t.proc`. 
+They should be run inside a directory containing pixelav events and a config file named `pix_2t.proc`. They take 1 argument, which is the location of the bin/ directory. 
 
 Many files are produced when making templates but for the 1d production the real output is one template file named `template_summary_zpXXXX.out`and one gen errors file named `generror_summary_zpXXXX.out`. For 2d production it is one 2d template file named `template_summary2D_zpXXXX.out`. (The XXXX will be the starting file number in your config). 
 
 The format `pix_2t.proc` is as follows:
 
-> start\_file nfiles noise thresh1 thresh2 thresh1\_noise_frac common\_noise\_frac gain\_noise\_frac readout\_noise frontend\_type charge\_scale
+> start\_file nfiles noise thresh1 thresh2 thresh1\_noise_frac common\_noise\_frac gain\_noise\_frac readout\_noise frontend\_type
 
 > use\_l1\_offset write\_header
 
@@ -40,6 +40,7 @@ The format `pix_2t.proc` is as follows:
 > id NTy NTyx NTxx DType Bfield VBias temp fluenc qscale 
 
 Note that NTy is not used by the 2D templates so its value doesn't matter, but to keep the format consistent something must be there. 
+Extra parameters on any of the lines will be ignored. 
 
 An example config for 1D barrel templates is: 
 

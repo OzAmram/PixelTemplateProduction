@@ -100,8 +100,8 @@ int main(int argc, char *argv[])
     char line[160];
     fgets(line, 160, config_file);
 
-    int num_read = sscanf(line,"%d %d %f %f %f %f %f %f %f %d %f %s", &startfile, &numrun, &noise, &q100, 
-            &q101, &q100_frac, &common_frac, &gain_frac, &readout_noise, &fe_model_type, &qscale, &extra[0]);
+    int num_read = sscanf(line,"%d %d %f %f %f %f %f %f %f %d %s", &startfile, &numrun, &noise, &q100, 
+            &q101, &q100_frac, &common_frac, &gain_frac, &readout_noise, &fe_model_type, &extra[0]);
     printf("processing %d files starting from %d, noise = %f, threshold0 = %f, threshold1 = %f," 
             "rms threshold frac = %f, common_frac = %f, gain fraction = %f, readout noise = %f, front end model type = %d, extra = %s \n", 
             numrun, startfile, noise, q100, q101, q100_frac, common_frac, gain_frac, readout_noise, fe_model_type, extra);

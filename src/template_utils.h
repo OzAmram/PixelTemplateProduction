@@ -393,8 +393,8 @@ int triplg(std::vector<float>& x)
     static int fcall = -1;
 
 #ifdef TEMPL_DEBUG
-    static int lux = 2;
-    static int seed = 1234;
+    static int lux = 3;
+    static int seed = 1234567;
     static int k1=0;
     static int k2=0;
     static float rlux_out[TYTEN];
