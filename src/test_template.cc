@@ -47,15 +47,6 @@ int main(int argc, char *argv[])
     double qpixels, qfrac;
     static int iyd, ixd, speed;	
     static float q100, q101, q50, q10, qmax; 
-//     const double gain = 3.19;
-//     const double ped = 16.46;
-//     const double p0 = 0.01218;
-//     const double p1 = 0.711;
-//     const double p2 = 203.;
-//     const double p3 = 148.;	
-//     static double vcal = 47.;	
-//     static double vcaloffst = 60.;
-
 
     float sigtmp, qin, yfrac, xfrac;
     static char infile[80], header[80], c, outfile0[80], outfile1[80], outfile2[80];
@@ -557,7 +548,9 @@ int main(int argc, char *argv[])
         if(cotbeta < 0.) locBx = -1.;
         locBz = locBx;
         if(cotalpha < 0.) locBz = -locBx;
-        ierr = PixelTempReco1D(ID, cotalpha, cotbeta, locBz, locBx, clusterPayload, templ, yrec, sigmay, proby, xrec, sigmax, probx, qbin, speed, probQ);		 
+	std::cout << "cotalpha " << cotalpha << " cotbeta " << cotbeta << " Bz " << locBz << " Bx "<< locBx << std::endl;
+	ierr = PixelTempReco1D(ID, cotalpha, cotbeta, locBz, locBx,  clusterPayload, templ, yrec, sigmay, proby, xrec, sigmax, probx,  qbin, speed, probQ);
+	std::cout << " ierr " << ierr << std::endl;
         if(ierr != 0) {
             ++nbad; ++nb[etabin]; bade +=weight;
             printf("reconstruction failed with error %d \n", ierr);
