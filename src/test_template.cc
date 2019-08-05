@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
     int mrow = TXSIZE, mcol = TYSIZE;
     static float thick, xsize, ysize, noise, zcen, xcmssw, ycmssw, sxcmssw, sycmssw, gain_frac, q100_frac, common_frac, readout_noise, qscale, thrseed;
     static float xhit, yhit, xrec, yrec, sigmax, sigmay, probx, proby, signal, cotalpha, cotbeta, qclust, locBz, locBx, probxy, probQ, xclust, yclust;  
-    static int ndata, nfile, neh, nevent, fileNum, nbad, non_linear, icol, ndcol, layer, nclust; 
+    static int ndata, nfile, neh, nevent, fileNum, nbad, frontend_type, icol, ndcol, layer, nclust; 
     static vector<int> nbin(5,0);
     float zvtx, zdet;
     int izdet;
@@ -67,21 +67,32 @@ int main(int argc, char *argv[])
 
     //  Read which data and inputs to use (use c file i/o which is much faster than c++ i/o) 
 
-    ifp = fopen("q_dist_2t.txt", "r");
+    ifp = fopen("test_params.txt", "r");
     if (ifp==NULL) {
         printf("no pixel initialization file found \n");
         return 0;
     }
 
 
-    fscanf(ifp,"%d %d %f %f %f %f %f %f %f %d", &ndata, &nfile, &noise, &q100, &q101, &q100_frac, &common_frac, &gain_frac, &readout_noise, &non_linear);
+    fscanf(ifp,"%d %f %f %f %f %f %f %f %d", &nfile, &noise, &q100, &q101, &q100_frac, &common_frac, &gain_frac, &readout_noise, &frontend_type);
     fclose(ifp);
-    printf("data file %d, mc file %d noise = %f, threshold0 = %f, threshold1 = %f, rms threshold frac = %f, common_frac = %f, gain fraction = %f, readout noise = %f, nonlinear_resp = %d \n", ndata, nfile, noise, q100, q101, q100_frac, common_frac, gain_frac, readout_noise, non_linear);
+    printf("template events file %d noise = %f, threshold0 = %f, threshold1 = %f, rms threshold frac = %f, common_frac = %f, gain fraction = %f, readout noise = %f, nonlinear_resp = %d \n", 
+            nfile, noise, q100, q101, q100_frac, common_frac, gain_frac, readout_noise, frontend_type);
+
+
+    int use_l1_offset;
+    printf("Template file number %i \n", fileNum);
+    fscanf(ifp, "%d %d", &fileNum, &use_l1_offset);
 
     FrontEndModel frontEnd;
-    frontEnd.fe_type       = non_linear;
+    frontEnd.fe_type       = use_l1_offset;
     frontEnd.gain_frac     = gain_frac;
     frontEnd.readout_noise = readout_noise;
+    if(use_l1_offset) {
+        printf("using L1 parameters \n");
+        frontEnd.vcal = 50.;	
+        frontEnd.vcaloffst = 670.;
+    }
 
     //  Calculate 50% of threshold in q units and enc noise in adc units
 
@@ -275,15 +286,6 @@ int main(int argc, char *argv[])
 
     // Decide if this file corresponds to a CMSSW run 
 
-       printf("Enter file number of Template and layer number [=1 changes vcal] \n");
-
-       scanf("%d %d", &fileNum, &layer);
-
-       if(layer == 1) {
-       printf("using L1 parameters \n");
-       frontEnd.vcal = 50.;
-       frontEnd.vcaloffst = 670.;
-       } 
 
 
     if(fpix) {printf("fileNum = %d, fpix \n", fileNum);} else {printf("fileNum = %d, barrel, vcal = %lf, offset = %lf \n", fileNum, frontEnd.vcal, frontEnd.vcaloffst);}

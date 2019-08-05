@@ -64,4 +64,14 @@ An example config for 1D barrel templates is:
 
 **compare\_templates**: Takes in the file names of two templates and checks that all numerical values are the same within some threshold (default is 10^-5). It lists any discrepancies with the line number for investigation. Useful for testing changes. 
 
-**test_template**: Uses pre-made 1D templates to run local version of CMSSW 1D template reco and makes various plots. Useful for test a new set of templates. 
+**test_template**: Uses pre-made 1D templates to run local version of CMSSW 1D template reco and makes various plots. Useful for testing a new set of 1D templates. 
+Should be run a directory with template\_events, generror and template\_summary files. Also takes a config called `test_params.txt`.
+The first line of the config is the same as the `pix_2t.proc` but without the
+nfiles parameter (because it will only use one file). The second line has two
+parameters, the first is the file number of the template (the XXXXX) and the
+second is the `use_l1_offset` parameter.
+
+An example `test_params.txt` config is:
+> 58606 150. 1600. 1600. 0.073 0.080 0.08 350. 1 1.000
+> 58401 0
+
