@@ -73,5 +73,6 @@ second is the `use_l1_offset` parameter.
 
 An example `test_params.txt` config is:
 > 58606 150. 1600. 1600. 0.073 0.080 0.08 350. 1 1.000
+
 > 58401 0
 
