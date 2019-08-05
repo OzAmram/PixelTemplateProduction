@@ -105,6 +105,8 @@ struct FrontEndModel
 
 };
 
+
+
 // Calculates something like a full-width half max for the cluster
 // length
 template <typename TwoD> //template to allow arrays of different sizes
@@ -213,7 +215,9 @@ void read_cluster(FILE *ifp, float pixin[TXSIZE][TYSIZE]){
     }
     return;
 }
-void print_cluster(float **clust){
+
+template <typename TwoD> //template to allow arrays of different sizes
+void print_cluster(TwoD &clust){
     for (int i=0; i < TXSIZE; i++) {
         for(int  j=0; j < TYSIZE; j++){
 

@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
     int mrow = TXSIZE, mcol = TYSIZE;
     static float thick, xsize, ysize, noise, zcen, xcmssw, ycmssw, sxcmssw, sycmssw, gain_frac, q100_frac, common_frac, readout_noise, qscale, thrseed;
     static float xhit, yhit, xrec, yrec, sigmax, sigmay, probx, proby, signal, cotalpha, cotbeta, qclust, locBz, locBx, probxy, probQ, xclust, yclust;  
-    static int ndata, nfile, neh, nevent, ID, nbad, non_linear, icol, ndcol, layer, nclust; 
+    static int ndata, nfile, neh, nevent, fileNum, nbad, non_linear, icol, ndcol, layer, nclust; 
     static vector<int> nbin(5,0);
     float zvtx, zdet;
     int izdet;
@@ -90,25 +90,6 @@ int main(int argc, char *argv[])
 
     //  Create an input filename for this run 
 
-
-    sprintf(infile,"template_events_d%i.out",nfile);
-
-    //  Open input file and read header info 
-
-    ifp = fopen(infile, "r");
-    if (ifp==NULL) {
-        printf("Can't find pixel data file %s  \n", infile);
-        return 0;
-    }
-
-    // Read-in a header string first and print it    
-
-    for (i=0; (c=getc(ifp)) != '\n'; ++i) {
-        if(i < 79) {header[i] = c;}
-    }
-    if(i > 78) {i=78;}
-    header[i+1] ='\0';
-    printf("%s\n", header);
 
     double  halfxs=300.;
     int nx=120;	
@@ -245,6 +226,33 @@ int main(int argc, char *argv[])
     pp[48]->SetLineColor(2);
     pp[48]->SetLineStyle(2);
 
+    static vector<float> sx(5,0.), sx2(5,0.), scx(5,0.), sy(5,0.), sy2(5,0.), scy(5,0.); 
+
+    static vector<float> sxp(5,0.), sxp2(5,0.), scxp(5,0.), syp(5,0.), syp2(5,0.), scyp(5,0.); 
+
+    static vector<float> sxc(5,0.), scxc(5,0.), sxc2(5,0.), syc(5,0.), scyc(5,0.), syc2(5,0.), nt(12,0.), nb(12,0.); 
+
+    std::vector<std::pair<int, int> > pixlst;
+
+    sprintf(infile,"template_events_d%i.out",nfile);
+
+    //  Open input file and read header info 
+
+    ifp = fopen(infile, "r");
+    if (ifp==NULL) {
+        printf("Can't find pixel data file %s  \n", infile);
+        return 0;
+    }
+
+    // Read-in a header string first and print it    
+
+    for (i=0; (c=getc(ifp)) != '\n'; ++i) {
+        if(i < 79) {header[i] = c;}
+    }
+    if(i > 78) {i=78;}
+    header[i+1] ='\0';
+    printf("%s\n", header);
+
 
     fscanf(ifp,"%f  %f  %f", &ysize, &xsize, &thick);
     zcen = thick/2.;
@@ -258,33 +266,27 @@ int main(int argc, char *argv[])
     tote = 0.;
     bade = 0.;
 
-    static vector<float> sx(5,0.), sx2(5,0.), scx(5,0.), sy(5,0.), sy2(5,0.), scy(5,0.); 
-
-    static vector<float> sxp(5,0.), sxp2(5,0.), scxp(5,0.), syp(5,0.), syp2(5,0.), scyp(5,0.); 
-
-    static vector<float> sxc(5,0.), scxc(5,0.), sxc2(5,0.), syc(5,0.), scyc(5,0.), syc2(5,0.), nt(12,0.), nb(12,0.); 
-
-    std::vector<std::pair<int, int> > pixlst;
 
 
-    printf("Enter > 0 for no qbin = 4 clusters in histos \n");
-    scanf("%d", &i);
+    //printf("Enter > 0 for no qbin = 4 clusters in histos \n");
+    //scanf("%d", &i);
     noqbin4 = false;
-    if(i > 0) noqbin4 = true;
+    //if(i > 0) noqbin4 = true;
 
     // Decide if this file corresponds to a CMSSW run 
 
-    printf("Enter ID of Template and layer number [=1 changes vcal] \n");
-    scanf("%d %d", &ID, &layer);
+       printf("Enter file number of Template and layer number [=1 changes vcal] \n");
 
-    if(layer == 1) {
-      printf("using L1 parameters \n");
-      frontEnd.vcal = 50.;
-      frontEnd.vcaloffst = 670.;
-    } 
+       scanf("%d %d", &fileNum, &layer);
+
+       if(layer == 1) {
+       printf("using L1 parameters \n");
+       frontEnd.vcal = 50.;
+       frontEnd.vcaloffst = 670.;
+       } 
 
 
-    if(fpix) {printf("ID = %d, fpix \n", ID);} else {printf("ID = %d, barrel, vcal = %lf, offset = %lf \n", ID, frontEnd.vcal, frontEnd.vcaloffst);}
+    if(fpix) {printf("fileNum = %d, fpix \n", fileNum);} else {printf("fileNum = %d, barrel, vcal = %lf, offset = %lf \n", fileNum, frontEnd.vcal, frontEnd.vcaloffst);}
 
 
     // Initialize template store 
@@ -294,8 +296,10 @@ int main(int argc, char *argv[])
 
     // Initialize template store, Pixelav 100V/300V simulation, +20C as thePixelTemp[6] 
 
-    templ.pushfile(ID,thePixelTemp_);
-    templ.interpolate(ID, 0.f, 0.f, -1.f);
+    templ.pushfile(fileNum,thePixelTemp_);
+
+    int tempID = thePixelTemp_.front().head.ID;
+    templ.interpolate(tempID, 0.f, 0.f, -1.f);
     qscale = templ.qscale();	
 
     // Initialize GenError store 
@@ -303,15 +307,17 @@ int main(int argc, char *argv[])
     std::vector< SiPixelGenErrorStore > thePixelGenErr_;
     SiPixelGenError gtempl(thePixelGenErr_);
 
-    gtempl.pushfile(ID,thePixelGenErr_);	
+    gtempl.pushfile(fileNum,thePixelGenErr_);	
 
 
     // Ask for speed info
 
-    printf("enter seeding threshold (4000) \n");
-    scanf("%f", &thrseed);
+    /*
+       printf("enter seeding threshold (4000) \n");
+       scanf("%f", &thrseed);
 
-    printf("seeding threshold = %f\n", thrseed);
+       printf("seeding threshold = %f\n", thrseed);
+       */
 
     speed = -2;
 
@@ -340,50 +346,38 @@ int main(int argc, char *argv[])
 
         // read the input cluster 
 
-        for (k=0; k < TXSIZE; ++k) {
-            fscanf(ifp,
-                    "%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f", 
-                    &pixin[k][0],&pixin[k][1],&pixin[k][2],&pixin[k][3],&pixin[k][4],&pixin[k][5],&pixin[k][6],&pixin[k][7],&pixin[k][8],&pixin[k][9],
-                    &pixin[k][10],&pixin[k][11],&pixin[k][12],&pixin[k][13],&pixin[k][14],&pixin[k][15],&pixin[k][16],&pixin[k][17],&pixin[k][18], 
-                    &pixin[k][19],&pixin[k][20]);
-        }
+        read_cluster(ifp, pixin);
         ++nevent;
 
-        // Add noise and analog response to cluster, reformat for flipped barrel coordinate system 
-
         triplg(vgauss);
-        pixlst.resize(0);
-        for(i=0; i<ndcol; ++i) {ndhit[i] = 0;}
+        pixlst.clear();
+        for(int i=0; i<ndcol; ++i) {ndhit[i] = 0;}
         icol = 0;
         if(vgauss[1] < 0.) {icol = 1;}
-        qpixels = 0.;
-        for(j=0; j<TXSIZE; ++j) {
+        for(int j=0; j<TXSIZE; ++j) {
             triplg(wgauss);
             triplg(xgauss);
             triplg(ygauss);
             triplg(zgauss);
-            for(i=0; i<TYSIZE; ++i) {
+            for(int i=0; i<TYSIZE; ++i) {
                 bclust[j][i] = false;
                 qin = (10.*pixin[j][i] + xgauss[i]*noise);
                 rclust[TXSIZE-1-j][TYSIZE-1-i] = qin;
                 if(qin < q100*(1.+wgauss[i]*q100_frac)) {
                     clust[TXSIZE-1-j][TYSIZE-1-i] = 0.;
                 } else {
-                    qpixels += qin;
                     idcol = (TYSIZE-1-i+icol)/2;
                     ++ndhit[idcol];
-		    signal = frontEnd.apply_model( qin, ygauss[i], zgauss[i] );
+                    signal = frontEnd.apply_model( qin, ygauss[i], zgauss[i] );
                     clust[TXSIZE-1-j][TYSIZE-1-i] = (1.+vgauss[0]*common_frac)*signal;
                 }
             }
         }
 
-
-
         // Simulate the second, higher threshold in single dcol hits
 
-        for(j=0; j<TXSIZE; ++j) {
-            for(i=0; i<TYSIZE; ++i) {
+        for(int j=0; j<TXSIZE; ++j) {
+            for(int i=0; i<TYSIZE; ++i) {
                 if(clust[j][i] > 0.) {
                     idcol = (i+icol)/2;
                     if(ndhit[idcol] == 1) {
@@ -400,11 +394,11 @@ int main(int argc, char *argv[])
         // Simulate the seed finding
 
         qmax = 0.;
-        for(int i=0; i<TXSIZE; ++i) {
-            for(int j=0; j<TYSIZE; ++j) {
-                if(clust[i][j] > qmax) {
-                    qmax = clust[i][j];
-                    max.first = i; max.second = j;
+        for(int j=0; j<TXSIZE; ++j) {
+            for(int i=0; i<TYSIZE; ++i) {
+                if(clust[j][i] > qmax) {
+                    qmax = clust[j][i];
+                    max.first = j; max.second = i;
 
                 }
             }
@@ -415,16 +409,15 @@ int main(int argc, char *argv[])
 
         // Simulate clustering around maximum signal (seed)
 
-        pixlst.clear();
+
         pixlst.push_back(max);
-        memset(bclust, false, sizeof(bclust));
         bclust[max.first][max.second] = true;
 
         std::vector<std::pair<int, int> > pixlst_copy;
 
 
 
-        int numadd = 1;
+        numadd = 1;
         //iterively find all non zero pixels near our seed
         while(numadd > 0){
             //use copy of vector to avoid modifying vector as we loop through it
@@ -432,20 +425,20 @@ int main(int argc, char *argv[])
             numadd = 0;
             for ( auto pixIter = pixlst_copy.begin(); pixIter != pixlst_copy.end(); ++pixIter ) {
                 //max's are +2 because we are doing <max in the loop
-                int imin = pixIter->first-1; 
-                int imax = pixIter->first+2;
-                int jmin = pixIter->second-1;
-                int jmax = pixIter->second+2;
-                if(imin < 0) {imin = 0;}
-                if(imax > TXSIZE) {imax = TXSIZE;}
+                jmin = pixIter->first-1; 
+                jmax = pixIter->first+2;
+                imin = pixIter->second-1;
+                imax = pixIter->second+2;
                 if(jmin < 0) {jmin = 0;}
-                if(jmax > TYSIZE) {jmax = TYSIZE;}
-                for(int i=imin; i<imax; ++i) {
-                    for(int j=jmin; j<jmax; ++j) {
-                        if(clust[i][j] > 0.) {
-                            if(!bclust[i][j]) {
-                                bclust[i][j] = true;
-                                pixel.first = i; pixel.second = j;
+                if(jmax > TXSIZE) {jmax = TXSIZE;}
+                if(imin < 0) {imin = 0;}
+                if(imax > TYSIZE) {imax = TYSIZE;}
+                for(int j=jmin; j<jmax; ++j) {
+                    for(int i=imin; i<imax; ++i) {
+                        if(clust[j][i] > 0.) {
+                            if(!bclust[j][i]) {
+                                bclust[j][i] = true;
+                                pixel.first = j; pixel.second = i;
                                 pixlst.push_back(pixel);
                                 ++numadd;
                             }
@@ -454,6 +447,7 @@ int main(int argc, char *argv[])
                 }
             }
         }
+
 
         memset(cluster, 0., sizeof(cluster));
 
@@ -544,13 +538,14 @@ int main(int argc, char *argv[])
         // Do the template analysis on the cluster 
         SiPixelTemplateReco::ClusMatrix clusterPayload{&cluster[0][0], xdouble, ydouble, mrow,mcol};
         SiPixelTemplateReco::ClusMatrix clusterPayloadC = clusterPayload;
+        //print_cluster(cluster);
         locBx = 1.;
         if(cotbeta < 0.) locBx = -1.;
         locBz = locBx;
         if(cotalpha < 0.) locBz = -locBx;
-	std::cout << "cotalpha " << cotalpha << " cotbeta " << cotbeta << " Bz " << locBz << " Bx "<< locBx << std::endl;
-	ierr = PixelTempReco1D(ID, cotalpha, cotbeta, locBz, locBx,  clusterPayload, templ, yrec, sigmay, proby, xrec, sigmax, probx,  qbin, speed, probQ);
-	std::cout << " ierr " << ierr << std::endl;
+        //std::cout << "cotalpha " << cotalpha << " cotbeta " << cotbeta << " Bz " << locBz << " Bx "<< locBx << std::endl;
+        //std::cout << " ierr " << ierr << std::endl;
+        ierr = PixelTempReco1D(tempID, cotalpha, cotbeta, locBz, locBx,  clusterPayload, templ, yrec, sigmay, proby, xrec, sigmax, probx,  qbin, speed, probQ);
         if(ierr != 0) {
             ++nbad; ++nb[etabin]; bade +=weight;
             printf("reconstruction failed with error %d \n", ierr);
@@ -617,7 +612,7 @@ int main(int argc, char *argv[])
             if(cotbeta < 0.) locBx = -1.;
             locBz = locBx;
             if(cotalpha < 0.) locBz = -locBx;            
-            ierr = PixelGeneric2D(ID, cotalpha, cotbeta, locBz, locBx, clusterPayloadC, gtempl, ycmssw, sycmssw, xcmssw, sxcmssw, nypix, nxpix, yfrac, xfrac);
+            ierr = PixelGeneric2D(tempID, cotalpha, cotbeta, locBz, locBx, clusterPayloadC, gtempl, ycmssw, sycmssw, xcmssw, sxcmssw, nypix, nxpix, yfrac, xfrac);
             if(iyd != 0) {
                 dyc = ycmssw - (TYSIZE/2)*ysize - yhit;
             } else {
