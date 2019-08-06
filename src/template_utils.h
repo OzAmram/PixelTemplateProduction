@@ -67,6 +67,10 @@ struct FrontEndModel
     double vcal = 47.0;	
     double vcaloffst = 60.0;
 
+    //--- PhaseII - initial guess
+    double thr = 1000; // threshold in e-
+    double qperTOT = 1500; // e- per TOT
+
     //--- Constants (could be made variables later)
     const double gain  = 3.19;
     const double ped   = 16.46;
@@ -74,7 +78,6 @@ struct FrontEndModel
     const double p1    = 0.711;
     const double p2    = 203.;
     const double p3    = 148.;	
-
 
     //-----------------------------------------------------------------------------
     //  A function to simulate the electronics response: different gains, TOT, etc.
@@ -94,6 +97,10 @@ struct FrontEndModel
                     signal = ((float)((1.+gain_frac*ygauss)*(vcal*gain*(adc-ped))) - vcaloffst + zgauss*readout_noise);
                 }
                 break;
+
+	    case 2:
+	        signal = (qin - thr)/qperTOT;
+		break;
 
             default:
                 std::cout << "ElectronicModel::apply_model: illegal fe_type = " << fe_type << std::endl;
