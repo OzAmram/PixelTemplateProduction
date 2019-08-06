@@ -69,7 +69,8 @@ struct FrontEndModel
 
     //--- PhaseII - initial guess
     double thr = 1000; // threshold in e-
-    double qperTOT = 1500; // e- per TOT
+    double qperTOT = 1500; // e- per TOT => step optimized for 80MHz clock=12.5ns
+    int nbitsTOT = 4; // fixed and carved in stone?
 
     //--- Constants (could be made variables later)
     const double gain  = 3.19;
@@ -99,7 +100,13 @@ struct FrontEndModel
                 break;
 
 	    case 2:
-	        signal = (qin - thr)/qperTOT;
+	        int tot = (qin - thr)/qperTOT;
+		if (tot<=0) signal = 0; 
+		else{
+		  if(tot >= 2**nbitsTOT) tot = 2**nbitsTOT;
+		  double step = qperTOT/2;
+		  signal = (qperTOT*(tot-1)+thr)+step;
+		}
 		break;
 
             default:
