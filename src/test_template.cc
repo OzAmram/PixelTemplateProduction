@@ -73,16 +73,14 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-
-    fscanf(ifp,"%d %f %f %f %f %f %f %f %d", &nfile, &noise, &q100, &q101, &q100_frac, &common_frac, &gain_frac, &readout_noise, &frontend_type);
+    char extra[80];
+    int use_l1_offset;
+    fscanf(ifp,"%d %f %f %f %f %f %f %f %d %s", &nfile, &noise, &q100, &q101, &q100_frac, &common_frac, &gain_frac, &readout_noise, &frontend_type, &extra[0]);
+    fscanf(ifp,"%d %d", &fileNum, &use_l1_offset);
     fclose(ifp);
     printf("template events file %d noise = %f, threshold0 = %f, threshold1 = %f, rms threshold frac = %f, common_frac = %f, gain fraction = %f, readout noise = %f, nonlinear_resp = %d \n", 
             nfile, noise, q100, q101, q100_frac, common_frac, gain_frac, readout_noise, frontend_type);
-
-
-    int use_l1_offset;
     printf("Template file number %i \n", fileNum);
-    fscanf(ifp, "%d %d", &fileNum, &use_l1_offset);
 
     FrontEndModel frontEnd;
     frontEnd.fe_type       = use_l1_offset;
