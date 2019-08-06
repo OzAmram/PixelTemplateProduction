@@ -104,9 +104,9 @@ struct FrontEndModel
 	        tot = (qin - thr)/qperTOT;
 		if (tot<=0) signal = 0; 
 		else{
-		  if(tot >= pow(nbitsTOT,2)) tot = pow(nbitsTOT,2);
-		  double step = qperTOT/2;
-		  signal = (qperTOT*(tot-1)+thr)+step;
+		    if(tot >= pow(nbitsTOT,2)) tot = pow(nbitsTOT,2)-1;
+		    double step = qperTOT/2;
+		    signal = (qperTOT*(tot-1)+thr)+step;
 		}
 		break;
 
