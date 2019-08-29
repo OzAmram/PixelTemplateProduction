@@ -345,6 +345,7 @@ std::vector<float> get_vavilov_pars(TH1F *h){
     Double_t p3 = 0.02*p1/20000.;
     Double_t p0 = h->GetEntries()*20000./p1; 
     vfunc->SetParameters(p0,p1,p2,p3);
+    vfunc->SetParLimits(3, 0.01, 10.);
     h->Fit("vavilov");
     std::vector<float> pars;
     //we don't care about norm
