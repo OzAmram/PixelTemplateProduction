@@ -102,7 +102,7 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
             &gain_frac, &readout_noise, &non_linear);
 	fclose(f_config);
 	printf("processing %d files starting from %d, noise = %f, threshold0 = %f, threshold1 = %f," 
-            "rms threshold frac = %f, common_frac = %f, gain fraction = %f, readout noise = %f, nonlinear_resp = %d \n", 
+            "rms threshold frac = %f, common_frac = %f, gain fraction = %f, readout noise = %f, front end model type = %d \n", 
             num_files, file_start, noise, q100, q101, q100_frac, common_frac, gain_frac, readout_noise, non_linear);
 
 

@@ -521,7 +521,7 @@ int main(int argc, char *argv[])
                 }
             }
 
-            if(qmax < 1500.) continue;
+            if(qmax < clustering_thresh) continue;
 
 
             // Simulate clustering around maximum signal (seed)

@@ -48,6 +48,8 @@ using namespace std;
 #include  "ranlux.c"
 #endif
 
+float clustering_thresh = 1000.;
+
 
 
 //-----------------------------------------------------------------------------
@@ -100,15 +102,15 @@ struct FrontEndModel
                 }
                 break;
 
-	    case 2:
-	        tot = (qin - thr)/qperTOT;
-		if (tot<=0) signal = 0; 
-		else{
-		    if(tot >= pow(nbitsTOT,2)) tot = pow(nbitsTOT,2)-1;
-		    double step = qperTOT/2;
-		    signal = (qperTOT*(tot-1)+thr)+step;
-		}
-		break;
+            case 2:
+                tot = (qin - thr)/qperTOT;
+                if (tot<=0) signal = 0; 
+                else{
+                    if(tot >= pow(nbitsTOT,2)) tot = pow(nbitsTOT,2)-1;
+                    double step = qperTOT/2;
+                    signal = (qperTOT*(tot-1)+thr)+step;
+                }
+                break;
 
             default:
                 std::cout << "ElectronicModel::apply_model: illegal fe_type = " << fe_type << std::endl;
@@ -287,19 +289,31 @@ std::vector<float> get_gaussian_pars(TH1F *h, double min_std = 3.){
 }
 std::vector<float> fit_pol5(TProfile *h){
     std::vector<float> pars;
-    h->Fit("pol5");
-    h->SetStats(false);
-    TF1 *fit = h->GetFunction("pol5");
-    Double_t chi2 = fit->GetChisquare();
-    for(int i=0; i<6; i++){
-        if(chi2 < 1e6){
-            pars.push_back(fit->GetParameter(i));
+    Double_t stats[6];
+    h->GetStats(stats);
+    Double_t nentries = stats[0];
+    //printf("integral %.2f \n", nentries);
+    if(nentries > 10.){
+        h->Fit("pol5");
+        h->SetStats(false);
+        TF1 *fit = h->GetFunction("pol5");
+        Double_t chi2 = fit->GetChisquare();
+        for(int i=0; i<6; i++){
+            if(chi2 < 1e6){
+                pars.push_back(fit->GetParameter(i));
+            }
+            else{
+                pars.push_back(0.);
+            }
+
         }
-        else{
+    }
+    else{
+        for(int i=0; i<6; i++){
             pars.push_back(0.);
         }
-
     }
+
 
     return pars;
 }

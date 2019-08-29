@@ -26,7 +26,7 @@
  *   Write integers for the templates
  */
 
-#define TEMPL_DEBUG
+//#define TEMPL_DEBUG
 #include "template_utils.h"
 
 
@@ -59,6 +59,8 @@ int main(int argc, char *argv[])
 
     float  qsmear[nevents], npix[nevents],  qflx[nevents], qfly[nevents],
     qtotal[nevents];
+    
+    bool good_clust[nevents];
 
     int nelec[nevents], qbins[nevents], qbin_merge[nevents], xwidth[nevents], xstart[nevents], ywidth[nevents], ystart[nevents];
 
@@ -382,6 +384,7 @@ int main(int argc, char *argv[])
         memset(xstart, 0, sizeof(xstart));
         memset(ywidth, 0, sizeof(ywidth));
         memset(ystart, 0, sizeof(ystart));
+        memset(good_clust, 0, sizeof(good_clust));
         zero_3d_array(cluster, nevents, TXSIZE, TYSIZE);
         zero_2d_array(xsum1, nevents, TXSIZE);
         zero_2d_array(xsum2, nevents, TXSIZE);
@@ -640,7 +643,11 @@ int main(int argc, char *argv[])
                 }
             }
 
-            if(qmax < 1500.) continue;
+            if(qmax < clustering_thresh){
+                good_clust[n] = false;
+                continue;
+            }
+            good_clust[n] = true;
 
 
             // Simulate clustering around maximum signal (seed)
@@ -782,6 +789,7 @@ int main(int argc, char *argv[])
 
         //compute averages over all clusters 
         for(int n=0; n<read_events; n++){
+            if(!good_clust[n]) continue;
 
             float qmeas = qtotal[n];
             float rcorr = qmeas/float(nelec[n]); //ratio of measured charge to generated charge
@@ -1095,7 +1103,7 @@ int main(int argc, char *argv[])
 
         // Loop over all clusters and apply generic and first pass of template reco (no charge loss correction) 
         for(int n=0; n<read_events; n++){
-
+            if(!good_clust[n]) continue;
 
 
             // Do generic reco on the cluster
@@ -1115,6 +1123,7 @@ int main(int argc, char *argv[])
                     ysum[j] += q;
                 }
             }
+
             int xend = xstart[n] + xwidth[n] -1;
             int yend = ystart[n] + ywidth[n] -1;
 
@@ -1201,7 +1210,6 @@ int main(int argc, char *argv[])
 
 
 
-
             //        if(fabs(cotbeta) < 2.1) continue;
             // Do the template analysis on the cluster 
             SiPixelTemplateReco::ClusMatrix clusterPayload{&cluster_local[0][0], xdouble, ydouble, mrow,mcol};
@@ -1214,6 +1222,8 @@ int main(int argc, char *argv[])
             int ierr = PixelTempReco1D(tempID, cotalpha, cotbeta, locBz, locBx,  clusterPayload, templ, yrec, sigmay, proby, xrec, sigmax, probx,  qbin, speed, probQ);
             if(ierr != 0) {
                 printf("First pass reconstruction failed with error %d \n", ierr);
+                printf("cluster \n");
+                print_cluster(cluster[n]);
             } else {
                 //coordinates returned based origin being center of first
                 //pixel in template
@@ -1280,6 +1290,7 @@ int main(int argc, char *argv[])
 
         //do second round of template fits with charge loss correction
         for(int n=0; n<read_events; n++){
+            if(!good_clust[n]) continue;
 
             float cluster_local[TXSIZE][TYSIZE];
             memset(cluster_local, 0., sizeof(cluster_local));
