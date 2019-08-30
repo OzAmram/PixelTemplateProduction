@@ -73,10 +73,12 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    char extra[80];
+    char extra[80], line[160];
     int use_l1_offset;
-    fscanf(ifp,"%d %f %f %f %f %f %f %f %d %s", &nfile, &noise, &q100, &q101, &q100_frac, &common_frac, &gain_frac, &readout_noise, &frontend_type, &extra[0]);
-    fscanf(ifp,"%d %d", &fileNum, &use_l1_offset);
+    fgets(line, 160, ifp);
+    sscanf(line,"%d %f %f %f %f %f %f %f %d %s", &nfile, &noise, &q100, &q101, &q100_frac, &common_frac, &gain_frac, &readout_noise, &frontend_type, &extra[0]);
+    fgets(line, 160, ifp);
+    sscanf(line,"%d %d", &fileNum, &use_l1_offset);
     fclose(ifp);
     printf("template events file %d noise = %f, threshold0 = %f, threshold1 = %f, rms threshold frac = %f, common_frac = %f, gain fraction = %f, readout noise = %f, nonlinear_resp = %d \n", 
             nfile, noise, q100, q101, q100_frac, common_frac, gain_frac, readout_noise, frontend_type);
