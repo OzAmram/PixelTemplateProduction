@@ -153,8 +153,8 @@ int main(int argc, char *argv[])
     // Set style for the the histograms	
 
     for(i=0; i<41; ++i) {
-        hp[i]->SetLineColor(2);
-        hp[i]->SetFillColor(38);
+        hp[i]->SetLineColor(kBlack);
+        hp[i]->SetFillColor(33);
     }
 
     // Make some profile Histograms
@@ -763,10 +763,31 @@ int main(int argc, char *argv[])
     /*
      * Histograms plotting
      */
-    for(i=0; i<5; ++i) {hp[i]->Fit("gaus"); hp[i+10]->Fit("gaus");}
-    for(i=22; i<26; ++i) {hp[i]->Fit("gaus");}
-    for(i=30; i<32; ++i) {hp[i]->Fit("gaus");}
-    for(i=34; i<41; ++i) {hp[i]->Fit("gaus");}
+    for(i=0; i<5; ++i) {
+        hp[i]->Fit("gaus"); 
+        TF1 *fitp = hp[i]->GetFunction("gaus");
+        if(fitp != NULL) fitp->SetLineColor(kBlue); 
+
+        hp[i+10]->Fit("gaus"); 
+        fitp = hp[i+10]->GetFunction("gaus");
+        if(fitp != NULL) fitp->SetLineColor(kBlue); 
+    }
+    for(i=22; i<26; ++i) {
+        hp[i]->Fit("gaus"); 
+        TF1 *fitp = hp[i]->GetFunction("gaus");
+        if(fitp != NULL) fitp->SetLineColor(kBlue); 
+    }
+    for(i=30; i<32; ++i) {
+        hp[i]->Fit("gaus"); 
+        TF1 *fitp = hp[i]->GetFunction("gaus");
+        if(fitp != NULL) fitp->SetLineColor(kBlue); 
+    }
+
+    for(i=34; i<41; ++i) {
+        hp[i]->Fit("gaus"); 
+        TF1 *fitp = hp[i]->GetFunction("gaus");
+        if(fitp != NULL) fitp->SetLineColor(kBlue); 
+    }
 
     //  Create an output filename for this run 
 
@@ -777,6 +798,8 @@ int main(int argc, char *argv[])
     c1.SetFillStyle(4000);
     c1.Print(outfile0);
     for(i=0; i<41; ++i) {
+        hp[i]->SetMarkerColor(kBlack);
+        hp[i]->SetMarkerStyle(20);
         hp[i]->Draw();
         c1.Print(outfile1);
     }
