@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
     printf("Template file number %i \n", fileNum);
 
     FrontEndModel frontEnd;
-    frontEnd.fe_type       = use_l1_offset;
+    frontEnd.fe_type       = frontend_type;
     frontEnd.gain_frac     = gain_frac;
     frontEnd.readout_noise = readout_noise;
     if(use_l1_offset) {
