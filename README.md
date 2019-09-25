@@ -34,21 +34,22 @@ The format `pix_2t.proc` is as follows:
 
 > start\_file nfiles noise thresh1 thresh2 thresh1\_noise_frac common\_noise\_frac gain\_noise\_frac readout\_noise frontend\_type
 
-> use\_l1\_offset write\_header
+> use\_l1\_offset write\_header xtalk\_frac
 
 
 > id NTy NTyx NTxx DType Bfield VBias temp fluenc qscale 
 
 Note that NTy is not used by the 2D templates so its value doesn't matter, but to keep the format consistent something must be there. 
+Using 0 for xtalk\_frac will turn off cross talk. 
 Extra parameters on any of the lines will be ignored. 
 
 An example config for 1D barrel templates is: 
 
-> 58401 205 250. 1600. 1600. 0.073 0.080 0.080 350. 1
+> 58401 205 250. 1600. 1600. 0.073 0.080 0.080 350. 0
 
-> 0 1
+> 0 1 0.0
 
-> 900 60 5 29 0 3.8 125. 253. 0. 1.
+> 900 60 5 29 0 3.8 125. 263. 0. 1.
 
 
 
@@ -67,12 +68,12 @@ An example config for 1D barrel templates is:
 **test_template**: Uses pre-made 1D templates to run local version of CMSSW 1D template reco and makes various plots. Useful for testing a new set of 1D templates. 
 Should be run a directory with template\_events, generror and template\_summary files. Also takes a config called `test_params.txt`.
 The first line of the config is the same as the `pix_2t.proc` but without the
-nfiles parameter (because it will only use one file). The second line has two
+nfiles parameter (because it will only use one file). The second line has three
 parameters, the first is the file number of the template (the XXXXX) and the
-second is the `use_l1_offset` parameter.
+second is the `use_l1_offset` parameter, the third is the cross talk fraction. 
 
 An example `test_params.txt` config is:
 > 58606 150. 1600. 1600. 0.073 0.080 0.08 350. 1 1.000
 
-> 58401 0
+> 58401 0 0.0
 

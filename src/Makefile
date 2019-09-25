@@ -26,7 +26,7 @@ compare_templates: compare_templates.cc $(DEPS)
 	g++ compare_templates.cc -o $(ODIR)/compare_templates $(compiler_flags) $(root_flags) $(includes)
 
 test_template: test_template.cc $(DEPS)
-	g++ test_template.cc -o $(ODIR)/test_template $(BOOST_FLAG) $(compiler_flags) $(root_flags) $(includes)
+	g++ test_template.cc -o $(ODIR)/test_template $(compiler_flags) $(root_flags) $(includes)
 
 load_template_test: load_template_test.cc $(DEPS)
 	g++ load_template_test.cc -o $(ODIR)/load_template_test $(compiler_flags) $(root_flags) $(includes)

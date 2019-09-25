@@ -92,7 +92,6 @@ void gen_xy_template2d(const int nevents = 32000, const int npt = 300, const int
         float z_center = zsize/2.0;
 
         float cosx, cosy, cosz, x1,y1,z1;
-        float clslnx, clslny, cota, cotb;
 
         double qavg=0.;
 
@@ -109,13 +108,6 @@ void gen_xy_template2d(const int nevents = 32000, const int npt = 300, const int
 
             sscanf(buffer, "%f %f %f %f %f %f %i",
                     &x1, &y1, &z1, &cosx, &cosy, &cosz, &nelec);
-
-            if(n == 0){
-                clslnx = fabs(zsize * cosx/cosz);
-                clslny = fabs(zsize * cosy/cosz);
-                cota = cosy/cosz;
-                cotb = cosx/cosz;
-            }
 
             float bixin[Nx][Ny];
             memset(bixin, 0., sizeof(bixin));

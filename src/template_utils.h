@@ -233,6 +233,52 @@ void read_cluster(FILE *ifp, float pixin[TXSIZE][TYSIZE]){
     return;
 }
 
+void apply_xtalk(float pixin[TXSIZE][TYSIZE], int irow_start, float xtfrac = 0.1){
+    //matrix looks like | 1-x  x | 
+    //                  | x  1-x |
+   if(xtfrac == 0.) return;
+   float m11 = 1 - xtfrac;
+   float m22 = m11;
+   float m12 = xtfrac;
+   float m21 = m12;
+
+
+   for(int i=irow_start; i<TXSIZE-1; i += 2) {
+       for(int j=0; j<TYSIZE; j++) {
+           float old_ij = pixin[i][j];
+           float old_i1j = pixin[i+1][j];
+           pixin[i][j] = old_ij*m11 +  old_i1j*m12;
+           pixin[i+1][j] = old_ij*m21 +  old_i1j*m22;
+       }
+   }
+
+
+}
+
+
+void unfold_xtalk(float clust[TXSIZE][TYSIZE], int irow_start, float xtfrac=0.1){
+    //unfold cross talk. Remember cluster is flipped compared to before, 
+    // inverse matrix is (1/(2-x)) * |1 - x  -x |
+    //                               | -x  1 -x |
+   if(xtfrac == 0.) return;
+   float m11 = 1-xtfrac;
+   float minv11 = m11/(1. - 2*xtfrac);
+   float minv22 = minv11;
+   float minv12 = -xtfrac/(1. - 2*xtfrac);
+   float minv21 = minv12;       
+
+   for(int i=irow_start; i<TXSIZE-1; i += 2) {
+       for(int j=0; j<TYSIZE; j++) {
+           float old_ij = clust[i][j];
+           float old_i1j = clust[i+1][j];
+           clust[i][j] = old_ij*minv11 + old_i1j*minv12;
+           clust[i+1][j] = old_ij*minv21 + old_i1j*minv22;
+       }
+   }      		 
+}
+
+
+
 template <typename TwoD> //template to allow arrays of different sizes
 void print_cluster(TwoD &clust){
     for (int i=0; i < TXSIZE; i++) {

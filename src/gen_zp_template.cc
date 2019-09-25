@@ -26,7 +26,7 @@
  *   Write integers for the templates
  */
 
-//#define TEMPL_DEBUG
+#define TEMPL_DEBUG
 #include "template_utils.h"
 
 
@@ -38,7 +38,6 @@ int main(int argc, char *argv[])
 
     // Local variables 
     std::vector<float> pvec(6), wgauss(TYSIZE), vgauss(TYSIZE), xgauss(TYSIZE), ygauss(TYSIZE), zgauss(TYSIZE);
-    static bool fpix;
     float pixin[TXSIZE][TYSIZE];
     float ytemp[9][TYSIZE], xtemp[9][TXSIZE], xpar[2][5], ypar[2][5];
     float sxmax, symax, sxmaxx, symaxx, cosx, cosy, cosz;
@@ -74,6 +73,7 @@ int main(int argc, char *argv[])
     float nqbin[5];
     double dx, dy;
     static float q100, q101, q50, q51,  qmax; 
+    float xtalk_frac;
 
 
     //parameters for template fit
@@ -84,14 +84,6 @@ int main(int argc, char *argv[])
 
     int mrow = TXSIZE, mcol = TYSIZE;
 
-    // const double gain = 3.19;
-    // const double ped = 16.46;
-    // const double p0 = 0.01218;
-    // const double p1 = 0.711;
-    // const double p2 = 203.;
-    // const double p3 = 148.;	
-    // static double vcal = 47.;	
-    // static double vcaloffst = 60.;
 
     const float fmax = 0.5f;
     int write_temp_header, use_l1_offset;
@@ -144,16 +136,17 @@ int main(int argc, char *argv[])
 
 
     fgets(line, 160, config_file);
-    num_read = sscanf(line, " %d %d ", &use_l1_offset, &write_temp_header);
-    if(num_read != 2){
+    num_read = sscanf(line, " %d %d %f", &use_l1_offset, &write_temp_header, &xtalk_frac);
+    if(num_read != 3){
         printf("Error reading config file !\n");
         printf("Line was %s \n", line);
         return 0;
     }
     fgets(line, 160, config_file);
     num_read = sscanf(line, " %d %d %d %d %d %f %f %f %f %f",  &id, &NTy, &NTyx,&NTxx, &IDtype, &Bfield, &Vbias, &temp, &fluenc, &qscale);
-    printf("Using params: Use_l1_offset=%d, write_temp_header=%d, ID=%d NTy=%d NTyx=%d NTxx=%d Dtype=%d Bfield=%.2f Bias Voltage = %.1f temparature = %.0f fluence = %.2f q-scale = %.4f \n",
-            use_l1_offset, write_temp_header, id, NTy, NTyx, NTxx, IDtype, Bfield, Vbias, temp, fluenc, qscale);
+    printf("Using params: Use_l1_offset=%d, write_temp_header=%d, ID=%d NTy=%d NTyx=%d NTxx=%d Dtype=%d Bfield=%.2f "
+            "Bias Voltage = %.1f temparature = %.0f fluence = %.2f q-scale = %.4f xtalk_frac=%.2f \n",
+            use_l1_offset, write_temp_header, id, NTy, NTyx, NTxx, IDtype, Bfield, Vbias, temp, fluenc, qscale, xtalk_frac);
     if(num_read != 10){
         printf("Error reading config file !\n");
         printf("Line was %s \n", line);
@@ -508,9 +501,6 @@ int main(int argc, char *argv[])
         fscanf(events_file,"%f  %f  %f", &ysize, &xsize, &thick);
         zcen = thick/2.;
         printf("xsize/ysize/thick = %f/%f/%f \n", xsize, ysize, thick);
-        fpix = false;
-
-        if(thick > 285.) {fpix = true;}
 
         float qavg = 0.f; //average charge after threshholding effects
         if(write_temp_header && ifile == startfile) {
@@ -582,6 +572,14 @@ int main(int argc, char *argv[])
             for(int i=0; i<ndcol; ++i) {ndhit[i] = 0;}
             int icol = 0;
             if(vgauss[1] < 0.) {icol = 1;}
+            int xtalk_row_start = 0;
+            int xtalk_unfold_row = 1;
+            if(vgauss[2] < 0.) {
+                xtalk_row_start = 1;
+                xtalk_unfold_row = 0;
+            }
+
+            apply_xtalk(pixin, xtalk_row_start, xtalk_frac);
             
             //do main cluster
             for(int j=0; j<TXSIZE; ++j) {
@@ -612,6 +610,8 @@ int main(int argc, char *argv[])
 
 
             }
+
+            unfold_xtalk(clust, xtalk_unfold_row, xtalk_frac);
 
             // Simulate the second, higher threshold in single double col hits
             for(int j=0; j<TXSIZE; ++j) {

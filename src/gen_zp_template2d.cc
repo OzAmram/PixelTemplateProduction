@@ -38,7 +38,6 @@ int main(int argc, char *argv[])
 
     // Local variables 
     std::vector<float> pvec(6), wgauss(TYSIZE), vgauss(TYSIZE), xgauss(TYSIZE), ygauss(TYSIZE), zgauss(TYSIZE);
-    static bool fpix;
     float pixin[TXSIZE][TYSIZE];
     bool ydouble[TYSIZE], xdouble[TXSIZE];
     float ztemp[9][TYSIZE], ptemp[9][TXSIZE], xpar[4][5];
@@ -79,6 +78,7 @@ int main(int argc, char *argv[])
     struct timezone timz;
     long deltas, deltaus;
     double deltat;
+    float xtalk_frac;
 
 
 
@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
 
 
     fgets(line, 160, config_file);
-    num_read = sscanf(line, " %d %d ", &use_l1_offset, &write_temp_header);
+    num_read = sscanf(line, " %d %d %f", &use_l1_offset, &write_temp_header, &xtalk_frac);
     if(num_read != 2){
         printf("Error reading config file !\n");
         printf("Line was %s \n", line);
@@ -121,8 +121,9 @@ int main(int argc, char *argv[])
     fgets(line, 160, config_file);
     num_read = sscanf(line, " %d %d %d %d %d %f %f %f %f %f",  &id, &NTy, &NTyx,&NTxx, &IDtype, &Bfield, &Vbias, &temp, &fluenc, &qscale);
     NTy =0 ;
-    printf("Using params: Use_l1_offset=%d, write_temp_header=%d, ID=%d NTy=%d NTyx=%d NTxx=%d Dtype=%d Bfield=%.2f Bias Voltage = %.1f temparature = %.0f fluence = %.2f q-scale = %.4f \n",
-            use_l1_offset, write_temp_header, id, NTy, NTyx, NTxx, IDtype, Bfield, Vbias, temp, fluenc, qscale);
+    printf("Using params: Use_l1_offset=%d, write_temp_header=%d, ID=%d NTy=%d NTyx=%d NTxx=%d Dtype=%d Bfield=%.2f "
+            "Bias Voltage = %.1f temparature = %.0f fluence = %.2f q-scale = %.4f xtalk_frac = %.2f \n",
+            use_l1_offset, write_temp_header, id, NTy, NTyx, NTxx, IDtype, Bfield, Vbias, temp, fluenc, qscale, xtalk_frac);
     if(num_read != 10){
         printf("Error reading config file !\n");
         printf("Line was %s \n", line);
@@ -427,8 +428,6 @@ int main(int argc, char *argv[])
         fscanf(events_file,"%f  %f  %f", &ysize, &xsize, &thick);
         zcen = thick/2.;
         printf("xsize/ysize/thick = %f/%f/%f \n", xsize, ysize, thick);
-        fpix = false;
-        if(thick > 285.) {fpix = true;}
 
         nevent=0;
         nbad = 0;
@@ -471,6 +470,18 @@ int main(int argc, char *argv[])
             for(int i=0; i<ndcol; ++i) {ndhit[i] = 0;}
             icol = 0;
             if(vgauss[1] < 0.) {icol = 1;}
+
+            int xtalk_row_start = 0;
+            int xtalk_unfold_row = 1;
+            if(vgauss[2] < 0.) {
+                xtalk_row_start = 1;
+                xtalk_unfold_row = 0;
+            }
+
+            apply_xtalk(pixin, xtalk_row_start, xtalk_frac);
+
+
+
             for(int j=0; j<TXSIZE; ++j) {
                 triplg(wgauss);
                 triplg(xgauss);
@@ -490,6 +501,7 @@ int main(int argc, char *argv[])
                     }
                 }
             }
+            unfold_xtalk(clust, xtalk_unfold_row, xtalk_frac);
 
             // Simulate the second, higher threshold in single dcol hits
 

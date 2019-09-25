@@ -35,18 +35,18 @@ int main(int argc, char *argv[])
     static bool fpix, noqbin4;
     bool ydouble[TYSIZE], xdouble[TXSIZE];
     int mrow = TXSIZE, mcol = TYSIZE;
-    static float thick, xsize, ysize, noise, zcen, xcmssw, ycmssw, sxcmssw, sycmssw, gain_frac, q100_frac, common_frac, readout_noise, qscale, thrseed;
+    static float thick, xsize, ysize, noise, zcen, xcmssw, ycmssw, sxcmssw, sycmssw, gain_frac, q100_frac, common_frac, readout_noise;
     static float xhit, yhit, xrec, yrec, sigmax, sigmay, probx, proby, signal, cotalpha, cotbeta, qclust, locBz, locBx, probxy, probQ, xclust, yclust;  
-    static int ndata, nfile, neh, nevent, fileNum, nbad, frontend_type, icol, ndcol, layer, nclust; 
+    static int  nfile, neh, nevent, fileNum, nbad, frontend_type, icol, ndcol, nclust; 
     static vector<int> nbin(5,0);
     float zvtx, zdet;
     int izdet;
     static vector<double> fluence(4,0.);
-    int i, j, k, ierr, qbin, qb, nypix, nxpix, etabin, jmin, jmax, imin, imax, numadd, idcol;
+    int i, j, ierr, qbin, qb, nypix, nxpix, etabin, jmin, jmax, imin, imax, numadd, idcol;
     double dx, dy, eta, dxc, dyc, log10probxy, log10probQ, tote, bade, weight, alpha, qnorm, dxclust, dyclust;
-    double qpixels, qfrac;
+    double qfrac;
     static int iyd, ixd, speed;	
-    static float q100, q101, q50, q10, qmax; 
+    static float q100, q101,   qmax; 
 
     float sigtmp, qin, yfrac, xfrac;
     static char infile[80], header[80], c, outfile0[80], outfile1[80], outfile2[80];
@@ -63,6 +63,7 @@ int main(int argc, char *argv[])
     struct timezone timz;
     long deltas, deltaus;
     double deltat;
+    float xtalk_frac;
 
 
     //  Read which data and inputs to use (use c file i/o which is much faster than c++ i/o) 
@@ -78,10 +79,11 @@ int main(int argc, char *argv[])
     fgets(line, 160, ifp);
     sscanf(line,"%d %f %f %f %f %f %f %f %d %s", &nfile, &noise, &q100, &q101, &q100_frac, &common_frac, &gain_frac, &readout_noise, &frontend_type, &extra[0]);
     fgets(line, 160, ifp);
-    sscanf(line,"%d %d", &fileNum, &use_l1_offset);
+    sscanf(line,"%d %d %f", &fileNum, &use_l1_offset, &xtalk_frac);
     fclose(ifp);
-    printf("template events file %d noise = %f, threshold0 = %f, threshold1 = %f, rms threshold frac = %f, common_frac = %f, gain fraction = %f, readout noise = %f, nonlinear_resp = %d \n", 
-            nfile, noise, q100, q101, q100_frac, common_frac, gain_frac, readout_noise, frontend_type);
+    printf("template events file %d noise = %f, threshold0 = %f, threshold1 = %f, rms threshold frac = %f, common_frac = %f,"
+            "gain fraction = %f, readout noise = %f, front end type = %d xtalk_frac = %.2f \n", 
+            nfile, noise, q100, q101, q100_frac, common_frac, gain_frac, readout_noise, frontend_type, xtalk_frac);
     printf("Template file number %i \n", fileNum);
 
     FrontEndModel frontEnd;
@@ -96,8 +98,6 @@ int main(int argc, char *argv[])
 
     //  Calculate 50% of threshold in q units and enc noise in adc units
 
-    q50=0.5*q100;
-    q10=0.2*q50;
 
     //  Create an input filename for this run 
 
@@ -302,7 +302,6 @@ int main(int argc, char *argv[])
 
     int tempID = thePixelTemp_.front().head.ID;
     templ.interpolate(tempID, 0.f, 0.f, -1.f);
-    qscale = templ.qscale();	
 
     // Initialize GenError store 
 
@@ -314,12 +313,6 @@ int main(int argc, char *argv[])
 
     // Ask for speed info
 
-    /*
-       printf("enter seeding threshold (4000) \n");
-       scanf("%f", &thrseed);
-
-       printf("seeding threshold = %f\n", thrseed);
-       */
 
     speed = -2;
 
@@ -350,12 +343,23 @@ int main(int argc, char *argv[])
 
         read_cluster(ifp, pixin);
         ++nevent;
+        if(nevent > 100000) break;
 
         triplg(vgauss);
         pixlst.clear();
         for(int i=0; i<ndcol; ++i) {ndhit[i] = 0;}
         icol = 0;
         if(vgauss[1] < 0.) {icol = 1;}
+        int xtalk_row_start = 0;
+        int xtalk_unfold_row = 1;
+        if(vgauss[2] < 0.) {
+            xtalk_row_start = 1;
+            xtalk_unfold_row = 0;
+        }
+
+        apply_xtalk(pixin, xtalk_row_start, xtalk_frac);
+
+
         for(int j=0; j<TXSIZE; ++j) {
             triplg(wgauss);
             triplg(xgauss);
@@ -376,8 +380,9 @@ int main(int argc, char *argv[])
             }
         }
 
-        // Simulate the second, higher threshold in single dcol hits
+        unfold_xtalk(clust, xtalk_unfold_row, xtalk_frac);
 
+        // Simulate the second, higher threshold in single dcol hits
         for(int j=0; j<TXSIZE; ++j) {
             for(int i=0; i<TYSIZE; ++i) {
                 if(clust[j][i] > 0.) {

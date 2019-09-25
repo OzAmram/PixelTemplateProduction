@@ -20,7 +20,7 @@ int SiPixelTemplateReco::PixelGeneric2D(int ID, float cotalpha, float cotbeta, f
 				float& yrec, float& sigmay, float& xrec, float& sigmax, int& nypix, int& nxpix, float& yfrac, float& xfrac)			
 {
     // Local variables 
-	int i, j, qbin;
+	int i, j;
 	int nclusx, nclusy;
 	float ypix, ypitch, fy, ly, yc, fypitch, lypitch, ytotal, loryloc, lorybias;
 	float syone, dyone, sytwo, dytwo, sxone, dxone, sxtwo, dxtwo, pixmx, delx, dely, sigx, sigy, sigma, delta;
@@ -64,7 +64,7 @@ int SiPixelTemplateReco::PixelGeneric2D(int ID, float cotalpha, float cotbeta, f
    
 	// Get LA and error info from the template object
 	
-	qbin = gtempl.qbin(ID, cotalpha, cotbeta, locBz, locBx, qtotal, pixmx, sigy, dely, sigx, delx, syone, dyone, sytwo, dytwo, sxone, dxone, sxtwo, dxtwo);
+	gtempl.qbin(ID, cotalpha, cotbeta, locBz, locBx, qtotal, pixmx, sigy, dely, sigx, delx, syone, dyone, sytwo, dytwo, sxone, dxone, sxtwo, dxtwo);
 	
 	xsize = gtempl.xsize();
 	ysize = gtempl.ysize();
