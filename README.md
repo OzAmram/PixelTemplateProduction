@@ -34,7 +34,7 @@ The format `pix_2t.proc` is as follows:
 
 > start\_file nfiles noise thresh1 thresh2 thresh1\_noise_frac common\_noise\_frac gain\_noise\_frac readout\_noise frontend\_type
 
-> use\_l1\_offset write\_header xtalk\_frac
+> use\_l1\_offset write\_header xtalk\_frac xtalk\_spread
 
 
 > id NTy NTyx NTxx DType Bfield VBias temp fluenc qscale 
@@ -45,9 +45,9 @@ Extra parameters on any of the lines will be ignored.
 
 An example config for 1D barrel templates is: 
 
-> 58401 205 250. 1600. 1600. 0.073 0.080 0.080 350. 0
+> 58401 205 250. 1600. 1600. 0.073 0.080 0.080 350. 1
 
-> 0 1 0.0
+> 0 1 0.0 0.0
 
 > 900 60 5 29 0 3.8 125. 263. 0. 1.
 
@@ -75,5 +75,5 @@ second is the `use_l1_offset` parameter, the third is the cross talk fraction.
 An example `test_params.txt` config is:
 > 58606 150. 1600. 1600. 0.073 0.080 0.08 350. 1 1.000
 
-> 58401 0 0.0
+> 58401 0 0.0 0.0
 

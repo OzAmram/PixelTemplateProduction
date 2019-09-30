@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
     struct timezone timz;
     long deltas, deltaus;
     double deltat;
-    float xtalk_frac;
+    float xtalk_frac, xtalk_noise;
 
 
     //  Read which data and inputs to use (use c file i/o which is much faster than c++ i/o) 
@@ -79,11 +79,11 @@ int main(int argc, char *argv[])
     fgets(line, 160, ifp);
     sscanf(line,"%d %f %f %f %f %f %f %f %d %s", &nfile, &noise, &q100, &q101, &q100_frac, &common_frac, &gain_frac, &readout_noise, &frontend_type, &extra[0]);
     fgets(line, 160, ifp);
-    sscanf(line,"%d %d %f", &fileNum, &use_l1_offset, &xtalk_frac);
+    sscanf(line,"%d %d %f %f", &fileNum, &use_l1_offset, &xtalk_frac, &xtalk_noise);
     fclose(ifp);
     printf("template events file %d noise = %f, threshold0 = %f, threshold1 = %f, rms threshold frac = %f, common_frac = %f,"
-            "gain fraction = %f, readout noise = %f, front end type = %d xtalk_frac = %.2f \n", 
-            nfile, noise, q100, q101, q100_frac, common_frac, gain_frac, readout_noise, frontend_type, xtalk_frac);
+            "gain fraction = %f, readout noise = %f, front end type = %d xtalk_frac = %.2f xtalk_nosie = %.2f \n", 
+            nfile, noise, q100, q101, q100_frac, common_frac, gain_frac, readout_noise, frontend_type, xtalk_frac, xtalk_noise);
     printf("Template file number %i \n", fileNum);
 
     FrontEndModel frontEnd;
@@ -107,21 +107,21 @@ int main(int argc, char *argv[])
     gStyle->SetOptFit(101);
     gStyle->SetHistLineWidth(2);
     static vector<TH1F*> hp(41);
-    hp[0] = new TH1F("h101","dy_temp (all sig); #Deltay (#mum)",nx,-halfxs,halfxs);
-    hp[1] = new TH1F("h102","dy_temp (signal @> 1.5mn); #Deltay (#mum)",nx,-halfxs,halfxs);      
-    hp[2] = new TH1F("h103","dy_temp (1.5mn @> signal @> 1.0mn); #Deltay (#mum)",nx,-halfxs,halfxs);      
-    hp[3] = new TH1F("h104","dy_temp (1.0mn @> signal @> 0.85mn); #Deltay (#mum)",nx,-halfxs,halfxs);     
-    hp[4] = new TH1F("h105","dy_temp (0.85mn @> signal); #Deltay (#mum)",nx,-halfxs,halfxs);      
+    hp[0] = new TH1F("h101","Template Reco #Deltay (all sig); #Deltay (#mum)",nx,-halfxs,halfxs);
+    hp[1] = new TH1F("h102","Template Reco #Deltay (signal @> 1.5mn); #Deltay (#mum)",nx,-halfxs,halfxs);      
+    hp[2] = new TH1F("h103","Template Reco #Deltay (1.5mn @> signal @> 1.0mn); #Deltay (#mum)",nx,-halfxs,halfxs);      
+    hp[3] = new TH1F("h104","Template Reco #Deltay (1.0mn @> signal @> 0.85mn); #Deltay (#mum)",nx,-halfxs,halfxs);     
+    hp[4] = new TH1F("h105","Template Reco #Deltay (0.85mn @> signal); #Deltay (#mum)",nx,-halfxs,halfxs);      
     hp[5] = new TH1F("h201","log10(probxy) (all sig)",nx,-12.,0.);
     hp[6] = new TH1F("h202","log10(probxy) (signal @> 1.5mn)",nx,-12.,0.);      
     hp[7] = new TH1F("h203","log10(probxy) (1.5mn @> signal @> 1.0mn)",nx,-12.,0.);      
     hp[8] = new TH1F("h204","log10(probxy) (1.0mn @> signal @> 0.85mn)",nx,-12.,0.);     
     hp[9] = new TH1F("h205","log10(probxy) (0.85mn @> signal)",nx,-12.,0.);      
-    hp[10] = new TH1F("h106","dx_temp (all sig); #Deltax (#mum)",nx,-halfxs,halfxs);
-    hp[11] = new TH1F("h107","dx_temp (signal @> 1.5mn); #Deltax (#mum)",nx,-halfxs,halfxs);      
-    hp[12] = new TH1F("h108","dx_temp (1.5mn @> signal @> 1.0mn); #Deltax (#mum)",nx,-halfxs,halfxs);      
-    hp[13] = new TH1F("h109","dx_temp (1.0mn @> signal @> 0.85mn); #Deltax (#mum)",nx,-halfxs,halfxs);      
-    hp[14] = new TH1F("h110","dx_temp (0.85mn @> signal); #Deltax (#mum)",nx,-halfxs,halfxs);    
+    hp[10] = new TH1F("h106","Template Reco #Deltax (all sig); #Deltax (#mum)",nx,-halfxs,halfxs);
+    hp[11] = new TH1F("h107","Template Reco #Deltax (signal @> 1.5mn); #Deltax (#mum)",nx,-halfxs,halfxs);      
+    hp[12] = new TH1F("h108","Template Reco #Deltax (1.5mn @> signal @> 1.0mn); #Deltax (#mum)",nx,-halfxs,halfxs);      
+    hp[13] = new TH1F("h109","Template Reco #Deltax (1.0mn @> signal @> 0.85mn); #Deltax (#mum)",nx,-halfxs,halfxs);      
+    hp[14] = new TH1F("h110","Template Reco #Deltax (0.85mn @> signal); #Deltax (#mum)",nx,-halfxs,halfxs);    
     hp[15] = new TH1F("h206","log10(probQ) (all sig)",nx,-12.,0.);
     hp[16] = new TH1F("h207","log10(probQ) (signal @> 1.5mn)",nx,-12.,0.);      
     hp[17] = new TH1F("h208","log10(probQ) (1.5mn @> signal @> 1.0mn)",nx,-12.,0.);      
@@ -129,22 +129,22 @@ int main(int argc, char *argv[])
     hp[19] = new TH1F("h210","log10(probQ) (0.85mn @> signal)",nx,-12.,0.);      
     hp[20] = new TH1F("h300","cotbeta (probxy<10-2)",nx,-10.,10.);      
     hp[21] = new TH1F("h301","cotalpha (probxy<10-2)",nx,-0.25,0.25);   
-    hp[22] = new TH1F("h401","dy_cmssw (all sig); #Deltay (#mum)",nx,-halfxs,halfxs);
-    hp[23] = new TH1F("h406","dx_cmssw (all sig); #Deltax (#mum)",nx,-halfxs,halfxs);
-    hp[24] = new TH1F("h111","dy_temp (one pixel clust); #Deltay (#mum)",nx,-halfxs,halfxs);
-    hp[25] = new TH1F("h112","dx_temp (one pixel clust); #Deltax (#mum)",nx,-halfxs,halfxs);
+    hp[22] = new TH1F("h401","Generic Reco #Deltay(all sig); #Deltay (#mum)",nx,-halfxs,halfxs);
+    hp[23] = new TH1F("h406","Generic Reco #Deltax (all sig); #Deltax (#mum)",nx,-halfxs,halfxs);
+    hp[24] = new TH1F("h111","Template Reco #Deltay (one pixel clust); #Deltay (#mum)",nx,-halfxs,halfxs);
+    hp[25] = new TH1F("h112","Template Reco #Deltax (one pixel clust); #Deltax (#mum)",nx,-halfxs,halfxs);
     hp[26] = new TH1F("h501","xy Probability; probxy",101,0,1.01);
     hp[27] = new TH1F("h502","Q Probability; probQ",101,0,1.01);
     hp[28] = new TH1F("h302","cotbeta (probQ<10-2)",nx,-10.,10.);      
     hp[29] = new TH1F("h303","cotalpha (probQ<10-2)",nx,-0.25,0.25);   
-    hp[30] = new TH1F("h113","dy_temp (>one pixel clust); #Deltay (#mum)",nx,-halfxs,halfxs);
-    hp[31] = new TH1F("h114","dx_temp (>one pixel clust); #Deltax (#mum)",nx,-halfxs,halfxs);
+    hp[30] = new TH1F("h113","Template Reco #Deltay (>one pixel clust); #Deltay (#mum)",nx,-halfxs,halfxs);
+    hp[31] = new TH1F("h114","Template Reco #Deltax (>one pixel clust); #Deltax (#mum)",nx,-halfxs,halfxs);
     hp[32] = new TH1F("h115","Cluster Charge; Q_clus (e)",nx,0.,120000.);
     hp[33] = new TH1F("h116","Normalized Cluster Charge; Q_clus (e)",nx,0.,60000.);
-    hp[34] = new TH1F("h117","dy_temp (cot#beta > 0); #Deltay (#mum)",nx,-halfxs,halfxs);
-    hp[35] = new TH1F("h118","dy_temp (cot#beta < 0); #Deltay (#mum)",nx,-halfxs,halfxs);
-    hp[36] = new TH1F("h119","dy_cmssw (>one pixel clust); #Deltay (#mum)",nx,-halfxs,halfxs);
-    hp[37] = new TH1F("h120","dx_cmssw (>one pixel clust); #Deltax (#mum)",nx,-halfxs,halfxs);
+    hp[34] = new TH1F("h117","Template Reco #Deltay (cot#beta > 0); #Deltay (#mum)",nx,-halfxs,halfxs);
+    hp[35] = new TH1F("h118","Template Reco #Deltay (cot#beta < 0); #Deltay (#mum)",nx,-halfxs,halfxs);
+    hp[36] = new TH1F("h119","Generic Reco #Deltay (>one pixel clust); #Deltay (#mum)",nx,-halfxs,halfxs);
+    hp[37] = new TH1F("h120","Generic Reco #Deltay (>one pixel clust); #Deltax (#mum)",nx,-halfxs,halfxs);
     hp[38] = new TH1F("h411","dy_baryc (all sig); #Deltay (#mum)",nx,-halfxs,halfxs);
     hp[39] = new TH1F("h412","dx_baryc (all sig); #Deltax (#mum)",nx,-halfxs,halfxs);
     hp[40] = new TH1F("h121","CCE; CCE",110,0.,1.10);
@@ -356,8 +356,16 @@ int main(int argc, char *argv[])
             xtalk_row_start = 1;
             xtalk_unfold_row = 0;
         }
+        float xtalk_apply = xtalk_frac + xtalk_noise * vgauss[3];
 
-        apply_xtalk(pixin, xtalk_row_start, xtalk_frac);
+        //printf("Before \n");
+        //print_cluster(pixin);
+
+        if (xtalk_frac > 0.) apply_xtalk(pixin, xtalk_row_start, xtalk_apply);
+        
+        //printf("After \n");
+        //print_cluster(pixin);
+
 
 
         for(int j=0; j<TXSIZE; ++j) {
@@ -379,8 +387,11 @@ int main(int argc, char *argv[])
                 }
             }
         }
-
-        unfold_xtalk(clust, xtalk_unfold_row, xtalk_frac);
+        //printf("Pre unfold: \n");
+        //print_cluster(clust);
+        if(xtalk_frac > 0.) unfold_xtalk(clust, xtalk_unfold_row, xtalk_frac);
+        //printf("Post unfold: \n");
+        //print_cluster(clust);
 
         // Simulate the second, higher threshold in single dcol hits
         for(int j=0; j<TXSIZE; ++j) {
@@ -442,7 +453,7 @@ int main(int argc, char *argv[])
                 if(imax > TYSIZE) {imax = TYSIZE;}
                 for(int j=jmin; j<jmax; ++j) {
                     for(int i=imin; i<imax; ++i) {
-                        if(clust[j][i] > 0.) {
+                        if(clust[j][i] > q100) {
                             if(!bclust[j][i]) {
                                 bclust[j][i] = true;
                                 pixel.first = j; pixel.second = i;

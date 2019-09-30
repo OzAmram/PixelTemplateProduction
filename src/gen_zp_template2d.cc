@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
     struct timezone timz;
     long deltas, deltaus;
     double deltat;
-    float xtalk_frac;
+    float xtalk_frac, xtalk_noise;
 
 
 
@@ -112,8 +112,8 @@ int main(int argc, char *argv[])
 
 
     fgets(line, 160, config_file);
-    num_read = sscanf(line, " %d %d %f", &use_l1_offset, &write_temp_header, &xtalk_frac);
-    if(num_read != 2){
+    num_read = sscanf(line, " %d %d %f %f", &use_l1_offset, &write_temp_header, &xtalk_frac, &xtalk_noise);
+    if(num_read != 4){
         printf("Error reading config file !\n");
         printf("Line was %s \n", line);
         return 0;
@@ -122,8 +122,8 @@ int main(int argc, char *argv[])
     num_read = sscanf(line, " %d %d %d %d %d %f %f %f %f %f",  &id, &NTy, &NTyx,&NTxx, &IDtype, &Bfield, &Vbias, &temp, &fluenc, &qscale);
     NTy =0 ;
     printf("Using params: Use_l1_offset=%d, write_temp_header=%d, ID=%d NTy=%d NTyx=%d NTxx=%d Dtype=%d Bfield=%.2f "
-            "Bias Voltage = %.1f temparature = %.0f fluence = %.2f q-scale = %.4f xtalk_frac = %.2f \n",
-            use_l1_offset, write_temp_header, id, NTy, NTyx, NTxx, IDtype, Bfield, Vbias, temp, fluenc, qscale, xtalk_frac);
+            "Bias Voltage = %.1f temparature = %.0f fluence = %.2f q-scale = %.4f xtalk_frac = %.2f xtalk_noise %.2f \n",
+            use_l1_offset, write_temp_header, id, NTy, NTyx, NTxx, IDtype, Bfield, Vbias, temp, fluenc, qscale, xtalk_frac, xtalk_noise );
     if(num_read != 10){
         printf("Error reading config file !\n");
         printf("Line was %s \n", line);
@@ -478,7 +478,9 @@ int main(int argc, char *argv[])
                 xtalk_unfold_row = 0;
             }
 
-            apply_xtalk(pixin, xtalk_row_start, xtalk_frac);
+            float xtalk_apply = xtalk_frac + xtalk_noise * vgauss[3];
+
+            if (xtalk_frac > 0.) apply_xtalk(pixin, xtalk_row_start, xtalk_apply);
 
 
 
@@ -501,7 +503,7 @@ int main(int argc, char *argv[])
                     }
                 }
             }
-            unfold_xtalk(clust, xtalk_unfold_row, xtalk_frac);
+            if(xtalk_frac > 0.) unfold_xtalk(clust, xtalk_unfold_row, xtalk_frac);
 
             // Simulate the second, higher threshold in single dcol hits
 
@@ -564,7 +566,7 @@ int main(int argc, char *argv[])
                     if(imax > TYSIZE) {imax = TYSIZE;}
                     for(int j=jmin; j<jmax; ++j) {
                         for(int i=imin; i<imax; ++i) {
-                            if(clust[j][i] > 0.) {
+                            if(clust[j][i] > q100) {
                                 if(!bclust[j][i]) {
                                     bclust[j][i] = true;
                                     pixel.first = j; pixel.second = i;
