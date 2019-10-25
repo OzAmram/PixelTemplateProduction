@@ -45,7 +45,7 @@ Extra parameters on any of the lines will be ignored.
 
 An example config for 1D barrel templates is: 
 
-> 58401 205 250. 1600. 1600. 0.073 0.080 0.080 350. 1
+> 58401 205 250. 1600. 1600. 0.073 0.080 0.080 350. 0
 
 > 0 1 0.0 0.0
 

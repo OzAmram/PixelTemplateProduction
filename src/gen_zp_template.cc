@@ -149,6 +149,7 @@ int main(int argc, char *argv[])
             use_l1_offset, write_temp_header, id, NTy, NTyx, NTxx, IDtype, Bfield, Vbias, temp, fluenc, qscale, xtalk_frac, xtalk_noise);
     if(num_read != 10){
         printf("Error reading config file !\n");
+        printf("Only %i params when there should be 10 \n",num_read); 
         printf("Line was %s \n", line);
         return 0;
     }
@@ -581,6 +582,7 @@ int main(int argc, char *argv[])
 
             float xtalk_apply = xtalk_frac + xtalk_noise * vgauss[3];
 
+            //print_cluster(pixin);
             if (xtalk_frac > 0.) apply_xtalk(pixin, xtalk_row_start, xtalk_apply);
             
             //do main cluster
@@ -596,8 +598,7 @@ int main(int argc, char *argv[])
                     zgraw[i][j] = zgauss[i];
 
                     sigraw[TXSIZE-1-j][TYSIZE-1-i] = rten * pixin[j][i];
-                    if(rten * pixin[j][i] > 200.) 
-                        qin = (rten*pixin[j][i] + xgauss[i]*noise);
+                    if(rten * pixin[j][i] > 200.) qin = (rten*pixin[j][i] + xgauss[i]*noise);
                     else qin = 0.;
                     rclust[TXSIZE-1-j][TYSIZE-1-i] = qin;
                     if(qin < q100*(1.+wgauss[i]*q100_frac)) {
@@ -612,6 +613,7 @@ int main(int argc, char *argv[])
 
 
             }
+            //print_cluster(clust);
 
             if(xtalk_frac > 0.) unfold_xtalk(clust, xtalk_unfold_row, xtalk_frac);
 

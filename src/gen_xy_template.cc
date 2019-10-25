@@ -22,6 +22,9 @@
  * Update for new response modeling input files       [28 Jan 10]  *
  *
  * Translated from fortran to C++                      May 2019
+ *
+ * Don't separate 2 halves of charge var fit and reduce
+ * order of fitting polynomial                         Oct 2019
  *******************************************************************
  */
 #include "template_utils.h"
@@ -523,19 +526,19 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
             for(int i=0; i<Nx; i++){
                 //separate two sides of cluster
                 if(xtemp[i][k] > 20.){
-                    if(i<= NHx){
+                    //if(i<= NHx){
                         xsignal1.push_back(xtemp[i][k]);
                         xssignal1.push_back(sqrt(xtemp2[i][k]));
                         xssignal1err.push_back(1.);
 
                         sxmax = std::max(sxmax, xtemp[i][k]);
                         ssxmax = std::max(ssxmax, sqrt(xtemp2[i][k]));
-                    }
-                    if(i>=NHx){
+                    //}
+                    //if(i>=NHx){
                         xsignal2.push_back(xtemp[i][k]);
                         xssignal2.push_back(sqrt(xtemp2[i][k]));
                         xssignal2err.push_back(1.);
-                    }
+                    //}
 
                 }
             }
@@ -555,13 +558,13 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         f_xtemp1->SetParameter(0, 0.);
         f_xtemp1->SetParameter(1, guess);
         f_xtemp1->SetParameter(2, 0.);
-        f_xtemp1->SetParameter(3, 0.);
+        f_xtemp1->FixParameter(3, 0.);
         f_xtemp1->FixParameter(4, 0.);
 
         f_xtemp1->SetParError(0, 1.);
         f_xtemp1->SetParError(1, 1.);
         f_xtemp1->SetParError(2, 1.);
-        f_xtemp1->SetParError(3, 1.);
+        f_xtemp1->SetParError(3, 0.);
         f_xtemp1->SetParError(4, 0.);
         f_xtemp1->SetLineColor(kRed);
 
@@ -570,13 +573,13 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         f_xtemp2->SetParameter(0, 0.);
         f_xtemp2->SetParameter(1, guess);
         f_xtemp2->SetParameter(2, 0.);
-        f_xtemp2->SetParameter(3, 0.);
+        f_xtemp2->FixParameter(3, 0.);
         f_xtemp2->FixParameter(4, 0.);
 
         f_xtemp2->SetParError(0, 1.);
         f_xtemp2->SetParError(1, 1.);
         f_xtemp2->SetParError(2, 1.);
-        f_xtemp2->SetParError(3, 1.);
+        f_xtemp2->SetParError(3, 0.);
         f_xtemp2->SetParError(4, 0.);
         f_xtemp2->SetLineColor(kBlue);
 
@@ -620,19 +623,19 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
             for(int i=0; i<Ny; i++){
                 //separate two sides of sensor
                 if(ytemp[i][k] > 20.){
-                    if(i<= NHy){
+                    //if(i<= NHy){
                         ysignal1.push_back(ytemp[i][k]);
                         yssignal1.push_back(sqrt(ytemp2[i][k]));
                         yssignal1err.push_back(1.);
 
                         symax = std::max(symax, ytemp[i][k]);
                         ssymax = std::max(ssymax, sqrt(ytemp2[i][k]));
-                    }
-                    if(i>= NHy){
+                    //}
+                    //if(i>= NHy){
                         ysignal2.push_back(ytemp[i][k]);
                         yssignal2.push_back(sqrt(ytemp2[i][k]));
                         yssignal2err.push_back(1.);
-                    }
+                    //}
 
                 }
             }
@@ -650,13 +653,13 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         f_ytemp1->SetParameter(0, 0.);
         f_ytemp1->SetParameter(1, guess);
         f_ytemp1->SetParameter(2, 0.);
-        f_ytemp1->SetParameter(3, 0.);
+        f_ytemp1->FixParameter(3, 0.);
         f_ytemp1->FixParameter(4, 0.);
 
         f_ytemp1->SetParError(0, 1.);
         f_ytemp1->SetParError(1, 1.);
         f_ytemp1->SetParError(2, 1.);
-        f_ytemp1->SetParError(3, 1.);
+        f_ytemp1->SetParError(3, 0.);
         f_ytemp1->SetParError(4, 0.);
         f_ytemp1->SetLineColor(kRed);
 
@@ -665,13 +668,13 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         f_ytemp2->SetParameter(0, 0.);
         f_ytemp2->SetParameter(1, guess);
         f_ytemp2->SetParameter(2, 0.);
-        f_ytemp2->SetParameter(3, 0.);
+        f_ytemp2->FixParameter(3, 0.);
         f_ytemp2->FixParameter(4, 0.);
 
         f_ytemp2->SetParError(0, 1.);
         f_ytemp2->SetParError(1, 1.);
         f_ytemp2->SetParError(2, 1.);
-        f_ytemp2->SetParError(3, 1.);
+        f_ytemp2->SetParError(3, 0.);
         f_ytemp2->SetParError(4, 0.);
         f_ytemp2->SetLineColor(kBlue);
 

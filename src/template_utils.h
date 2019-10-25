@@ -70,9 +70,10 @@ struct FrontEndModel
     double vcaloffst = 60.0;
 
     //--- PhaseII - initial guess
-    double thr = 1000; // threshold in e-
-    double qperTOT = 1500; // e- per TOT => step optimized for 80MHz clock=12.5ns
+    double thr = 1200; // threshold in e-
+    double qperTOT = 600; // e- per TOT => step optimized for 80MHz clock=12.5ns
     int nbitsTOT = 4; // fixed and carved in stone?
+    int tot_max = pow(2, nbitsTOT);
     int tot = 0;
 
     //--- Constants (could be made variables later)
@@ -103,12 +104,12 @@ struct FrontEndModel
                 break;
 
             case 2:
-                tot = (qin - thr)/qperTOT;
-                if (tot<=0) signal = 0; 
+                if(qin < thr) signal = 0;
                 else{
-                    if(tot >= pow(nbitsTOT,2)) tot = pow(nbitsTOT,2)-1;
+                    tot = int((qin)/qperTOT);
+                    tot = std::min(tot, tot_max);
                     double step = qperTOT/2;
-                    signal = (qperTOT*(tot-1)+thr)+step;
+                    signal = (qperTOT*tot)+step;
                 }
                 break;
 
@@ -386,17 +387,23 @@ std::vector<float> get_vavilov_pars(TH1F *h){
     TF1 *vfunc = new TF1("vavilov",vavilov,-10.,50.,4);
     vfunc->SetParNames("norm","mean","sigma","kappa");
 
-    Double_t p1 = h->GetMean();
-    Double_t p2 = 0.1*p1;
-    Double_t p3 = 0.02*p1/20000.;
-    Double_t p0 = h->GetEntries()*20000./p1; 
-    vfunc->SetParameters(p0,p1,p2,p3);
+    float par_guess [4];
+    float mean = h->GetMean();
+    par_guess[0] = h->GetEntries()*20000./mean; 
+    par_guess[1] = mean;
+    par_guess[2] = 0.1*mean;
+    par_guess[3] = 0.02*mean/20000.;
+    vfunc->SetParameters(par_guess[0], par_guess[1], par_guess[2], par_guess[3]);
+    vfunc->SetParLimits(1, 0., 1e9);
+    vfunc->SetParLimits(2, 0., 1e9);
     vfunc->SetParLimits(3, 0.01, 10.);
     h->Fit("vavilov");
     std::vector<float> pars;
     //we don't care about norm
     for(int i=1; i<4; i++){
-        pars.push_back(vfunc->GetParameter(i));
+        float par = vfunc->GetParameter(i);
+        if((i==1 || i == 2) && par < 1e-4) par = par_guess[i];
+        pars.push_back(par);
     }
     return pars;
 
