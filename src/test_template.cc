@@ -149,6 +149,12 @@ int main(int argc, char *argv[])
     hp[39] = new TH1F("h412","dx_baryc (all sig); #Deltax (#mum)",nx,-halfxs,halfxs);
     hp[40] = new TH1F("h121","CCE; CCE",110,0.,1.10);
 
+    int pulls_idx = 41;
+    hp[41] = new TH1F("h_pull_temp_y", "Template Reco Pull Y (all clusters)", nx, -5., 5.);
+    hp[42] = new TH1F("h_pull_temp_x", "Template Reco Pull X (all clusters)", nx, -5., 5.);
+    hp[43] = new TH1F("h_pull_gen_y", "Generic Reco Pull Y (all clusters)", nx, -5., 5.);
+    hp[44] = new TH1F("h_pull_gen_x", "Generic Reco Pull X (all clusters)", nx, -5., 5.);
+
 
     // Set style for the the histograms	
 
@@ -593,6 +599,7 @@ int main(int argc, char *argv[])
             sy[qb] += dy; sy2[qb] += dy*dy; scy[qb] += dy*dy/(sigmay*sigmay);
             if(probxy > 1.e-2) {syp[qb] += dy; syp2[qb] += dy*dy; scyp[qb] += dy*dy/(sigmay*sigmay);}
             hp[0]->Fill(dy, weight);
+            hp[pulls_idx]->Fill(dy/sigmay, weight);
             hp[1+qbin]->Fill(dy, weight);
             hp[38]->Fill(dyclust, weight);
             pp[49]->Fill((double)cotbeta, dyclust);
@@ -613,6 +620,7 @@ int main(int argc, char *argv[])
             sx[qb] += dx; sx2[qb] += dx*dx; scx[qb] += dx*dx/(sigmax*sigmax);
             if(probx > 1.e-2) {sxp[qb] += dx; sxp2[qb] += dx*dx; scxp[qb] += dx*dx/(sigmax*sigmax);}
             hp[10]->Fill(dx, weight);
+            hp[pulls_idx+1]->Fill(dx/sigmax, weight);
             hp[11+qbin]->Fill(dx, weight);
             hp[39]->Fill(dxclust, weight);
             pp[51]->Fill((double)cotbeta, dxclust);
@@ -645,6 +653,8 @@ int main(int argc, char *argv[])
             sxc[qb] += dxc; sxc2[qb] += dxc*dxc; scxc[qb] += dxc*dxc/(sxcmssw*sxcmssw);
             hp[22]->Fill(dyc, weight);
             hp[23]->Fill(dxc, weight);
+            hp[pulls_idx + 2]->Fill(dyc/ sycmssw, weight);
+            hp[pulls_idx + 3]->Fill(dxc/ sxcmssw, weight);
             if(nypix > 1) {hp[36]->Fill(dyc);}
             if(nxpix > 1) {hp[37]->Fill(dxc);}
             pp[48]->Fill((double)cotbeta,(double)nxpix);
@@ -805,6 +815,13 @@ int main(int argc, char *argv[])
         if(fitp != NULL) fitp->SetLineColor(kBlue); 
     }
 
+
+    for(i=41; i<45; ++i) {
+        hp[i]->Fit("gaus"); 
+        TF1 *fitp = hp[i]->GetFunction("gaus");
+        if(fitp != NULL) fitp->SetLineColor(kBlue); 
+    }
+
     //  Create an output filename for this run 
 
     sprintf(outfile0,"pixel_histos%5.5d.pdf[",nfile);
@@ -813,7 +830,7 @@ int main(int argc, char *argv[])
     TCanvas c1("c1", header);
     c1.SetFillStyle(4000);
     c1.Print(outfile0);
-    for(i=0; i<41; ++i) {
+    for(i=0; i<45; ++i) {
         hp[i]->SetMarkerColor(kBlack);
         hp[i]->SetMarkerStyle(20);
         hp[i]->Draw();
