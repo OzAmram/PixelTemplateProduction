@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
     int nx=120;	
     gStyle->SetOptFit(101);
     gStyle->SetHistLineWidth(2);
-    static vector<TH1F*> hp(41);
+    static vector<TH1F*> hp(45);
     hp[0] = new TH1F("h101","Template Reco #Deltay (all sig); #Deltay (#mum)",nx,-halfxs,halfxs);
     hp[1] = new TH1F("h102","Template Reco #Deltay (signal @> 1.5mn); #Deltay (#mum)",nx,-halfxs,halfxs);      
     hp[2] = new TH1F("h103","Template Reco #Deltay (1.5mn @> signal @> 1.0mn); #Deltay (#mum)",nx,-halfxs,halfxs);      
@@ -251,7 +251,7 @@ int main(int argc, char *argv[])
 
     std::vector<std::pair<int, int> > pixlst;
 
-    sprintf(infile,"template_events_d%i.out",nfile);
+    sprintf(infile,"template_events_d%05i.out",nfile);
 
     //  Open input file and read header info 
 
