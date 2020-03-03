@@ -130,7 +130,7 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
 
     //loop over files backwards
     for(int iFile = file_start + num_files - 1; iFile >= file_start; iFile--){
-        sprintf(fname, "template_events_d%i.out", iFile);
+        sprintf(fname, "template_events_d%05i.out", iFile);
         FILE *f_evts = fopen(fname, "r");
 
         if(f_evts ==0) {
@@ -601,7 +601,7 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         g_xtemp2->SetMarkerSize(1.4);
         g_xtemp2->SetMarkerStyle(21);
 
-        sprintf(plot_title, "sigmax_%i.png", iFile);
+        sprintf(plot_title, "sigmax_%05i.png", iFile);
         c_xtemp->Print(plot_title);
 
 
@@ -689,7 +689,7 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         g_ytemp2->SetMarkerSize(1.4);
         g_ytemp2->SetMarkerStyle(21);
 
-        sprintf(plot_title, "sigmay_%i.png", iFile);
+        sprintf(plot_title, "sigmay_%05i.png", iFile);
         c_ytemp->Print(plot_title);
 
         //get fit params
@@ -724,7 +724,7 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         char file_out[100];
 
         //x template file
-        sprintf(file_out, "ztemp_%i.txt", iFile);
+        sprintf(file_out, "ztemp_%05i.txt", iFile);
         FILE *ztemp_file = fopen(file_out, "w+");
         fprintf(ztemp_file, "%9.6f %9.6f %9.6f \n", cosx, cosy, cosz);
 
@@ -778,7 +778,7 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
         fclose(ztemp_file);
 
         //y template file
-        sprintf(file_out, "ptemp_%i.txt", iFile);
+        sprintf(file_out, "ptemp_%05i.txt", iFile);
         FILE *ptemp_file = fopen(file_out, "w+");
         fprintf(ptemp_file, "%9.6f %9.6f %9.6f \n", cosx, cosy, cosz);
         fprintf(ptemp_file, "%8.1f %8.1f %8.1f \n", qavg, symax, pixmax);
@@ -807,7 +807,7 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
 
     //output lorentz widths
     char  lorz_out[100];
-    sprintf(lorz_out, "lorentz_widths_xy%i.out", file_start);
+    sprintf(lorz_out, "lorentz_widths_xy%05i.out", file_start);
     FILE *f_lor_width = fopen(lorz_out, "w+");
     fprintf(f_lor_width,  "%9.2f %9.2f %5i %7.4f"
             "%9.2f %9.2f %5i %7.4f",
@@ -815,7 +815,7 @@ void gen_xy_template(const int nevents = 30000, const int npt = 200, const int n
             2.*loryw1, 2.*dy1sig, ny1max, cotamn);
     fclose(f_lor_width);
 
-    sprintf(lorz_out, "lorentz_widths_new%i.out", file_start);
+    sprintf(lorz_out, "lorentz_widths_new%05i.out", file_start);
     FILE *f_lor_new = fopen(lorz_out, "w+");
     fprintf(f_lor_new, "%8.2f %8.2f %8.2f %8.2f \n", 2.*lorxw1, lorxw1, 2.*loryw1, loryw1);
     fclose(f_lor_new);

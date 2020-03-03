@@ -3,10 +3,10 @@
 #You can set the branch variable if you want to use a different branch than cmssw master
 
 base=https://raw.githubusercontent.com/
-#branch=cms-sw/cmssw/master/
-branch=pmaksim1/cmssw/sideload-for-SiPixelTemplate/
-mkdir cmssw_code
-cd cmssw_code/
+branch=cms-sw/cmssw/master/
+#branch=ozamram/cmssw/sideload_branch_v2/
+mkdir cmssw_code_oz_branch
+cd cmssw_code_oz_branch/
 rm *
 wget ${base}${branch}RecoLocalTracker/SiPixelRecHits/src/SiPixelTemplateReco.cc 
 wget ${base}${branch}RecoLocalTracker/SiPixelRecHits/src/SiPixelTemplateReco2D.cc 

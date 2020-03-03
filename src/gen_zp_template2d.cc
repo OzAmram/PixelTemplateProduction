@@ -406,7 +406,7 @@ int main(int argc, char *argv[])
         //  Create an input filename for this run 
 
 
-        sprintf(infile,"template_events_d%d.out",ifile);
+        sprintf(infile,"template_events_d%05i.out",ifile);
 
 
 

@@ -578,7 +578,7 @@ int main(int argc, char *argv[])
             // Check resolution and weights
             if(qbin > 3) {
                 qbin = 3; qb = 4;
-                printf(" qbin = %d \n", qb);
+                //printf(" qbin = %d \n", qb);
             }
             ++nbin[qb];
             if(qb > 3 && noqbin4) continue;

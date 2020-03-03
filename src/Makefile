@@ -1,5 +1,5 @@
 root_flags= `root-config --cflags --ldflags --libs --glibs`
-compiler_flags=-std=c++11 -Wall -O0 -g
+compiler_flags=-std=c++11 -Wall -g
 vdt_dir=/usr/local/include
 includes= -I. -I../cmssw_code/ -I$(vdt_dir)
 DEPS= template_utils.h ranlux.c ../cmssw_code/*

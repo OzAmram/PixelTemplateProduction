@@ -74,7 +74,7 @@ void gen_xy_template2d(const int nevents = 32000, const int npt = 300, const int
 
     //loop over files backwards
     for(int iFile = file_start + num_files - 1; iFile >= file_start; iFile--){
-        sprintf(fname, "template_events_d%i.out", iFile);
+        sprintf(fname, "template_events_d%05i.out", iFile);
         FILE *f_evts = fopen(fname, "r");
 
         if(f_evts ==0) {
@@ -290,7 +290,7 @@ void gen_xy_template2d(const int nevents = 32000, const int npt = 300, const int
         char file_out[100];
 
         //x template file
-        sprintf(file_out, "zptemp_%i.txt", iFile);
+        sprintf(file_out, "zptemp_%05i.txt", iFile);
         FILE *zptemp_file = fopen(file_out, "w+");
         fprintf(zptemp_file, "%9.6f %9.6f %9.6f \n", cosx, cosy, cosz);
         fprintf(zptemp_file, "%8.1f %8.1f %2i %2i %2i %2i\n", qavg,pixmax,imin,imax,jmin,jmax); 

@@ -482,7 +482,7 @@ int main(int argc, char *argv[])
 
 
 
-        sprintf(infile,"template_events_d%d.out",ifile);
+        sprintf(infile,"template_events_d%05i.out",ifile);
 
         printf("opening file %s to get pixel events \n", infile);
 
@@ -1442,7 +1442,7 @@ int main(int argc, char *argv[])
 
         //y template reisduals info
         for(int i=0; i<4; i++){
-            auto pars = get_gaussian_pars(hp[y_temp_idx +1 +i], 5.);
+            auto pars = get_gaussian_pars(hp[y_temp_idx +1 +i], minErrY);
             for(int j=0; j<4; j++){
                 fprintf(temp_output_file, "%9.1f ", pars[j]);
             }
@@ -1458,7 +1458,7 @@ int main(int argc, char *argv[])
 
         //x template reisduals info
         for(int i=0; i<4; i++){
-            auto pars = get_gaussian_pars(hp[x_temp_idx +1 +i], 3.);
+            auto pars = get_gaussian_pars(hp[x_temp_idx +1 +i], minErrX);
             for(int j=0; j<4; j++){
                 fprintf(temp_output_file, "%9.1f ", pars[j]);
             }
@@ -1483,14 +1483,14 @@ int main(int argc, char *argv[])
         //y first pass temp fit avg and std dev + chi2 of merged clusters
         for(int i=0; i<4; i++){
             auto chiy_pars = get_chi2_pars(hp[y_chi2_fp_idx + i], chi_min[y_chi2_fp_idx + i]);
-            auto temp_pars = get_gaussian_pars(hp[y_temp_fp_idx +1 +i], 5.);
+            auto temp_pars = get_gaussian_pars(hp[y_temp_fp_idx +1 +i], minErrY);
             fprintf(temp_output_file, "%9.1f %9.1f %9.3f %9.3f \n", 
                     temp_pars[0], temp_pars[1], chiy_pars[0], chiy_pars[1]);
         }
         //x first pass temp fit avg and std dev + chi2 of merged clusters
         for(int i=0; i<4; i++){
             auto chix_pars = get_chi2_pars(hp[x_chi2_fp_idx + i], chi_min[x_chi2_fp_idx +i]);
-            auto temp_pars = get_gaussian_pars(hp[x_temp_fp_idx +1 +i], 3.);
+            auto temp_pars = get_gaussian_pars(hp[x_temp_fp_idx +1 +i], minErrX);
             fprintf(temp_output_file, "%9.1f %9.1f %9.3f %9.3f \n", 
                     temp_pars[0], temp_pars[1], chix_pars[0], chix_pars[1]);
         }
@@ -1498,7 +1498,7 @@ int main(int argc, char *argv[])
 
         //y generic reisduals info
         for(int i=0; i<4; i++){
-            auto pars = get_gaussian_pars(hp[y_generic_idx +1 +i], 5.);
+            auto pars = get_gaussian_pars(hp[y_generic_idx +1 +i], minErrY);
             for(int j=0; j<4; j++){
                 fprintf(temp_output_file, "%9.1f ", pars[j]);
             }
@@ -1507,7 +1507,7 @@ int main(int argc, char *argv[])
 
         //x generic reisduals info
         for(int i=0; i<4; i++){
-            auto pars = get_gaussian_pars(hp[x_generic_idx +1 +i], 5.);
+            auto pars = get_gaussian_pars(hp[x_generic_idx +1 +i], minErrX);
             for(int j=0; j<4; j++){
                 fprintf(temp_output_file, "%9.1f ", pars[j]);
             }
@@ -1559,8 +1559,8 @@ int main(int argc, char *argv[])
 
         //x and y generic reisduals info
         for(int i=0; i<4; i++){
-            auto y_pars = get_gaussian_pars(hp[y_generic_idx +1 +i], 5.);
-            auto x_pars = get_gaussian_pars(hp[x_generic_idx +1 +i], 5.);
+            auto y_pars = get_gaussian_pars(hp[y_generic_idx +1 +i], minErrY);
+            auto x_pars = get_gaussian_pars(hp[x_generic_idx +1 +i], minErrX);
             fprintf(generr_output_file, "%9.1f %9.1f %9.1f %9.1f \n", 
                     y_pars[0], y_pars[1], x_pars[0], x_pars[1]);
         }
