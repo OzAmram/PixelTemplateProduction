@@ -73,7 +73,7 @@ parameters, the first is the file number of the template (the XXXXX) and the
 second is the `use_l1_offset` parameter, the third is the cross talk fraction. 
 
 An example `test_params.txt` config is:
-> 58606 150. 1600. 1600. 0.073 0.080 0.08 350. 1 1.000
+> 58606 150. 1600. 1600. 0.073 0.080 0.08 350. 0
 
 > 58401 0 0.0 0.0
 
