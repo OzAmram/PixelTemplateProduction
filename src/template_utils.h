@@ -37,6 +37,7 @@ using namespace std;
 #include "TFile.h"
 #include "TObject.h"
 #include "TH1F.h"
+#include "TH2F.h"
 #include "TProfile.h"
 #include "TStyle.h"
 #include "TF1.h"
@@ -72,8 +73,8 @@ struct FrontEndModel
     double vcaloffst = 60.0;
 
     //--- PhaseII - initial guess
-    double thr = 1200; // threshold in e-
-    double qperTOT = 600; // e- per TOT => step optimized for 80MHz clock=12.5ns
+    double threshold = 1000; // threshold in e-
+    double qperTOT = 1500; // e- per TOT
     int nbitsTOT = 4; // fixed and carved in stone?
     int tot_max = pow(2, nbitsTOT);
     int tot = 0;
@@ -106,12 +107,12 @@ struct FrontEndModel
                 break;
 
             case 2:
-                if(qin < thr) signal = 0;
+                if(qin < threshold) signal = 0;
                 else{
-                    tot = int((qin)/qperTOT);
+                    tot = int((qin - threshold)/qperTOT);
                     tot = std::min(tot, tot_max);
                     double step = qperTOT/2;
-                    signal = (qperTOT*tot)+step;
+                    signal = (qperTOT*tot + threshold)+step;
                 }
                 break;
 

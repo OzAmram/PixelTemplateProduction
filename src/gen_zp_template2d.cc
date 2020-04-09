@@ -167,6 +167,7 @@ int main(int argc, char *argv[])
     frontEnd.fe_type       = fe_model_type;
     frontEnd.gain_frac     = gain_frac;
     frontEnd.readout_noise = readout_noise;
+    frontEnd.threshold = q100;
     if(use_l1_offset) {
         printf("using L1 parameters \n");
         frontEnd.vcal = 50.;	

@@ -158,6 +158,7 @@ int main(int argc, char *argv[])
 
     FrontEndModel frontEnd;
     frontEnd.fe_type       = fe_model_type;
+    frontEnd.threshold = q100;
     frontEnd.gain_frac     = gain_frac;
     frontEnd.readout_noise = readout_noise;
     if(use_l1_offset) {

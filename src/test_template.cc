@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
     sscanf(line,"%d %d %f %f", &fileNum, &use_l1_offset, &xtalk_frac, &xtalk_noise);
     fclose(ifp);
     printf("template events file %d noise = %f, threshold0 = %f, threshold1 = %f, rms threshold frac = %f, common_frac = %f,"
-            "gain fraction = %f, readout noise = %f, front end type = %d xtalk_frac = %.2f xtalk_nosie = %.2f \n", 
+            "gain fraction = %f, readout noise = %f, front end type = %d xtalk_frac = %.2f xtalk_noise = %.2f \n", 
             nfile, noise, q100, q101, q100_frac, common_frac, gain_frac, readout_noise, frontend_type, xtalk_frac, xtalk_noise);
     printf("Template file number %i \n", fileNum);
 
@@ -90,6 +90,7 @@ int main(int argc, char *argv[])
     frontEnd.fe_type       = frontend_type;
     frontEnd.gain_frac     = gain_frac;
     frontEnd.readout_noise = readout_noise;
+    frontEnd.threshold = q100;
     if(use_l1_offset) {
         printf("using L1 parameters \n");
         frontEnd.vcal = 50.;	
@@ -106,7 +107,11 @@ int main(int argc, char *argv[])
     int nx=120;	
     gStyle->SetOptFit(101);
     gStyle->SetHistLineWidth(2);
-    static vector<TH1F*> hp(45);
+
+    
+    const int n_hists = 47;
+
+    static vector<TH1F*> hp(n_hists);
     hp[0] = new TH1F("h101","Template Reco #Deltay (all sig); #Deltay (#mum)",nx,-halfxs,halfxs);
     hp[1] = new TH1F("h102","Template Reco #Deltay (signal @> 1.5mn); #Deltay (#mum)",nx,-halfxs,halfxs);      
     hp[2] = new TH1F("h103","Template Reco #Deltay (1.5mn @> signal @> 1.0mn); #Deltay (#mum)",nx,-halfxs,halfxs);      
@@ -155,10 +160,19 @@ int main(int argc, char *argv[])
     hp[43] = new TH1F("h_pull_gen_y", "Generic Reco Pull Y (all clusters)", nx, -5., 5.);
     hp[44] = new TH1F("h_pull_gen_x", "Generic Reco Pull X (all clusters)", nx, -5., 5.);
 
+    int cls_len_idx = 45;
+    const int n_cls_len_bins = 16;
+    hp[45] = new TH1F("h_cls_leny","Cluster Length (Rows)",n_cls_len_bins, 0, n_cls_len_bins);
+    hp[46] = new TH1F("h_cls_lenx","Cluster Length (Cols)",n_cls_len_bins, 0, n_cls_len_bins);
+    TH2F *h_cls_len_dy = new TH2F("h_cls_leny_dy", "Template Reco #Deltay",n_cls_len_bins, 0,n_cls_len_bins, nx, -halfxs, halfxs);
+
+    TH2F *h_cls_len_dx = new TH2F("h_cls_lenx_dx", "Template Reco #Deltay",n_cls_len_bins, 0,n_cls_len_bins, nx, -halfxs, halfxs);
+
 
     // Set style for the the histograms	
 
-    for(i=0; i<41; ++i) {
+    for(i=0; i<n_hists; ++i) {
+        if(hp[i] == NULL) continue;
         hp[i]->SetLineColor(kBlack);
         hp[i]->SetFillColor(33);
     }
@@ -658,8 +672,23 @@ int main(int argc, char *argv[])
             if(nypix > 1) {hp[36]->Fill(dyc);}
             if(nxpix > 1) {hp[37]->Fill(dxc);}
             pp[48]->Fill((double)cotbeta,(double)nxpix);
-            if(nypix == 1) {hp[24]->Fill(dy);} else {hp[30]->Fill(dy);}
-            if(nxpix == 1) {hp[25]->Fill(dx);} else {hp[31]->Fill(dx);}
+
+            hp[cls_len_idx]->Fill(nypix);
+            h_cls_len_dy->Fill(nypix, dy);
+
+            hp[cls_len_idx+1]->Fill(nxpix);
+            h_cls_len_dx->Fill(nxpix, dx);
+
+            if(nxpix == 1) {
+                hp[25]->Fill(dx);
+            } else {
+                hp[31]->Fill(dx);
+            }
+            if(nypix == 1) {
+                hp[24]->Fill(dy);
+            } else {
+                hp[30]->Fill(dy);
+            }
             if(qbin == 1) {pp[1]->Fill(eta, dyc);}
             if(qb < 4 && qb > 1) {pp[3]->Fill(eta, dyc);}
             if(qbin == 1) {pp[5]->Fill(eta, dxc);}
@@ -817,6 +846,7 @@ int main(int argc, char *argv[])
 
 
     for(i=41; i<45; ++i) {
+        if(hp[i] == NULL) continue;
         hp[i]->Fit("gaus"); 
         TF1 *fitp = hp[i]->GetFunction("gaus");
         if(fitp != NULL) fitp->SetLineColor(kBlue); 
@@ -830,12 +860,81 @@ int main(int argc, char *argv[])
     TCanvas c1("c1", header);
     c1.SetFillStyle(4000);
     c1.Print(outfile0);
-    for(i=0; i<45; ++i) {
+    for(i=0; i<n_hists; ++i) {
+        if(hp[i] == NULL) continue;
         hp[i]->SetMarkerColor(kBlack);
         hp[i]->SetMarkerStyle(20);
         hp[i]->Draw();
         c1.Print(outfile1);
     }
+    // Residuals as a function of cluster length
+    float x_axis[n_cls_len_bins];
+    float e_x_axis[n_cls_len_bins];
+    float std_devx[n_cls_len_bins];
+    float e_std_devx[n_cls_len_bins];
+    float std_devy[n_cls_len_bins];
+    float e_std_devy[n_cls_len_bins];
+    for(int k =1; k <= n_cls_len_bins; k++){
+        x_axis[k-1] = k;
+        e_x_axis[k-1] = 0.5;
+
+        TH1D *h_projx = h_cls_len_dx->ProjectionY("projx", k,k+1, "e");
+        TH1D *h_projy = h_cls_len_dy->ProjectionY("projy", k,k+1, "e");
+
+        if(h_projx->Integral() > 100){
+            h_projx->Fit("gaus");
+            TF1 *fit = h_projx->GetFunction("gaus");
+            std_devx[k-1] = fit->GetParameter(2);
+            e_std_devx[k-1] = fit->GetParError(2);
+        }
+        else{
+            std_devx[k-1] = 0.;
+            e_std_devx[k-1] = 0.;
+        }
+
+        if(h_projy->Integral() > 100){
+            h_projy->Fit("gaus");
+            TF1 *fit = h_projy->GetFunction("gaus");
+            std_devy[k-1] = fit->GetParameter(2);
+            e_std_devy[k-1] = fit->GetParError(2);
+        }
+        else{
+            std_devy[k-1] = 0.;
+            e_std_devy[k-1] = 0.;
+        }
+
+    }
+    printf("X Resolution as a function of nCols : \n");
+    for(int k =0; k < n_cls_len_bins; k++){
+        printf("nCols %.0f, resolution %.2f +/- %.2f \n", x_axis[k], std_devx[k], e_std_devx[k]);
+    }
+    printf("Y Resolution as a function of nRows : \n");
+    for(int k =0; k < n_cls_len_bins; k++){
+        printf("nRows %.0f, resolution %.2f +/- %.2f \n", x_axis[k], std_devy[k], e_std_devy[k]);
+    }
+
+    TGraph *g_residx = new TGraphErrors(n_cls_len_bins, x_axis,std_devx, e_x_axis, e_std_devx);
+    TGraph *g_residy = new TGraphErrors(n_cls_len_bins, x_axis,std_devy, e_x_axis, e_std_devy);
+
+    g_residx->SetTitle("X Resolution vs. nCols");
+    g_residx->SetMarkerColor(kBlack);
+    g_residx->SetMarkerStyle(21);
+
+    g_residy->SetTitle("Y Resolution vs. nRows");
+    g_residy->SetMarkerColor(kBlack);
+    g_residy->SetMarkerStyle(21);
+
+    g_residx->Draw("AP");
+    g_residx->Print("all");
+    c1.Print(outfile1);
+
+    g_residy->Draw("AP");
+    g_residy->Print("all");
+    c1.Print(outfile1);
+        
+
+
+
     for(i=0; i<8; ++i) {
         pp[i]->Draw();
         c1.Print(outfile1);

@@ -4,9 +4,8 @@
 
 base=https://raw.githubusercontent.com/
 branch=cms-sw/cmssw/master/
-#branch=ozamram/cmssw/sideload_branch_v2/
-mkdir cmssw_code_oz_branch
-cd cmssw_code_oz_branch/
+mkdir cmssw_code
+cd cmssw_code/
 rm *
 wget ${base}${branch}RecoLocalTracker/SiPixelRecHits/src/SiPixelTemplateReco.cc 
 wget ${base}${branch}RecoLocalTracker/SiPixelRecHits/src/SiPixelTemplateReco2D.cc 
