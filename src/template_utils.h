@@ -73,10 +73,10 @@ struct FrontEndModel
     double vcaloffst = 60.0;
 
     //--- PhaseII - initial guess
-    double threshold = 1000; // threshold in e-
-    double qperTOT = 1500; // e- per TOT
+    double threshold = 1200; // threshold in e-
+    double qperTOT = 600; // e- per TOT
     int nbitsTOT = 4; // fixed and carved in stone?
-    int tot_max = pow(2, nbitsTOT);
+    int tot_max = pow(2, nbitsTOT)-1;
     int tot = 0;
 
     //--- Constants (could be made variables later)
@@ -111,7 +111,7 @@ struct FrontEndModel
                 else{
                     tot = int((qin - threshold)/qperTOT);
                     tot = std::min(tot, tot_max);
-                    double step = qperTOT/2;
+                    double step = qperTOT/2.;
                     signal = (qperTOT*tot + threshold)+step;
                 }
                 break;

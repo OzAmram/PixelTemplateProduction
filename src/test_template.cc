@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
 
 
     double  halfxs=300.;
-    int nx=120;	
+    int nx=200;	
     gStyle->SetOptFit(101);
     gStyle->SetHistLineWidth(2);
 
@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
     hp[44] = new TH1F("h_pull_gen_x", "Generic Reco Pull X (all clusters)", nx, -5., 5.);
 
     int cls_len_idx = 45;
-    const int n_cls_len_bins = 16;
+    const int n_cls_len_bins = 10;
     hp[45] = new TH1F("h_cls_leny","Cluster Length (Rows)",n_cls_len_bins, 0, n_cls_len_bins);
     hp[46] = new TH1F("h_cls_lenx","Cluster Length (Cols)",n_cls_len_bins, 0, n_cls_len_bins);
     TH2F *h_cls_len_dy = new TH2F("h_cls_leny_dy", "Template Reco #Deltay",n_cls_len_bins, 0,n_cls_len_bins, nx, -halfxs, halfxs);
@@ -870,10 +870,8 @@ int main(int argc, char *argv[])
     // Residuals as a function of cluster length
     float x_axis[n_cls_len_bins];
     float e_x_axis[n_cls_len_bins];
-    float std_devx[n_cls_len_bins];
-    float e_std_devx[n_cls_len_bins];
-    float std_devy[n_cls_len_bins];
-    float e_std_devy[n_cls_len_bins];
+    float std_devx[n_cls_len_bins], e_std_devx[n_cls_len_bins], std_devy[n_cls_len_bins], e_std_devy[n_cls_len_bins];
+    float sigmasx[n_cls_len_bins], e_sigmasx[n_cls_len_bins], sigmasy[n_cls_len_bins], e_sigmasy[n_cls_len_bins];
     for(int k =1; k <= n_cls_len_bins; k++){
         x_axis[k-1] = k;
         e_x_axis[k-1] = 0.5;
@@ -884,33 +882,46 @@ int main(int argc, char *argv[])
         if(h_projx->Integral() > 100){
             h_projx->Fit("gaus");
             TF1 *fit = h_projx->GetFunction("gaus");
-            std_devx[k-1] = fit->GetParameter(2);
-            e_std_devx[k-1] = fit->GetParError(2);
+            std_devx[k-1] = h_projx->GetStdDev();
+            e_std_devx[k-1] = h_projx->GetStdDevError();
+            sigmasx[k-1] = fit->GetParameter(2);
+            e_sigmasx[k-1] = fit->GetParError(2);
         }
         else{
-            std_devx[k-1] = 0.;
-            e_std_devx[k-1] = 0.;
+            sigmasx[k-1] = 0.;
+            e_sigmasx[k-1] = 0.;
         }
 
         if(h_projy->Integral() > 100){
             h_projy->Fit("gaus");
             TF1 *fit = h_projy->GetFunction("gaus");
-            std_devy[k-1] = fit->GetParameter(2);
-            e_std_devy[k-1] = fit->GetParError(2);
+            std_devy[k-1] = h_projy->GetStdDev();
+            e_std_devy[k-1] = h_projy->GetStdDevError();
+            sigmasy[k-1] = fit->GetParameter(2);
+            e_sigmasy[k-1] = fit->GetParError(2);
         }
         else{
-            std_devy[k-1] = 0.;
-            e_std_devy[k-1] = 0.;
+            sigmasy[k-1] = 0.;
+            e_sigmasy[k-1] = 0.;
         }
 
     }
-    printf("X Resolution as a function of nCols : \n");
+    printf("X sigmas as a function of size x : \n");
     for(int k =0; k < n_cls_len_bins; k++){
-        printf("nCols %.0f, resolution %.2f +/- %.2f \n", x_axis[k], std_devx[k], e_std_devx[k]);
+        printf("%.0f %.2f +/- %.2f \n", x_axis[k], sigmasx[k], e_sigmasx[k]);
     }
-    printf("Y Resolution as a function of nRows : \n");
+    printf("Y sigmas as a function of size y : \n");
     for(int k =0; k < n_cls_len_bins; k++){
-        printf("nRows %.0f, resolution %.2f +/- %.2f \n", x_axis[k], std_devy[k], e_std_devy[k]);
+        printf("%.0f %.2f +/- %.2f \n", x_axis[k], sigmasy[k], e_sigmasy[k]);
+    }
+
+    printf("X RMS as a function of size x : \n");
+    for(int k =0; k < n_cls_len_bins; k++){
+        printf("%.0f %.2f +/- %.2f \n", x_axis[k], std_devx[k], e_std_devx[k]);
+    }
+    printf("Y RMS as a function of size y : \n");
+    for(int k =0; k < n_cls_len_bins; k++){
+        printf("%.0f %.2f +/- %.2f \n", x_axis[k], std_devy[k], e_std_devy[k]);
     }
 
     TGraph *g_residx = new TGraphErrors(n_cls_len_bins, x_axis,std_devx, e_x_axis, e_std_devx);
@@ -925,11 +936,9 @@ int main(int argc, char *argv[])
     g_residy->SetMarkerStyle(21);
 
     g_residx->Draw("AP");
-    g_residx->Print("all");
     c1.Print(outfile1);
 
     g_residy->Draw("AP");
-    g_residy->Print("all");
     c1.Print(outfile1);
         
 
