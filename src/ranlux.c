@@ -415,7 +415,6 @@ L_rluxgo:
 	static int c__1 = 1;
 	
     /* Builtin functions */
-    double sqrt(double), exp(double);
 	
     /* Local variables */
     static int j;
@@ -493,9 +492,6 @@ L_rnpset:
     int i__1;
     float r__1, r__2;
 	
-    /* Builtin functions */
-    double log(double);
-	float fabsf(float);
 	
     /* Local variables */
     static float q, u[2], v, x, y;

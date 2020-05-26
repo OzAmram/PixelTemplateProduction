@@ -50,8 +50,8 @@ using namespace std;
 #endif
 
 float clustering_thresh = 1000.;
-float minErrX = 1.25;
-float minErrY = 3.;
+float minErrX = 1.00;
+float minErrY = 2.;
 
 
 
