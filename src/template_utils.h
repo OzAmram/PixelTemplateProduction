@@ -151,7 +151,7 @@ float get_clust_len(TwoD &temp, int size, float max){
         }
     }
 first: ;
-       for(int i=size; i>-1; --i) {
+       for(int i=size-1; i>-1; --i) {
            for (int k=1; k < 9; ++k) {
                if(temp[k][i] > max) {
                    float dzsig = temp[k][i] - temp[k-1][i];

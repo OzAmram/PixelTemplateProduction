@@ -6,6 +6,7 @@ Code for production of pixel templates for CMS
 Everything is run standalone from the cmssw environment but makes use of some of the code in
 it. 
 
+
 Run the script **fetch\_cmssw\_code.sh** grabs the latest version of all the needed pixel code from the [cmssw github](https://github.com/cms-sw/cmssw).
 If you want to grab from a branch other than the cmssw master (eg to test some
 changes), you can change the `branch` variable in the script to point to a different branch.
@@ -15,9 +16,15 @@ For instructions to install vdt see [their github](https://github.com/dpiparo/vd
 The Makefile assumes it installed to /usr/local/, if it is installed to some
 other location, change the `vdt_dir` variable in the Makefile to point to the correct location. 
 
-
-
 All of the source code is in the src/ directory which contains a Makefile. So you should be able to compile by simply changing to the src/ directory and running `make`. All the compiled executables are put in the bin/ directory. 
+
+
+Note that this can be compiled and run from within a CMSSW release by linking to
+the compiled vdt and BOOST used in CMSSW. Eg on lxplus:
+
+> vdt_dir=/cvmfs/cms.cern.ch/slc7_amd64_gcc820/cms/vdt/0.4.0-nmpfii/include
+> includes= -I. -I../cmssw_code/ -I$(vdt_dir) -I/cvmfs/cms.cern.ch/slc7_amd64_gcc820/external/boost/1.67.0-pafccj/include
+
 
 
 

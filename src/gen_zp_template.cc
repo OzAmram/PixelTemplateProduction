@@ -593,10 +593,10 @@ int main(int argc, char *argv[])
                 triplg(ygauss);
                 triplg(zgauss);
                 for(int i=0; i<TYSIZE; ++i) {
-                    wgraw[i][j] = wgauss[i];
-                    xgraw[i][j] = xgauss[i];
-                    ygraw[i][j] = ygauss[i];
-                    zgraw[i][j] = zgauss[i];
+                    wgraw[TXSIZE-1-j][TYSIZE-1-i] = wgauss[i];
+                    xgraw[TXSIZE-1-j][TYSIZE-1-i] = xgauss[i];
+                    ygraw[TXSIZE-1-j][TYSIZE-1-i] = ygauss[i];
+                    zgraw[TXSIZE-1-j][TYSIZE-1-i] = zgauss[i];
 
                     sigraw[TXSIZE-1-j][TYSIZE-1-i] = rten * pixin[j][i];
                     if(rten * pixin[j][i] > 200.) qin = (rten*pixin[j][i] + xgauss[i]*noise);
@@ -606,7 +606,7 @@ int main(int argc, char *argv[])
                         clust[TXSIZE-1-j][TYSIZE-1-i] = 0.;
                     } else {
                         idcol = (TYSIZE-1-i+icol)/2;
-                        ++ndhit[idcol];
+                        ndhit[idcol]++;
                         signal = frontEnd.apply_model( qin, ygauss[i], zgauss[i] );
                         clust[TXSIZE-1-j][TYSIZE-1-i] = qsmear[n]*signal;
                     }
