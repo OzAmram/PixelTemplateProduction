@@ -409,7 +409,7 @@ int main(int argc, char *argv[])
         }
         //printf("Pre unfold: \n");
         //print_cluster(clust);
-        //if(xtalk_frac > 0.) unfold_xtalk(clust, xtalk_unfold_row, xtalk_frac);
+        if(xtalk_frac > 0.) unfold_xtalk(clust, xtalk_unfold_row, xtalk_frac);
         //printf("Post unfold: \n");
         //print_cluster(clust);
 

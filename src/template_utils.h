@@ -73,11 +73,11 @@ struct FrontEndModel
     double vcaloffst = 60.0;
 
     //--- PhaseII - initial guess
-    double threshold = 1200; // threshold in e-
-    double qperTOT = 600; // e- per TOT
+    double threshold = 1000; // threshold in e-
+    double qperToT = 1500; // e- per TOT
     int nbitsTOT = 4; // fixed and carved in stone?
-    int tot_max = pow(2, nbitsTOT)-1;
-    int tot = 0;
+    int ADCMax = pow(2, nbitsTOT)-1;
+    int dualslope = 4;
 
     //--- Constants (could be made variables later)
     const double gain  = 3.19;
@@ -88,31 +88,53 @@ struct FrontEndModel
     const double p3    = 148.;	
 
     //-----------------------------------------------------------------------------
-    //  A function to simulate the electronics response: different gains, TOT, etc.
     //-----------------------------------------------------------------------------
     float apply_model( float qin, float ygauss, float zgauss )
     {
         float signal = 0.f;
 
-        switch ( fe_type ) {
-            case 0:
+        switch ( fe_type ) { 
+            case 0: //simple linear gain (phase 1 default)
                 signal = qin * (1. + gain_frac*ygauss) + zgauss*readout_noise;
                 break;
 
-            case 1:
+            case 1: //More complicated tanh gain
                 {
                     double adc = (double)((int)(p3+p2*tanh(p0*(qin + vcaloffst)/(7.0*vcal) - p1)));
                     signal = ((float)((1.+gain_frac*ygauss)*(vcal*gain*(adc-ped))) - vcaloffst + zgauss*readout_noise);
                 }
                 break;
 
-            case 2:
+            case 2: // signal slope ToT
                 if(qin < threshold) signal = 0;
                 else{
-                    tot = int((qin - threshold)/qperTOT);
-                    tot = std::min(tot, tot_max);
-                    double step = qperTOT/2.;
-                    signal = (qperTOT*tot + threshold)+step;
+                    int adc = std::floor((qin - threshold)/qperToT);
+                    adc = std::min(adc, ADCMax);
+                    signal = (adc + 0.5) * qperToT + threshold;
+                    //printf("In %.0f adc %i out %.0f \n", qin, adc, signal);
+                }
+                break;
+
+            case 3: //dual slope ToT (current phase 2 default)
+                if(qin < threshold) return 0;
+				else{
+
+					int kinkpoint = int(ADCMax/2) + 1;
+					int adc = std::floor((qin-threshold)/qperToT);
+					if (adc >= kinkpoint){
+					    adc = floor((adc - kinkpoint)/dualslope) + kinkpoint;
+                    }
+
+
+					if(adc < kinkpoint){
+						signal = int((adc + 0.5)* qperToT + threshold);
+					}
+                    else{
+                        signal = int((adc + 0.5 - kinkpoint) * dualslope*qperToT + (kinkpoint * qperToT) + threshold);
+                    }
+                    //printf("In %.0f adc %i out %.0f \n", qin, adc, signal);
+
+
                 }
                 break;
 
