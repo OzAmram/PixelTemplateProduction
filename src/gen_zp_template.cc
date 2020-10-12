@@ -343,9 +343,9 @@ int main(int argc, char *argv[])
     std::vector< SiPixelTemplateStore > thePixelTemp_;
     SiPixelTemplate templ(thePixelTemp_);
 
-    //  Set the ID to zero to flag the special reco mode
+    //  Set the ID to -1 to flag the special reco mode
 
-    int tempID = 0;
+    int tempID = -1;
 
     //  Determine current time
 
@@ -583,7 +583,6 @@ int main(int argc, char *argv[])
 
             float xtalk_apply = xtalk_frac + xtalk_noise * vgauss[3];
 
-            //print_cluster(pixin);
             if (xtalk_frac > 0.) apply_xtalk(pixin, xtalk_row_start, xtalk_apply);
             
             //do main cluster
@@ -614,9 +613,7 @@ int main(int argc, char *argv[])
 
 
             }
-            //print_cluster(clust);
 
-            if(xtalk_frac > 0.) unfold_xtalk(clust, xtalk_unfold_row, xtalk_frac);
 
             // Simulate the second, higher threshold in single double col hits
             for(int j=0; j<TXSIZE; ++j) {
@@ -634,6 +631,7 @@ int main(int argc, char *argv[])
             }
 
 
+            if(xtalk_frac > 0.) unfold_xtalk(clust, xtalk_unfold_row, xtalk_frac);
 
             // Simulate the seed finding
 

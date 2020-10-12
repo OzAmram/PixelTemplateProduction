@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
     gStyle->SetHistLineWidth(2);
 
     
-    const int n_hists = 47;
+    const int n_hists = 49;
 
     static vector<TH1F*> hp(n_hists);
     hp[0] = new TH1F("h101","Template Reco #Deltay (all sig); #Deltay (#mum)",nx,-halfxs,halfxs);
@@ -162,9 +162,11 @@ int main(int argc, char *argv[])
 
     int cls_len_idx = 45;
     const int n_cls_len_bins = 10;
-    hp[45] = new TH1F("h_cls_leny","Cluster Length (Rows)",n_cls_len_bins, 0, n_cls_len_bins);
-    hp[46] = new TH1F("h_cls_lenx","Cluster Length (Cols)",n_cls_len_bins, 0, n_cls_len_bins);
-    TH2F *h_cls_len_dy = new TH2F("h_cls_leny_dy", "Template Reco #Deltay",n_cls_len_bins, 0,n_cls_len_bins, nx, -halfxs, halfxs);
+    hp[45] = new TH1F("h_cls_leny","Cluster Length Y",n_cls_len_bins, 0.01, n_cls_len_bins +0.01);
+    hp[46] = new TH1F("h_cls_lenx","Cluster Length X",n_cls_len_bins, 0.01, n_cls_len_bins + 0.01);
+    hp[47] = new TH1F("h_cls_leny_pref","Cluster Length Y Pre-Unfold",n_cls_len_bins, 0.01, n_cls_len_bins +0.01);
+    hp[48] = new TH1F("h_cls_lenx_pref","Cluster Length X Pre-Unfold",n_cls_len_bins, 0.01, n_cls_len_bins + 0.01);
+    TH2F *h_cls_len_dy = new TH2F("h_cls_leny_dy", "Template Reco #Deltay",n_cls_len_bins, 0.5, 0.5 + n_cls_len_bins, nx, -halfxs, halfxs);
 
     TH2F *h_cls_len_dx = new TH2F("h_cls_lenx_dx", "Template Reco #Deltay",n_cls_len_bins, 0.5, 0.5 + n_cls_len_bins, nx, -halfxs, halfxs);
 
@@ -407,11 +409,6 @@ int main(int argc, char *argv[])
                 }
             }
         }
-        //printf("Pre unfold: \n");
-        //print_cluster(clust);
-        if(xtalk_frac > 0.) unfold_xtalk(clust, xtalk_unfold_row, xtalk_frac);
-        //printf("Post unfold: \n");
-        //print_cluster(clust);
 
         // Simulate the second, higher threshold in single dcol hits
         for(int j=0; j<TXSIZE; ++j) {
@@ -427,6 +424,31 @@ int main(int argc, char *argv[])
                 }
             }
         }
+        
+        //compute pre-unfolding sizes
+        int row_min(99999), row_max(0), col_min(99999), col_max(0);
+        for(int j=0; j<TXSIZE; ++j) {
+            for(int i=0; i<TYSIZE; ++i) {
+                if(clust[j][i] > 0.){
+                    row_min = std::min(j, row_min);
+                    row_max = std::max(j, row_max);
+
+                    col_min = std::min(i, col_min);
+                    col_max = std::max(i, col_max);
+                }
+            }
+        }
+        //printf("nxpix_pref %i nypix_pref %i \n", nxpix_pref, nypix_pref);
+
+        int nxpix_pref = row_max - row_min +1;
+        int nypix_pref = col_max - col_min +1;
+        //
+        //printf("Pre unfold: \n");
+        //print_cluster(clust);
+        if(xtalk_frac > 0.) unfold_xtalk(clust, xtalk_unfold_row, xtalk_frac);
+        //printf("Post unfold: \n");
+        //print_cluster(clust);
+        
 
 
         // Simulate the seed finding
@@ -674,10 +696,12 @@ int main(int argc, char *argv[])
             pp[48]->Fill((double)cotbeta,(double)nxpix);
 
             hp[cls_len_idx]->Fill(nypix);
-            h_cls_len_dy->Fill(nypix, dy);
+            hp[cls_len_idx+2]->Fill(nypix_pref);
+            h_cls_len_dy->Fill(nypix_pref, dy);
 
             hp[cls_len_idx+1]->Fill(nxpix);
-            h_cls_len_dx->Fill(nxpix, dx);
+            hp[cls_len_idx+3]->Fill(nxpix_pref);
+            h_cls_len_dx->Fill(nxpix_pref, dx);
 
             if(nxpix == 1) {
                 hp[25]->Fill(dx);
@@ -867,6 +891,38 @@ int main(int argc, char *argv[])
         hp[i]->Draw();
         c1.Print(outfile1);
     }
+
+    for(i=0; i<8; ++i) {
+        pp[i]->Draw();
+        c1.Print(outfile1);
+    }
+    for(i=8; i<14; ++i) {
+        pp[i]->Draw();
+        pp[i+6]->Draw("same");
+        c1.Print(outfile1);
+    }
+    for(i=20; i<26; ++i) {
+        pp[i]->Draw();
+        pp[i+6]->Draw("same");
+        c1.Print(outfile1);
+    }
+    for(i=32; i<38; ++i) {
+        pp[i]->Draw();
+        pp[i+6]->Draw("same");
+        c1.Print(outfile1);
+    }
+    pp[48]->Draw();
+    c1.Print(outfile1);
+
+    for(i=49; i<53; ++i) {
+        pp[i]->Draw();
+        c1.Print(outfile1);
+    }
+    c1.Print(outfile2);
+
+
+
+
     // Residuals as a function of cluster length
     float x_axis[n_cls_len_bins];
     float e_x_axis[n_cls_len_bins];
@@ -877,10 +933,10 @@ int main(int argc, char *argv[])
     sprintf(coutfile0,"cls_len_resid%5.5d.pdf[",nfile);
     sprintf(coutfile1,"cls_len_resid%5.5d.pdf",nfile);
     sprintf(coutfile2,"cls_len_resid%5.5d.pdf]",nfile);
-    TCanvas c2("c1", header);
+    TCanvas c2("c2", header);
     c2.SetFillStyle(4000);
     c2.Print(coutfile0);
-    h_cls_len_dx->Print("range");
+    //h_cls_len_dx->Print("range");
     for(int k =1; k <= n_cls_len_bins; k++){
         printf("Size %i \n" , k);
         x_axis[k-1] = k;
@@ -889,7 +945,7 @@ int main(int argc, char *argv[])
         TH1D *h_projx = h_cls_len_dx->ProjectionY("projx", k,k, "e");
         TH1D *h_projy = h_cls_len_dy->ProjectionY("projy", k,k, "e");
 
-        h_projx->Print("range");
+        //h_projx->Print("range");
 
         if(h_projx->Integral() > 100){
             sprintf(h_title, "X Residuals X-size = %i; #DeltaX (#mum)", k);
@@ -934,7 +990,6 @@ int main(int argc, char *argv[])
         h_projy->Reset();
 
     }
-    c2.Print(coutfile2);
     printf("X sigmas as a function of size x : \n");
     for(int k =0; k < n_cls_len_bins; k++){
         printf("%.0f %.2f +/- %.2f \n", x_axis[k], sigmasx[k], e_sigmasx[k]);
@@ -965,41 +1020,15 @@ int main(int argc, char *argv[])
     g_residy->SetMarkerStyle(21);
 
     g_residx->Draw("AP");
-    c1.Print(outfile1);
+    c2.Print(coutfile1);
 
     g_residy->Draw("AP");
-    c1.Print(outfile1);
+    c2.Print(coutfile1);
+    c2.Print(coutfile2);
         
 
 
 
-    for(i=0; i<8; ++i) {
-        pp[i]->Draw();
-        c1.Print(outfile1);
-    }
-    for(i=8; i<14; ++i) {
-        pp[i]->Draw();
-        pp[i+6]->Draw("same");
-        c1.Print(outfile1);
-    }
-    for(i=20; i<26; ++i) {
-        pp[i]->Draw();
-        pp[i+6]->Draw("same");
-        c1.Print(outfile1);
-    }
-    for(i=32; i<38; ++i) {
-        pp[i]->Draw();
-        pp[i+6]->Draw("same");
-        c1.Print(outfile1);
-    }
-    pp[48]->Draw();
-    c1.Print(outfile1);
-
-    for(i=49; i<53; ++i) {
-        pp[i]->Draw();
-        c1.Print(outfile1);
-    }
-    c1.Print(outfile2);
 
     return 0;
 } // MAIN__ 

@@ -225,9 +225,9 @@ int main(int argc, char *argv[])
     std::vector< SiPixelTemplateStore2D > thePixelTemp_;
     SiPixelTemplate2D templ(thePixelTemp_);
 
-    //  Set the ID to zero to flag the special reco mode
+    //  Set the ID to -1 to flag the special reco mode
 
-    tempID = 0;
+    tempID = -1;
 
     //  Determine current time
 

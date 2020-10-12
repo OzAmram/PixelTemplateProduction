@@ -50,8 +50,8 @@ using namespace std;
 #endif
 
 float clustering_thresh = 1000.;
-float minErrX = 1.00;
-float minErrY = 2.;
+float minErrX = 0.2;
+float minErrY = 0.5;
 
 
 
@@ -297,8 +297,8 @@ void unfold_xtalk(float clust[TXSIZE][TYSIZE], int irow_start, float xtfrac=0.1)
        for(int j=0; j<TYSIZE; j++) {
            float old_ij = clust[i][j];
            float old_i1j = clust[i+1][j];
-           clust[i][j] = old_ij*minv11 + old_i1j*minv12;
-           clust[i+1][j] = old_ij*minv21 + old_i1j*minv22;
+           clust[i][j] = float(int(old_ij*minv11 + old_i1j*minv12));
+           clust[i+1][j] = float(int(old_ij*minv21 + old_i1j*minv22));
        }
    }      		 
 }
