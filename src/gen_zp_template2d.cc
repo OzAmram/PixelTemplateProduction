@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
 
     //  Open template output file
 
-    sprintf(infile,"template_summary2D_zp%5.5d.out",startfile);
+    sprintf(infile,"template_summary2D_zp%5.5d.out",id);
     output_file = fopen(infile, "w");
     if (output_file==NULL) {
         printf("couldn't open template output file/n");
