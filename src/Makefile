@@ -11,10 +11,10 @@ all: $(EXE)
 
 
 gen_zp_template: gen_zp_template.cc $(DEPS)
-	g++ gen_zp_template.cc -o $(ODIR)/gen_zp_template $(compiler_flags)  $(root_flags) $(includes)
+	g++ gen_zp_template.cc -o $(ODIR)/gen_zp_template $(compiler_flags)  $(root_flags) $(includes) $(BOOST_FLAG)
 
 gen_zp_template2d: gen_zp_template2d.cc $(DEPS)
-	g++ gen_zp_template2d.cc -o $(ODIR)/gen_zp_template2d $(compiler_flags)  $(root_flags) $(includes)
+	g++ gen_zp_template2d.cc -o $(ODIR)/gen_zp_template2d $(compiler_flags)  $(root_flags) $(includes) $(BOOST_FLAG)
 
 gen_xy_template: gen_xy_template.cc $(DEPS)
 	g++ gen_xy_template.cc   -o $(ODIR)/gen_xy_template $(compiler_flags) $(root_flags) $(includes)
@@ -26,10 +26,10 @@ compare_templates: compare_templates.cc $(DEPS)
 	g++ compare_templates.cc -o $(ODIR)/compare_templates $(compiler_flags) $(root_flags) $(includes)
 
 test_template: test_template.cc $(DEPS)
-	g++ test_template.cc -o $(ODIR)/test_template $(compiler_flags) $(root_flags) $(includes)
+	g++ test_template.cc -o $(ODIR)/test_template $(compiler_flags) $(root_flags) $(includes) $(BOOST_FLAG)
 
 load_template_test: load_template_test.cc $(DEPS)
-	g++ load_template_test.cc -o $(ODIR)/load_template_test $(compiler_flags) $(root_flags) $(includes)
+	g++ load_template_test.cc -o $(ODIR)/load_template_test $(compiler_flags) $(root_flags) $(includes) $(BOOST_FLAG)
 
 clean:
 	rm -f $(ODIR)/*

@@ -316,6 +316,7 @@ int main(int argc, char *argv[])
     // Initialize template store 
 
     std::vector< SiPixelTemplateStore > thePixelTemp_;
+
     SiPixelTemplate templ(thePixelTemp_);
 
     // Initialize template store, Pixelav 100V/300V simulation, +20C as thePixelTemp[6] 
@@ -442,7 +443,7 @@ int main(int argc, char *argv[])
 
         int nxpix_pref = row_max - row_min +1;
         int nypix_pref = col_max - col_min +1;
-        //
+        
         //printf("Pre unfold: \n");
         //print_cluster(clust);
         if(xtalk_frac > 0.) unfold_xtalk(clust, xtalk_unfold_row, xtalk_frac);
