@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
     static float xrec, yrec, sigmax, sigmay, probx, proby, probQ,  signal, locBz, locBx,  pixmax;
     static float pixmaxy, pixmaxx;
     static int startfile,  nbad, ngood, fe_model_type, numrun; 
-    int  id,NTy, NTyx,NTxx,IDtype;
+    int  id,NTy, NTyx,NTxx,IDtype,nypix(0), nxpix(0);
 
 
     std::multiset<float> qmsort;
@@ -93,7 +93,14 @@ int main(int argc, char *argv[])
     const int nvers = 21;
 
     float qin;
-    static char infile[120], label[160], header[120], outfile0[120], outfile1[120], outfile2[120];
+    static char infile[120], label[160], header[120], dtitle[80], outfile0[120], outfile1[120], outfile2[120], histStore_outfile[120];
+    unsigned int detType(1);
+    const double    cotbetaBinWidth = 0.25; // 0.25 forward2 //0.21 //0.15 // 3.3. barrel, 0.21 forward1, 0.2 forward0
+    const double    cotbetaLowEdge    = 0.0 ; // 0.0 forward2 //0.15 forward1, 0.25 forward0
+    const int    cotbetaBins    = 3; //3
+    const double    cotalphaBinWidth = 0.10; // 0.10 forward2 //0.38//0.02 //0.2 barrel 0.34 forward1, 0.28 forward0
+    const double    cotalphaLowEdge = 0.0; // -0.04, 0.10 forward0
+    const int       cotalphaBins    = 2; //2
     //	int random(void);
 
     float clust[TXSIZE][TYSIZE], rclust[TXSIZE][TYSIZE], sigraw[TXSIZE+2][TYSIZE+2];
@@ -181,6 +188,23 @@ int main(int argc, char *argv[])
         printf("couldn't open template output file/n");
         return 0;
     }
+
+    sprintf(histStore_outfile,"pixel_histos%5.5d.root",id);
+    // Descriptive title
+    // e.g. Forward 50x50x150 flat disk pixel resolution histograms
+    sprintf(dtitle,"%s",argv[2]);
+    printf("dtitle %s\n",argv[2]);
+    if (argv[2]==NULL) {
+        sprintf(dtitle,"Forward pixel resolution histograms");
+    }
+    PixelResolutionHistograms
+        fastSimResHistoStore( histStore_outfile,                                // File name for histograms
+			"",                                     // No subdirectory
+			dtitle,                                 // Descriptive title	     
+			detType, // unsigned int detType,             // Do we need this?
+			cotbetaBinWidth, cotbetaLowEdge, cotbetaBins,    // Binning along cot\beta
+			cotalphaBinWidth, cotalphaLowEdge, cotalphaBins); // ... along cot\alpha
+    //                    qbinWidth, qbins );                              // ... for qBin
 
     sprintf(infile,"generror_summary_zp%5.5d.out",id);
     generr_output_file = fopen(infile, "w");
@@ -1265,7 +1289,8 @@ int main(int argc, char *argv[])
                     chi_min[x_chi2_fp_idx + qbin_merge[n]] = std::min(chisq_x, chi_min[x_chi2_fp_idx + qbin_merge[n]]);
                 }
 
-
+                // Fill the FastSim histograms
+                (void) fastSimResHistoStore.Fill( dx, dy, (double)cotalpha, (double)cotbeta, qbin, nxpix, nypix );
 
                 //merged cluster qbin first pass chi2
 

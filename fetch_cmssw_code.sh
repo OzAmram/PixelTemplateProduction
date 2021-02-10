@@ -29,3 +29,6 @@ wget ${base}${branch}CondFormats/SiPixelTransient/interface/SiPixelTemplate.h
 wget ${base}${branch}CondFormats/SiPixelTransient/interface/SiPixelTemplate2D.h
 wget ${base}${branch}CondFormats/SiPixelTransient/interface/SiPixelTemplateDefs.h
 wget ${base}${branch}CondFormats/SiPixelTransient/interface/SiPixelUtils.h
+
+wget ${base}${branch}FastSimulation/TrackingRecHitProducer/src/PixelResolutionHistograms.cc
+wget ${base}${branch}FastSimulation/TrackingRecHitProducer/interface/PixelResolutionHistograms.h
