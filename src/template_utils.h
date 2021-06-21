@@ -50,6 +50,9 @@ using namespace std;
 #include  "ranlux.c"
 #endif
 
+#define DILATE 0 
+#define ERODE 1
+
 float clustering_thresh = 1000.;
 float minErrX = 0.2;
 float minErrY = 0.5;
@@ -438,6 +441,130 @@ std::vector<float> get_vavilov_pars(TH1F *h){
     return pars;
 
 }
+
+void morph(int (&clust)[TXSIZE][TYSIZE], int (&kernel)[3][3], int op = DILATE){
+        int kernel_size =3; //hardcoded for now
+
+        int clust_copy[TXSIZE][TYSIZE];
+        memcpy(clust_copy, clust, sizeof(clust_copy));
+
+        std::vector<int> op_list;
+        for(int i=0; i<TXSIZE; i++){
+            for(int j=0; j<TYSIZE; j++){
+                op_list.clear();
+
+                //loop over all pixels in kernel
+                for(int ki=0; ki<kernel_size; ki++){
+                    for(int kj=0; kj<kernel_size; kj++){
+                        int ci = i - kernel_size/2 +ki;
+                        int cj = j - kernel_size/2 +kj;
+                        
+                        //assume pixels outside boundaries are zero
+                        int val = 0;
+                        if(ci >0 && ci < TXSIZE && cj >0 && cj < TYSIZE)
+                            val = clust_copy[ci][cj];
+                        
+                        if(kernel[ki][kj] > 0) op_list.push_back(val);
+                    }
+                }
+                int new_val;
+                if(op == DILATE)
+                    new_val = *max_element(op_list.begin(), op_list.end());
+                else
+                    new_val = *min_element(op_list.begin(), op_list.end());
+
+                clust[i][j] = new_val;
+            
+
+            }
+        }
+        return;
+}
+
+
+
+
+std::vector<std::pair<int, int> > clusterizer(float (&clust)[TXSIZE][TYSIZE], float thresh, std::pair<int,int> seed, bool cluster_healing){
+    std::vector<std::pair<int,int>> pixlist;
+    pixlist.push_back(seed);
+
+    std::vector<std::pair<int, int> > clustering_list;
+    clustering_list.push_back(seed);
+
+
+    bool have_filled[TXSIZE][TYSIZE];
+    memset(have_filled, false, sizeof(have_filled));
+    have_filled[seed.first][seed.second] = true;
+
+    /*
+    printf("Input Cluster: \n");
+    for(int i=0; i<TXSIZE; i++){
+        for(int j=0; j<TYSIZE; j++){
+            printf("%.1f ", clust[i][j]);
+        }
+        printf("\n");
+    }
+    */
+
+    //make a binary copy of the cluster to do healing on
+    int  clust_copy[TXSIZE][TYSIZE];
+    memset(clust_copy, 0, sizeof(clust_copy));
+    for(int i=0; i<TXSIZE; i++){
+        for(int j=0; j<TYSIZE; j++){
+            if(clust[i][j] > thresh) clust_copy[i][j] =1;
+        }
+    }
+
+    if(cluster_healing){
+        //do dilate + erode on cluster copy
+        //https://github.com/veszpv/cmssw/blob/4fa32b0dc9ae39168bba294b221da60be95567bf/RecoLocalTracker/SiPixelDigiMorphing/plugins/SiPixelDigiMorphing.cc
+        //
+        //hard coded 3x3 kernels for now
+        int dilate_kernel[3][3] = {{1,1,1},
+                                   {1,1,1},
+                                   {1,1,1}};
+
+        int erode_kernel[3][3] =  {{0,1,0},
+                                   {1,1,1},
+                                   {0,1,0}};
+
+
+
+        morph(clust_copy, dilate_kernel, DILATE);
+        morph(clust_copy, erode_kernel, ERODE);
+
+    }
+
+
+    //  Iteratively find all non zero pixels near our seed
+    while(!clustering_list.empty()){
+        auto pixIter = clustering_list.back();
+        //where to look for new pixels
+        int imin = std::max(pixIter.first-1, 0); 
+        int imax = std::min(pixIter.first+1, TXSIZE-1);
+        int jmin = std::max(pixIter.second-1, 0);
+        int jmax = std::max(pixIter.second+1, TYSIZE-1);
+        clustering_list.pop_back();
+
+
+        //loop over pixels to check
+        for(int i=imin; i<=imax; ++i) {
+            for(int j=jmin; j<=jmax; ++j) {
+                if(clust_copy[i][j] > 0 && !have_filled[i][j]) {
+                    //found a new pixel, add it to the list to cluster
+                    have_filled[i][j] = true;
+                    clustering_list.push_back(std::make_pair(i,j));
+
+                    if(clust[i][j] > thresh) //real pixel, add it to the final cluster
+                        pixlist.push_back(std::make_pair(i,j));
+                }
+            }
+        }
+    }
+    return pixlist;
+}
+
+
 
 
 
