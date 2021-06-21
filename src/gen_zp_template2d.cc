@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
     float scaley, scalex, scalx[4], scaly[4], delyavg, delysig, offsetx[4], offsety[4];
     static float q100, q101, q50, q51,  qmax; 
     const float fmax = 0.5f;
-    int write_temp_header, use_l1_offset;
+    int write_temp_header, use_l1_offset, do_cluster_healing;
 
     const int nvers = 21;
 
@@ -112,8 +112,8 @@ int main(int argc, char *argv[])
 
 
     fgets(line, 160, config_file);
-    num_read = sscanf(line, " %d %d %f %f", &use_l1_offset, &write_temp_header, &xtalk_frac, &xtalk_noise);
-    if(num_read != 4){
+    num_read = sscanf(line, " %d %d %f %f %d", &use_l1_offset, &write_temp_header, &xtalk_frac, &xtalk_noise, &do_cluster_healing);
+    if(num_read != 5){
         printf("Error reading config file !\n");
         printf("Line was %s \n", line);
         return 0;
@@ -218,7 +218,6 @@ int main(int argc, char *argv[])
         hp[i]->SetFillColor(38);
     }
 
-    std::vector<std::pair<int, int> > pixlst;
 
     // Create template object
 
@@ -467,7 +466,6 @@ int main(int argc, char *argv[])
             // Add noise and analog response to cluster, reformat for flipped barrel coordinate system 
 
             triplg(vgauss);
-            pixlst.clear();
             for(int i=0; i<ndcol; ++i) {ndhit[i] = 0;}
             icol = 0;
             if(vgauss[1] < 0.) {icol = 1;}
@@ -541,44 +539,7 @@ int main(int argc, char *argv[])
 
             // Simulate clustering around maximum signal (seed)
 
-
-            pixlst.push_back(max);
-            bclust[max.first][max.second] = true;
-
-            std::vector<std::pair<int, int> > pixlst_copy;
-
-
-
-            numadd = 1;
-            //iterively find all non zero pixels near our seed
-            while(numadd > 0){
-                //use copy of vector to avoid modifying vector as we loop through it
-                pixlst_copy = pixlst;
-                numadd = 0;
-                for ( auto pixIter = pixlst_copy.begin(); pixIter != pixlst_copy.end(); ++pixIter ) {
-                    //max's are +2 because we are doing <max in the loop
-                    jmin = pixIter->first-1; 
-                    jmax = pixIter->first+2;
-                    imin = pixIter->second-1;
-                    imax = pixIter->second+2;
-                    if(jmin < 0) {jmin = 0;}
-                    if(jmax > TXSIZE) {jmax = TXSIZE;}
-                    if(imin < 0) {imin = 0;}
-                    if(imax > TYSIZE) {imax = TYSIZE;}
-                    for(int j=jmin; j<jmax; ++j) {
-                        for(int i=imin; i<imax; ++i) {
-                            if(clust[j][i] > q100) {
-                                if(!bclust[j][i]) {
-                                    bclust[j][i] = true;
-                                    pixel.first = j; pixel.second = i;
-                                    pixlst.push_back(pixel);
-                                    ++numadd;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            auto pixlst = clusterizer(clust, q100, max, do_cluster_healing);
 
             //only add pixels we 'found' when clustering to final cluster
             memset(cluster, 0., sizeof(cluster));
