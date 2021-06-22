@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
     static float Bfield,Vbias,temp,fluenc;
     static vector<int> nbin(5,0);
     float deltay;
-    int ierr, qbin, qb, jmin, jmax, imin, imax, numadd, idcol, edgeflagx, edgeflagy, npixels;
+    int ierr, qbin, qb, jmin, jmax, imin, imax, idcol, edgeflagx, edgeflagy, npixels;
     int mrow = TXSIZE, mcol = TYSIZE;
     const int TXSHIFT = (TXSIZE - T2XSIZE)/2;
     double dx, dy;  
@@ -69,7 +69,6 @@ int main(int argc, char *argv[])
     //	int random(void);
 
     float cluster[TXSIZE][TYSIZE], clust[TXSIZE][TYSIZE], rclust[TXSIZE][TYSIZE];
-    bool bclust[TXSIZE][TYSIZE];
     std::pair<int, int> pixel, max;
 
     FILE *output_file;
@@ -489,7 +488,6 @@ int main(int argc, char *argv[])
                 triplg(ygauss);
                 triplg(zgauss);
                 for(int i=0; i<TYSIZE; ++i) {
-                    bclust[j][i] = false;
                     qin = (10.*pixin[j][i] + xgauss[i]*noise);
                     rclust[TXSIZE-1-j][TYSIZE-1-i] = qin;
                     if(qin < q100*(1.+wgauss[i]*q100_frac)) {
