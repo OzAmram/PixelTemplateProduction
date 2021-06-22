@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
     float zvtx, zdet;
     int izdet;
     static vector<double> fluence(4,0.);
-    int i, j, ierr, qbin, qb, nypix, nxpix, etabin, jmin, jmax, imin, imax, numadd, idcol;
+    int i, j, ierr, qbin, qb, nypix, nxpix, etabin, idcol;
     double dx, dy, eta, dxc, dyc, log10probxy, log10probQ, tote, bade, weight, alpha, qnorm, dxclust, dyclust;
     double qfrac;
     static int iyd, ixd, speed;	
@@ -53,7 +53,6 @@ int main(int argc, char *argv[])
     int triplg(std::vector<float>&);
     //	int random(void);
     float cluster[TXSIZE][TYSIZE], clust[TXSIZE][TYSIZE], rclust[TXSIZE][TYSIZE];
-    bool bclust[TXSIZE][TYSIZE];
 
     std::pair<int, int> pixel, max;
 
@@ -75,11 +74,11 @@ int main(int argc, char *argv[])
     }
 
     char extra[80], line[160];
-    int use_l1_offset;
+    int use_l1_offset, do_cluster_healing;
     fgets(line, 160, ifp);
     sscanf(line,"%d %f %f %f %f %f %f %f %d %s", &nfile, &noise, &q100, &q101, &q100_frac, &common_frac, &gain_frac, &readout_noise, &frontend_type, &extra[0]);
     fgets(line, 160, ifp);
-    sscanf(line,"%d %d %f %f", &fileNum, &use_l1_offset, &xtalk_frac, &xtalk_noise);
+    sscanf(line,"%d %d %f %f %d", &fileNum, &use_l1_offset, &xtalk_frac, &xtalk_noise, &do_cluster_healing);
     fclose(ifp);
     printf("template events file %d noise = %f, threshold0 = %f, threshold1 = %f, rms threshold frac = %f, common_frac = %f,"
             "gain fraction = %f, readout noise = %f, front end type = %d xtalk_frac = %.2f xtalk_noise = %.2f \n", 
@@ -422,7 +421,6 @@ int main(int argc, char *argv[])
             triplg(ygauss);
             triplg(zgauss);
             for(int i=0; i<TYSIZE; ++i) {
-                bclust[j][i] = false;
                 qin = (10.*pixin[j][i] + xgauss[i]*noise);
                 rclust[TXSIZE-1-j][TYSIZE-1-i] = qin;
                 if(qin < q100*(1.+wgauss[i]*q100_frac)) {
@@ -493,46 +491,8 @@ int main(int argc, char *argv[])
         if(qmax < clustering_thresh) continue;
 
 
-        // Simulate clustering around maximum signal (seed)
-
-
-        pixlst.push_back(max);
-        bclust[max.first][max.second] = true;
-
-        std::vector<std::pair<int, int> > pixlst_copy;
-
-
-
-        numadd = 1;
-        //iterively find all non zero pixels near our seed
-        while(numadd > 0){
-            //use copy of vector to avoid modifying vector as we loop through it
-            pixlst_copy = pixlst;
-            numadd = 0;
-            for ( auto pixIter = pixlst_copy.begin(); pixIter != pixlst_copy.end(); ++pixIter ) {
-                //max's are +2 because we are doing <max in the loop
-                jmin = pixIter->first-1; 
-                jmax = pixIter->first+2;
-                imin = pixIter->second-1;
-                imax = pixIter->second+2;
-                if(jmin < 0) {jmin = 0;}
-                if(jmax > TXSIZE) {jmax = TXSIZE;}
-                if(imin < 0) {imin = 0;}
-                if(imax > TYSIZE) {imax = TYSIZE;}
-                for(int j=jmin; j<jmax; ++j) {
-                    for(int i=imin; i<imax; ++i) {
-                        if(clust[j][i] > q100) {
-                            if(!bclust[j][i]) {
-                                bclust[j][i] = true;
-                                pixel.first = j; pixel.second = i;
-                                pixlst.push_back(pixel);
-                                ++numadd;
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        //simlulate the clustering
+        auto pixlst = clusterizer(clust, q100, max, do_cluster_healing);
 
 
         memset(cluster, 0., sizeof(cluster));
@@ -548,6 +508,18 @@ int main(int argc, char *argv[])
             xclust += ((float)j)*xsize*clust[j][i];
             yclust += ((float)i)*ysize*clust[j][i];
         }
+
+        /*
+        printf("Output Cluster: \n");
+        for(int i=0; i<TXSIZE; i++){
+            for(int j=0; j<TYSIZE; j++){
+                printf("%5.0f ", cluster[i][j]);
+            }
+            printf("\n");
+        }
+        */
+
+
         xclust /= qclust;
         yclust /= qclust;
         hp[32]->Fill((double)qclust);
