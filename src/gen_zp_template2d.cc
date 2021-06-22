@@ -488,7 +488,6 @@ int main(int argc, char *argv[])
                 triplg(ygauss);
                 triplg(zgauss);
                 for(int i=0; i<TYSIZE; ++i) {
-                    bclust[j][i] = false;
                     qin = (10.*pixin[j][i] + xgauss[i]*noise);
                     rclust[TXSIZE-1-j][TYSIZE-1-i] = qin;
                     if(qin < q100*(1.+wgauss[i]*q100_frac)) {
