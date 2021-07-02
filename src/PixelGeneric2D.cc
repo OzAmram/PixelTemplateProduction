@@ -17,7 +17,7 @@
 
 
 int SiPixelTemplateReco::PixelGeneric2D(int ID, float cotalpha, float cotbeta, float locBz, float locBx,  ClusMatrix & cluster, SiPixelGenError& gtempl,
-				float& yrec, float& sigmay, float& xrec, float& sigmax, int& nypix, int& nxpix, float& yfrac, float& xfrac)			
+				float& yrec, float& sigmay, float& xrec, float& sigmax, int& nypix, int& nxpix, float& yfrac, float& xfrac, bool IrradiationBiasCorrection = true)			
 {
     // Local variables 
 	int i, j;
@@ -65,6 +65,10 @@ int SiPixelTemplateReco::PixelGeneric2D(int ID, float cotalpha, float cotbeta, f
 	// Get LA and error info from the template object
 	
 	gtempl.qbin(ID, cotalpha, cotbeta, locBz, locBx, qtotal, pixmx, sigy, dely, sigx, delx, syone, dyone, sytwo, dytwo, sxone, dxone, sxtwo, dxtwo);
+
+    if(!IrradiationBiasCorrection){
+        dely = delx = 0.;
+    }
 	
 	xsize = gtempl.xsize();
 	ysize = gtempl.ysize();
@@ -132,6 +136,8 @@ int SiPixelTemplateReco::PixelGeneric2D(int ID, float cotalpha, float cotbeta, f
 		}
 	}
 	
+    //Turn off strict length checking (allow gaps)
+    /*
 	if((lypix-fypix+1) != nypix) { 
 	   if (theVerboseLevel > 1) {
          std::cout <<
@@ -146,6 +152,7 @@ int SiPixelTemplateReco::PixelGeneric2D(int ID, float cotalpha, float cotbeta, f
 	
 	   return 1; 
 	}
+    */
         	        
 // next, identify the x-cluster ends, count total pixels, nxpix, and logical pixels, logxpx   
 
@@ -165,6 +172,8 @@ int SiPixelTemplateReco::PixelGeneric2D(int ID, float cotalpha, float cotbeta, f
 		  lxpitch=xpitch;
 		}
 	}
+    //Turn off strict length checking (allow gaps)
+    /*
 	if((lxpix-fxpix+1) != nxpix) { 
 	
 	   if (theVerboseLevel > 1) {
@@ -175,6 +184,7 @@ int SiPixelTemplateReco::PixelGeneric2D(int ID, float cotalpha, float cotbeta, f
 
 	   return 2; 
 	}
+    */
                 
 	if (theVerboseLevel > 9) {
        std::cout <<
@@ -281,7 +291,7 @@ int SiPixelTemplateReco::PixelGeneric2D(int ID, float cotalpha, float cotbeta, f
 } // PixelGeneric2D 
 
 int SiPixelTemplateReco::PixelGeneric2D(int ID, float cotalpha, float cotbeta, ClusMatrix & cluster, SiPixelGenError& templ,
-										float& yrec, float& sigmay, float& xrec, float& sigmax, int& nypix, int& nxpix, float& yfrac, float& xfrac)			
+										float& yrec, float& sigmay, float& xrec, float& sigmax, int& nypix, int& nxpix, float& yfrac, float& xfrac, bool IrradiationBiasCorrection=true)			
 {
     // Local variables 
 	float locBx, locBz;
@@ -291,7 +301,7 @@ int SiPixelTemplateReco::PixelGeneric2D(int ID, float cotalpha, float cotbeta, C
     if(cotalpha < 0.) locBz = -locBx;
     
 	return SiPixelTemplateReco::PixelGeneric2D(ID, cotalpha, cotbeta, locBz, locBx, cluster, templ, 
-												yrec, sigmay, xrec, sigmax, nypix, nxpix, yfrac, xfrac);
+												yrec, sigmay, xrec, sigmax, nypix, nxpix, yfrac, xfrac, IrradiationBiasCorrection);
 	
 } // PixelGeneric2D
 

@@ -313,7 +313,7 @@ void print_cluster(TwoD &clust){
     for (int i=0; i < TXSIZE; i++) {
         for(int  j=0; j < TYSIZE; j++){
 
-            printf("%.1f ", clust[i][j]);
+            printf("%5.1f ", clust[i][j]);
         }
         printf("\n");
     }
@@ -519,7 +519,7 @@ std::vector<std::pair<int, int> > clusterizer(float (&clust)[TXSIZE][TYSIZE], fl
     printf("Input Cluster: \n");
     for(int i=0; i<TXSIZE; i++){
         for(int j=0; j<TYSIZE; j++){
-            printf("%.1f ", clust[i][j]);
+            printf("%5.0f ", clust[i][j]);
         }
         printf("\n");
     }
@@ -562,7 +562,7 @@ std::vector<std::pair<int, int> > clusterizer(float (&clust)[TXSIZE][TYSIZE], fl
         int imin = std::max(pixIter.first-1, 0); 
         int imax = std::min(pixIter.first+1, TXSIZE-1);
         int jmin = std::max(pixIter.second-1, 0);
-        int jmax = std::max(pixIter.second+1, TYSIZE-1);
+        int jmax = std::min(pixIter.second+1, TYSIZE-1);
         clustering_list.pop_back();
 
 
