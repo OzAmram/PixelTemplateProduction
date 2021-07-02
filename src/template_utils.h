@@ -476,6 +476,30 @@ void morph(int (&clust)[TXSIZE][TYSIZE], int (&kernel)[3][3], int op = DILATE){
         return;
 }
 
+bool check_is_split(float **clust){
+    int proj[100];
+    memset(proj, 0., sizeof(proj));
+    int ymin = 99999;
+    int ymax = -99999;
+    for(int i=0; i<TXSIZE; i++){
+        for(int j=0; j<TYSIZE; j++){
+            if(clust[i][j] > 0.){
+                proj[j] += clust[i][j];
+                ymin = std::min(ymin, j);
+                ymax = std::min(ymax, j);
+            }
+        }
+    }
+
+    int nCols = ymax - ymin + 1;
+    int counter = 0;
+    for(int j=ymin; j<TYSIZE; j++){
+        if(proj[j] <= 0.) break;
+        counter++;
+    }
+    return counter != nCols && nCols < TYSIZE;
+}
+
 
 
 
