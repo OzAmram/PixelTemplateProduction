@@ -74,15 +74,16 @@ int main(int argc, char *argv[])
     }
 
     char extra[80], line[160];
-    int use_l1_offset, do_cluster_healing, do_IBCs;
+    int use_l1_offset, do_cluster_healing, do_IBCs, do_2d_templates;
     fgets(line, 160, ifp);
     sscanf(line,"%d %f %f %f %f %f %f %f %d %s", &nfile, &noise, &q100, &q101, &q100_frac, &common_frac, &gain_frac, &readout_noise, &frontend_type, &extra[0]);
     fgets(line, 160, ifp);
-    sscanf(line,"%d %d %f %f %d %d", &fileNum, &use_l1_offset, &xtalk_frac, &xtalk_noise, &do_cluster_healing, &do_IBCs);
+    sscanf(line,"%d %d %f %f %d %d %d", &fileNum, &use_l1_offset, &xtalk_frac, &xtalk_noise, &do_cluster_healing, &do_IBCs, &do_2d_templates);
     fclose(ifp);
     printf("template events file %d noise = %f, threshold0 = %f, threshold1 = %f, rms threshold frac = %f, common_frac = %f,"
             "gain fraction = %f, readout noise = %f, front end type = %d xtalk_frac = %.2f xtalk_noise = %.2f \n", 
             nfile, noise, q100, q101, q100_frac, common_frac, gain_frac, readout_noise, frontend_type, xtalk_frac, xtalk_noise);
+    printf("Do cluster healing %d, do IBCs %d do 2d templates %d \n", do_cluster_healing, do_IBCs, do_2d_templates);
     printf("Template file number %i \n", fileNum);
 
     FrontEndModel frontEnd;
@@ -108,7 +109,7 @@ int main(int argc, char *argv[])
     gStyle->SetHistLineWidth(2);
 
     
-    const int n_hists = 51;
+    const int n_hists = 53;
 
     static vector<TH1F*> hp(n_hists);
     hp[0] = new TH1F("h101","Template Reco #Deltay (all sig); #Deltay (#mum)",nx,-halfxs,halfxs);
@@ -153,18 +154,27 @@ int main(int argc, char *argv[])
     hp[39] = new TH1F("h412","dx_baryc (all sig); #Deltax (#mum)",nx,-halfxs,halfxs);
     hp[40] = new TH1F("h121","CCE; CCE",110,0.,1.10);
 
-    int pulls_idx = 41;
+   
+
+    const int pulls_idx = 41;
     hp[41] = new TH1F("h_pull_temp_y", "Template Reco Pull Y (all clusters)", nx, -5., 5.);
     hp[42] = new TH1F("h_pull_temp_x", "Template Reco Pull X (all clusters)", nx, -5., 5.);
     hp[43] = new TH1F("h_pull_gen_y", "Generic Reco Pull Y (all clusters)", nx, -5., 5.);
     hp[44] = new TH1F("h_pull_gen_x", "Generic Reco Pull X (all clusters)", nx, -5., 5.);
 
-    int cls_len_idx = 45;
+    const int cls_len_idx = 45;
     const int n_cls_len_bins = 10;
     hp[45] = new TH1F("h_cls_leny","Cluster Length Y",n_cls_len_bins, 0.01, n_cls_len_bins +0.01);
     hp[46] = new TH1F("h_cls_lenx","Cluster Length X",n_cls_len_bins, 0.01, n_cls_len_bins + 0.01);
     hp[47] = new TH1F("h_cls_leny_pref","Cluster Length Y Pre-Unfold",n_cls_len_bins, 0.01, n_cls_len_bins +0.01);
     hp[48] = new TH1F("h_cls_lenx_pref","Cluster Length X Pre-Unfold",n_cls_len_bins, 0.01, n_cls_len_bins + 0.01);
+
+    const int 2d_templates_idx = 49;
+    hp[49] = new TH1F("h_resy_2d","2D Template Reco #Deltay (all sig); #Deltay (#mum)",nx,-halfxs,halfxs);
+    hp[50] = new TH1F("h_resx_2d","2D Template Reco #Deltax (all sig); #Deltax (#mum)",nx,-halfxs,halfxs);
+    hp[51] = new TH1F("h_pull_2dtemp_y", "2D Template Reco Pull Y (all clusters)", nx, -5., 5.);
+    hp[52] = new TH1F("h_pull_2dtemp_x", "2D Template Reco Pull X (all clusters)", nx, -5., 5.);
+
     TH2F *h_cls_len_dy = new TH2F("h_cls_leny_dy", "Template Reco #Deltay",n_cls_len_bins, 0.5, 0.5 + n_cls_len_bins, nx, -halfxs, halfxs);
 
     TH2F *h_cls_len_dx = new TH2F("h_cls_lenx_dx", "Template Reco #Deltay",n_cls_len_bins, 0.5, 0.5 + n_cls_len_bins, nx, -halfxs, halfxs);
@@ -341,6 +351,18 @@ int main(int argc, char *argv[])
     SiPixelGenError gtempl(thePixelGenErr_);
 
     gtempl.pushfile(fileNum,thePixelGenErr_);	
+
+
+    //Initialize 2D templates
+    std::vector< SiPixelTemplateStore2D > thePixelTemp2D_;
+    SiPixelTemplate2D templ2D; 
+    
+    if(do_2d_templates){
+        templ2D = SiPixelTemplate2D(thePixelTemp2D_);
+        // Initialize template store, Pixelav 100V/300V simulation, +20C as thePixelTemp[6] 
+        templ2D.pushfile(fileNum,thePixelTemp2D_);
+        templ2D.interpolate(tempID, 0.f, 0.f, -1.f);
+    }
 
 
     // Ask for speed info
@@ -641,6 +663,33 @@ int main(int argc, char *argv[])
 
         }
 
+        if(do_2d_templates){
+            int edgeflagy = 0;
+            int edgeflagx = 0;
+
+            int ierr2 = PixelTempReco2D(tempID, cotalpha, cotbeta, locBz, locBx, edgeflagy, edgeflagx, clusterPayload, templ2D, yrec2D, sigmay2D, xrec2D, sigmax2D, 
+                    probxy, probQ, qbin, deltay, npixels);
+
+            if(ierr2 ==0){
+                if(iyd != 0) {
+                    dy = yrec2D - (TYSIZE/2)*ysize - yhit;
+                } else {
+                    dy = yrec2D - ((TYSIZE/2)-0.5)*ysize - yhit;
+                }
+                
+                if(ixd != 0) {
+                    dx = xrec2D - (TXSIZE/2)*xsize - xhit;
+                } else {
+                    dx = xrec2D - ((TXSIZE/2)-0.5)*xsize - xhit;
+
+                }
+                hp[2d_templates_idx]->Fill(dy);
+                hp[2d_templates_idx+1]->Fill(dy);
+                hp[2d_templates_idx+2]->Fill(dy/sigmay2D);
+                hp[2d_templates_idx+3]->Fill(dy/sigmay2D);
+            }
+        }
+
         // Do the template analysis on the cluster 
         //print_cluster(cluster);
         //std::cout << "cotalpha " << cotalpha << " cotbeta " << cotbeta << " Bz " << locBz << " Bx "<< locBx << std::endl;
@@ -894,6 +943,16 @@ int main(int argc, char *argv[])
         hp[i]->Fit("gaus"); 
         TF1 *fitp = hp[i]->GetFunction("gaus");
         if(fitp != NULL) fitp->SetLineColor(kBlue); 
+    }
+
+
+    if(do_2d_templates){
+        for(i=2d_templates_idx; i<2d_templates_idx+4; ++i) {
+            if(hp[i] == NULL) continue;
+            hp[i]->Fit("gaus"); 
+            TF1 *fitp = hp[i]->GetFunction("gaus");
+            if(fitp != NULL) fitp->SetLineColor(kBlue); 
+        }
     }
 
     //  Create an output filename for this run 
