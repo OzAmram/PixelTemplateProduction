@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
     float  qsmear[nevents], npix[nevents],  qflx[nevents], qfly[nevents],
     qtotal[nevents];
     
-    bool good_clust[nevents];
+    bool good_clust[nevents], is_split[nevents];
 
     int nelec[nevents], qbins[nevents], qbin_merge[nevents], xwidth[nevents], xstart[nevents], ywidth[nevents], ystart[nevents];
 
@@ -664,6 +664,8 @@ int main(int argc, char *argv[])
                 npix[n] += 1.;
             }
 
+            is_split[n] = check_is_split(cluster[n]);
+
             /*
             printf("Output Cluster: \n");
             for(int i=0; i<TXSIZE; i++){
@@ -1173,6 +1175,8 @@ int main(int argc, char *argv[])
             // loss correction
 
 
+            //don't run 1d reco on split clusters
+            if(is_split[n]) continue;
 
             float cluster_local[TXSIZE][TYSIZE];
             memset(cluster_local, 0., sizeof(cluster_local));
@@ -1265,6 +1269,9 @@ int main(int argc, char *argv[])
         //do second round of template fits with charge loss correction
         for(int n=0; n<read_events; n++){
             if(!good_clust[n]) continue;
+            //
+            //don't run 1d reco on split clusters
+            if(is_split[n]) continue;
 
             float cluster_local[TXSIZE][TYSIZE];
             memset(cluster_local, 0., sizeof(cluster_local));
