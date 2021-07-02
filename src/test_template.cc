@@ -74,11 +74,11 @@ int main(int argc, char *argv[])
     }
 
     char extra[80], line[160];
-    int use_l1_offset, do_cluster_healing;
+    int use_l1_offset, do_cluster_healing, do_IBCs;
     fgets(line, 160, ifp);
     sscanf(line,"%d %f %f %f %f %f %f %f %d %s", &nfile, &noise, &q100, &q101, &q100_frac, &common_frac, &gain_frac, &readout_noise, &frontend_type, &extra[0]);
     fgets(line, 160, ifp);
-    sscanf(line,"%d %d %f %f %d", &fileNum, &use_l1_offset, &xtalk_frac, &xtalk_noise, &do_cluster_healing);
+    sscanf(line,"%d %d %f %f %d %d", &fileNum, &use_l1_offset, &xtalk_frac, &xtalk_noise, &do_cluster_healing, &do_IBCs);
     fclose(ifp);
     printf("template events file %d noise = %f, threshold0 = %f, threshold1 = %f, rms threshold frac = %f, common_frac = %f,"
             "gain fraction = %f, readout noise = %f, front end type = %d xtalk_frac = %.2f xtalk_noise = %.2f \n", 
@@ -102,8 +102,8 @@ int main(int argc, char *argv[])
     //  Create an input filename for this run 
 
 
-    double  halfxs=100.;
-    int nx=200;	
+    double  halfxs=1000.;
+    int nx=500;	
     gStyle->SetOptFit(101);
     gStyle->SetHistLineWidth(2);
 
@@ -602,15 +602,47 @@ int main(int argc, char *argv[])
         qfrac = (double)qclust/(double)neh;
         hp[40]->Fill(qfrac, weight);
 
-        // Do the template analysis on the cluster 
-        // Do the template analysis on the cluster 
+
         SiPixelTemplateReco::ClusMatrix clusterPayload{&cluster[0][0], xdouble, ydouble, mrow,mcol};
         SiPixelTemplateReco::ClusMatrix clusterPayloadC = clusterPayload;
-        //print_cluster(cluster);
+
+        // Do the generic reco 
         locBx = 1.;
         if(cotbeta < 0.) locBx = -1.;
         locBz = locBx;
-        if(cotalpha < 0.) locBz = -locBx;
+        if(cotalpha < 0.) locBz = -locBx;            
+        ierr = PixelGeneric2D(tempID, cotalpha, cotbeta, locBz, locBx, clusterPayloadC, gtempl, ycmssw, sycmssw, xcmssw, sxcmssw, nypix, nxpix, yfrac, xfrac, do_IBCs);
+        if(ierr ==0){
+            if(iyd != 0) {
+                dyc = ycmssw - (TYSIZE/2)*ysize - yhit;
+            } else {
+                dyc = ycmssw - ((TYSIZE/2)-0.5)*ysize - yhit;
+            }
+            if(ixd != 0) {
+                dxc = xcmssw - (TXSIZE/2)*xsize - xhit;
+            } else {
+                dxc = xcmssw - ((TXSIZE/2)-0.5)*xsize - xhit;
+            }
+            hp[22]->Fill(dyc, weight);
+            hp[23]->Fill(dxc, weight);
+            hp[pulls_idx + 2]->Fill(dyc/ sycmssw, weight);
+            hp[pulls_idx + 3]->Fill(dxc/ sxcmssw, weight);
+            if(nypix > 1) {hp[36]->Fill(dyc);}
+            if(nxpix > 1) {hp[37]->Fill(dxc);}
+            pp[48]->Fill((double)cotbeta,(double)nxpix);
+
+            if(nypix == 2 && yfrac >= 0.) {pp[8]->Fill(yfrac, dyc);}
+            if(nypix == 3 && yfrac >= 0.) {pp[9]->Fill(yfrac, dyc);}
+            if(nypix == 4 && yfrac >= 0.) {pp[10]->Fill(yfrac, dyc);}
+            if(nxpix == 2 && xfrac >= 0.) {pp[11]->Fill(xfrac, dxc);}
+            if(nxpix == 3 && xfrac >= 0.) {pp[12]->Fill(xfrac, dxc);}
+            if(nxpix == 4 && xfrac >= 0.) {pp[13]->Fill(xfrac, dxc);}
+
+
+        }
+
+        // Do the template analysis on the cluster 
+        //print_cluster(cluster);
         //std::cout << "cotalpha " << cotalpha << " cotbeta " << cotbeta << " Bz " << locBz << " Bx "<< locBx << std::endl;
         //std::cout << " ierr " << ierr << std::endl;
         ierr = PixelTempReco1D(tempID, cotalpha, cotbeta, locBz, locBx,  clusterPayload, templ, yrec, sigmay, proby, xrec, sigmax, probx,  qbin, speed, probQ);
@@ -678,30 +710,15 @@ int main(int argc, char *argv[])
             if(qbin == 1) {pp[44]->Fill(alpha, dx);}
             if(qbin < 4 && qbin > 1) {pp[46]->Fill(alpha, dx);}
 
-            locBx = 1.;
-            if(cotbeta < 0.) locBx = -1.;
-            locBz = locBx;
-            if(cotalpha < 0.) locBz = -locBx;            
-            ierr = PixelGeneric2D(tempID, cotalpha, cotbeta, locBz, locBx, clusterPayloadC, gtempl, ycmssw, sycmssw, xcmssw, sxcmssw, nypix, nxpix, yfrac, xfrac);
-            if(iyd != 0) {
-                dyc = ycmssw - (TYSIZE/2)*ysize - yhit;
-            } else {
-                dyc = ycmssw - ((TYSIZE/2)-0.5)*ysize - yhit;
-            }
+            if(qbin == 1) {pp[1]->Fill(eta, dyc);}
+            if(qb < 4 && qb > 1) {pp[3]->Fill(eta, dyc);}
+            if(qbin == 1) {pp[5]->Fill(eta, dxc);}
+            if(qb < 4 && qb > 1) {pp[7]->Fill(eta, dxc);}
+            if(qbin == 1) {pp[45]->Fill(alpha, dxc);}
+            if(qb < 4 && qb > 1) {pp[47]->Fill(alpha, dxc);}
             syc[qb] += dyc; syc2[qb] += dyc*dyc; scyc[qb] += dyc*dyc/(sycmssw*sycmssw);
-            if(ixd != 0) {
-                dxc = xcmssw - (TXSIZE/2)*xsize - xhit;
-            } else {
-                dxc = xcmssw - ((TXSIZE/2)-0.5)*xsize - xhit;
-            }
             sxc[qb] += dxc; sxc2[qb] += dxc*dxc; scxc[qb] += dxc*dxc/(sxcmssw*sxcmssw);
-            hp[22]->Fill(dyc, weight);
-            hp[23]->Fill(dxc, weight);
-            hp[pulls_idx + 2]->Fill(dyc/ sycmssw, weight);
-            hp[pulls_idx + 3]->Fill(dxc/ sxcmssw, weight);
-            if(nypix > 1) {hp[36]->Fill(dyc);}
-            if(nxpix > 1) {hp[37]->Fill(dxc);}
-            pp[48]->Fill((double)cotbeta,(double)nxpix);
+
 
             hp[cls_len_idx]->Fill(nypix);
             hp[cls_len_idx+2]->Fill(nypix_pref);
@@ -728,18 +745,6 @@ int main(int argc, char *argv[])
             } else {
                 hp[30]->Fill(dy);
             }
-            if(qbin == 1) {pp[1]->Fill(eta, dyc);}
-            if(qb < 4 && qb > 1) {pp[3]->Fill(eta, dyc);}
-            if(qbin == 1) {pp[5]->Fill(eta, dxc);}
-            if(qb < 4 && qb > 1) {pp[7]->Fill(eta, dxc);}
-            if(qbin == 1) {pp[45]->Fill(alpha, dxc);}
-            if(qb < 4 && qb > 1) {pp[47]->Fill(alpha, dxc);}
-            if(nypix == 2 && yfrac >= 0.) {pp[8]->Fill(yfrac, dyc);}
-            if(nypix == 3 && yfrac >= 0.) {pp[9]->Fill(yfrac, dyc);}
-            if(nypix == 4 && yfrac >= 0.) {pp[10]->Fill(yfrac, dyc);}
-            if(nxpix == 2 && xfrac >= 0.) {pp[11]->Fill(xfrac, dxc);}
-            if(nxpix == 3 && xfrac >= 0.) {pp[12]->Fill(xfrac, dxc);}
-            if(nxpix == 4 && xfrac >= 0.) {pp[13]->Fill(xfrac, dxc);}
             if(nypix == 2 && yfrac >= 0.) {pp[14]->Fill(yfrac, dy);}
             if(nypix == 3 && yfrac >= 0.) {pp[15]->Fill(yfrac, dy);}
             if(nypix == 4 && yfrac >= 0.) {pp[16]->Fill(yfrac, dy);}
