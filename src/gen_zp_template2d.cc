@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
     static float xhit, yhit, xrec, yrec, sigmax, sigmay, signal, cotalpha, cotbeta, qclust, locBz, locBx, probxy, probQ, pixmax;
     static float pixmaxy, pixmaxx;
     static int startfile, neh, nevent, tempID, nbad, fe_model_type, icol, ndcol, numrun; 
-    int  id,NTy, NTyx,NTxx,IDtype;
+    int  id,NTy, NTyx,NTxx,IDtype,nypix(0), nxpix(0);
     static float Bfield,Vbias,temp,fluenc;
     static vector<int> nbin(5,0);
     float deltay;
@@ -64,7 +64,17 @@ int main(int argc, char *argv[])
     const int nvers = 21;
 
     float qin;
-    static char infile[120], label[160], header[120],  outfile0[120], outfile1[120], outfile2[120];
+    static char infile[120], label[160], header[120], dtitle[80], outfile0[120], outfile1[120], outfile2[120], histStore_outfile[120];
+    unsigned int detType(1);
+    // static float cotalphaLowEdge, cotalphaBinWidth, cotbetaBinWidth, cotbetaLowEdge;
+    static std::vector<double> cotalphaEdges;
+    static std::vector<double> cotbetaEdges;
+    // const double    cotbetaBinWidth = 0.25; // 0.25 forward2 //0.21 //0.15 // 3.3. barrel, 0.21 forward1, 0.2 forward0
+    // const double    cotbetaLowEdge    = 0.0 ; // 0.0 forward2 //0.15 forward1, 0.25 forward0
+    // const int       cotbetaBins    = 3; //3
+    // const double    cotalphaBinWidth = 0.10; // 0.10 forward2 //0.38//0.02 //0.2 barrel 0.34 forward1, 0.28 forward0
+    // const double    cotalphaLowEdge = 0.0; // -0.04, 0.10 forward0
+    // const int       cotalphaBins    = 2; //2
     int triplg(std::vector<float>&);
     //	int random(void);
 
@@ -124,14 +134,43 @@ int main(int argc, char *argv[])
     printf("Using params: Use_l1_offset=%d, write_temp_header=%d, ID=%d NTy=%d NTyx=%d NTxx=%d Dtype=%d Bfield=%.2f "
             "Bias Voltage = %.1f temparature = %.0f fluence = %.2f q-scale = %.4f xtalk_frac = %.2f xtalk_noise %.2f \n",
             use_l1_offset, write_temp_header, id, NTy, NTyx, NTxx, IDtype, Bfield, Vbias, temp, fluenc, qscale, xtalk_frac, xtalk_noise );
-    if(num_read != 10){
+    
+    fgets(line, 160, config_file);
+    num_read = sscanf(line, "%s", dtitle);
+    if(num_read != 1){
         printf("Error reading config file !\n");
         printf("Line was %s \n", line);
         return 0;
     }
+    
+    fgets(line, 160, config_file);
+    std::string s_binedge;
+    istringstream linestream (line);
+    while (getline(linestream, s_binedge, ' ')) {
+        if (s_binedge == " ") {continue;}
+        else {
+            cotbetaEdges.push_back(std::stod(s_binedge,0));
+        }
+    }
+
+    fgets(line, 160, config_file);
+    linestream.clear(); linestream.str(line);
+    while (getline(linestream, s_binedge, ' ')) {
+        if (s_binedge == " ") {continue;}
+        else {
+            cotalphaEdges.push_back(std::stod(s_binedge,0));
+        }
+    }
+    printf("Using cotbeta binning:\n\t");
+    for (float e: cotbetaEdges) {
+        printf("%f, ",e);
+    }
+    printf("\nUsing cotalpha binning:\n\t");
+    for (float e: cotalphaEdges) {
+        printf("%f, ",e);
+    }
 
     fclose(config_file);
-
     //  Calculate 50% of threshold in q units and enc noise in adc units
 
     q50=0.5*q100;
@@ -173,6 +212,23 @@ int main(int argc, char *argv[])
         frontEnd.vcal = 50.;	
         frontEnd.vcaloffst = 670.;
     }
+
+    sprintf(histStore_outfile,"pixel_histos%5.5d.root",id);
+    // Descriptive title
+    // e.g. Forward 50x50x150 flat disk pixel resolution histograms
+    // sprintf(dtitle,"%s",argv[1]);
+    // printf("dtitle %s\n",argv[1]);
+    // if (argv[1]==NULL) {
+    //     sprintf(dtitle,"Forward pixel resolution histograms");
+    // }
+    PixelResolutionHistograms
+        fastSimResHistoStore( histStore_outfile,                                // File name for histograms
+			"",                                     // No subdirectory
+			dtitle,                                 // Descriptive title	     
+			detType, // unsigned int detType,             // Do we need this?
+			cotbetaEdges,    // Binning along cot\beta
+			cotalphaEdges); // ... along cot\alpha
+    //                    qbinWidth, qbins );                              // ... for qBin
 
     // Define the histograms to be used at each angle pair
 
@@ -659,6 +715,9 @@ int main(int argc, char *argv[])
                 hp[22]->Fill((double)probxy);
                 hp[24]->Fill((double)npixels);
                 hp[23]->Fill((double)(probxy/npixels));
+
+                // Fill the FastSim histograms
+                (void) fastSimResHistoStore.Fill( dx, dy, (double)cotalpha, (double)cotbeta, qbin, nxpix, nypix );
 
             }
 

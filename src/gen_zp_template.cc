@@ -95,12 +95,14 @@ int main(int argc, char *argv[])
     float qin;
     static char infile[120], label[160], header[120], dtitle[80], outfile0[120], outfile1[120], outfile2[120], histStore_outfile[120];
     unsigned int detType(1);
-    const double    cotbetaBinWidth = 0.25; // 0.25 forward2 //0.21 //0.15 // 3.3. barrel, 0.21 forward1, 0.2 forward0
-    const double    cotbetaLowEdge    = 0.0 ; // 0.0 forward2 //0.15 forward1, 0.25 forward0
-    const int    cotbetaBins    = 3; //3
-    const double    cotalphaBinWidth = 0.10; // 0.10 forward2 //0.38//0.02 //0.2 barrel 0.34 forward1, 0.28 forward0
-    const double    cotalphaLowEdge = 0.0; // -0.04, 0.10 forward0
-    const int       cotalphaBins    = 2; //2
+    static float cotalphaLowEdge, cotalphaBinWidth, cotbetaBinWidth, cotbetaLowEdge;
+    static int cotalphaBins, cotbetaBins;
+    // const double    cotbetaBinWidth = 0.25; // 0.25 forward2 //0.21 //0.15 // 3.3. barrel, 0.21 forward1, 0.2 forward0
+    // const double    cotbetaLowEdge    = 0.0 ; // 0.0 forward2 //0.15 forward1, 0.25 forward0
+    // const int    cotbetaBins    = 3; //3
+    // const double    cotalphaBinWidth = 0.10; // 0.10 forward2 //0.38//0.02 //0.2 barrel 0.34 forward1, 0.28 forward0
+    // const double    cotalphaLowEdge = 0.0; // -0.04, 0.10 forward0
+    // const int       cotalphaBins    = 2; //2
     //	int random(void);
 
     float clust[TXSIZE][TYSIZE], rclust[TXSIZE][TYSIZE], sigraw[TXSIZE+2][TYSIZE+2];
@@ -161,6 +163,17 @@ int main(int argc, char *argv[])
         return 0;
     }
 
+    fgets(line, 160, config_file);
+    num_read = sscanf(line, " %s %f %f %i %f %f %i", dtitle, &cotbetaBinWidth, &cotbetaLowEdge, &cotbetaBins, &cotalphaBinWidth, &cotalphaLowEdge, &cotalphaBins);
+    printf("Using binning: cotbetaBinWidth=%f, cotbetaLowEdge=%f, cotbetaBins=%i, cotalphaBinWidth=%f, cotalphaLowEdge=%f, cotalphaBins=%i\n",
+            cotbetaBinWidth, cotbetaLowEdge, cotbetaBins, cotalphaBinWidth, cotalphaLowEdge, cotalphaBins );
+    
+    if(num_read != 7){
+        printf("Error reading config file !\n");
+        printf("Line was %s \n", line);
+        return 0;
+    }
+
     fclose(config_file);
 
     FrontEndModel frontEnd;
@@ -192,11 +205,11 @@ int main(int argc, char *argv[])
     sprintf(histStore_outfile,"pixel_histos%5.5d.root",id);
     // Descriptive title
     // e.g. Forward 50x50x150 flat disk pixel resolution histograms
-    sprintf(dtitle,"%s",argv[2]);
-    printf("dtitle %s\n",argv[2]);
-    if (argv[2]==NULL) {
-        sprintf(dtitle,"Forward pixel resolution histograms");
-    }
+    // sprintf(dtitle,"%s",argv[1]);
+    // printf("dtitle %s\n",argv[1]);
+    // if (argv[1]==NULL) {
+    //     sprintf(dtitle,"Forward pixel resolution histograms");
+    // }
     PixelResolutionHistograms
         fastSimResHistoStore( histStore_outfile,                                // File name for histograms
 			"",                                     // No subdirectory
