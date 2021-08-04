@@ -170,6 +170,11 @@ int main(int argc, char *argv[])
 
     TH2F *h_cls_len_dx = new TH2F("h_cls_lenx_dx", "Template Reco #Deltay",n_cls_len_bins, 0.5, 0.5 + n_cls_len_bins, nx, -halfxs, halfxs);
 
+    float eta_min = -0.075;
+    float eta_max = 2.775;
+    int n_eta_bins = 19;
+    TH2F *h_eta_dy = new TH2F("h_eta_dy", "Template Reco #Deltay",n_eta_bins, eta_min, eta_max, nx, -halfxs, halfxs);
+    TH2F *h_eta_dx = new TH2F("h_eta_dx", "Template Reco #Deltay",n_eta_bins, eta_min, eta_max,  nx, -halfxs, halfxs);
 
     // Set style for the the histograms	
 
@@ -704,6 +709,9 @@ int main(int argc, char *argv[])
             hp[cls_len_idx+3]->Fill(nxpix_pref);
             h_cls_len_dx->Fill(nxpix_pref, dx);
 
+            h_eta_dx->Fill(eta, dx);
+            h_eta_dy->Fill(eta, dy);
+
             if(nxpix == 1) {
                 hp[25]->Fill(dx);
             } else {
@@ -925,10 +933,11 @@ int main(int argc, char *argv[])
 
 
     // Residuals as a function of cluster length
-    float x_axis[n_cls_len_bins];
-    float e_x_axis[n_cls_len_bins];
-    float std_devx[n_cls_len_bins], e_std_devx[n_cls_len_bins], std_devy[n_cls_len_bins], e_std_devy[n_cls_len_bins];
-    float sigmasx[n_cls_len_bins], e_sigmasx[n_cls_len_bins], sigmasy[n_cls_len_bins], e_sigmasy[n_cls_len_bins];
+    const int n_bins = 30;
+    float x_axis[n_bins];
+    float e_x_axis[n_bins];
+    float std_devx[n_bins], e_std_devx[n_bins], std_devy[n_bins], e_std_devy[n_bins];
+    float sigmasx[n_bins], e_sigmasx[n_bins], sigmasy[n_bins], e_sigmasy[n_bins];
 
     char coutfile0[100], coutfile1[100], coutfile2[100], h_title[100];
     sprintf(coutfile0,"cls_len_resid%5.5d.pdf[",nfile);
@@ -938,6 +947,8 @@ int main(int argc, char *argv[])
     c2.SetFillStyle(4000);
     c2.Print(coutfile0);
     //h_cls_len_dx->Print("range");
+    //h_eta_dx->Print("range");
+    //h_eta_dy->Print("range");
     for(int k =1; k <= n_cls_len_bins; k++){
         printf("Size %i \n" , k);
         x_axis[k-1] = k;
@@ -1027,6 +1038,97 @@ int main(int argc, char *argv[])
     c2.Print(coutfile1);
     c2.Print(coutfile2);
         
+
+
+
+
+
+    //residuals as a function of eta
+    //
+    //
+    sprintf(coutfile0,"eta_resid%5.5d.pdf[",nfile);
+    sprintf(coutfile1,"eta_resid%5.5d.pdf",nfile);
+    sprintf(coutfile2,"eta_resid%5.5d.pdf]",nfile);
+    TCanvas c3("c3", header);
+    c3.SetFillStyle(4000);
+    c3.Print(coutfile0);
+    TH1D *h_proj_eta = h_eta_dx->ProjectionX("proj_eta");
+    h_proj_eta->Print("range");
+    for(int k =1; k <= n_eta_bins; k++){
+        printf("eta_bin %i \n" , k);
+
+        TH1D *h_projx = h_eta_dx->ProjectionY("projx_eta", k,k, "e");
+        TH1D *h_projy = h_eta_dy->ProjectionY("projy_eta", k,k, "e");
+
+        //h_projx->Print("range");
+
+        if(h_projx->Integral() > 100){
+            sprintf(h_title, "X Residuals Eta bin = %i; #DeltaX (#mum)", k - 1);
+            h_projx->SetTitle(h_title);
+            h_projx->Fit("gaus");
+            h_projx->SetLineColor(kBlack);
+            TF1 *fit = h_projx->GetFunction("gaus");
+            fit->SetLineColor(kBlue);
+            std_devx[k-1] = h_projx->GetStdDev();
+            e_std_devx[k-1] = h_projx->GetStdDevError();
+            sigmasx[k-1] = fit->GetParameter(2);
+            e_sigmasx[k-1] = fit->GetParError(2);
+            h_projx->SetMarkerStyle(20);
+            h_projx->Draw("pe");
+            c3.Print(coutfile1);
+        }
+        else{
+            sigmasx[k-1] = 0.;
+            e_sigmasx[k-1] = 0.;
+            std_devx[k-1] = 0.;
+            e_std_devx[k-1] = 0.;
+        }
+
+        if(h_projy->Integral() > 100){
+            sprintf(h_title, "Y Residuals Eta bin = %i; #DeltaY (#mum)", k - 1);
+            h_projy->SetTitle(h_title);
+            h_projy->Fit("gaus");
+            h_projy->SetLineColor(kBlack);
+            TF1 *fit = h_projy->GetFunction("gaus");
+            fit->SetLineColor(kBlue);
+            std_devy[k-1] = h_projy->GetStdDev();
+            e_std_devy[k-1] = h_projy->GetStdDevError();
+            sigmasy[k-1] = fit->GetParameter(2);
+            e_sigmasy[k-1] = fit->GetParError(2);
+            h_projy->SetMarkerStyle(20);
+            h_projy->Draw("pe");
+            c3.Print(coutfile1);
+        }
+        else{
+            sigmasy[k-1] = 0.;
+            e_sigmasy[k-1] = 0.;
+            std_devy[k-1] = 0.;
+            e_std_devy[k-1] = 0.;
+        }
+        h_projx->Reset();
+        h_projy->Reset();
+
+    }
+    c3.Print(coutfile2);
+    printf("X sigmas as a function of eta bin : \n");
+    for(int k =0; k < n_eta_bins; k++){
+        printf("%2i %.2f +/- %.2f \n", k, sigmasx[k], e_sigmasx[k]);
+    }
+    printf("Y sigmas as a function of eta bin : \n");
+    for(int k =0; k < n_eta_bins; k++){
+        printf("%2i %.2f +/- %.2f \n", k, sigmasy[k], e_sigmasy[k]);
+    }
+
+
+    printf("X RMS as a function of eta bin : \n");
+    for(int k =0; k < n_eta_bins; k++){
+        printf("%2i %.2f +/- %.2f \n", k, std_devx[k], e_std_devx[k]);
+    }
+    printf("Y RMS as a function of eta bin : \n");
+    for(int k =0; k < n_eta_bins; k++){
+        printf("%2i %.2f +/- %.2f \n", k, std_devy[k], e_std_devy[k]);
+    }
+
 
 
 
