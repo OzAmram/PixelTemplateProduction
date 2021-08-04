@@ -195,7 +195,7 @@ int main(int argc, char *argv[])
 
     //  Open template output file
 
-    sprintf(infile,"template_summary_zp%5.5d.out",id);
+    sprintf(infile,"template_summary_zp%4.4d.out",id);
     temp_output_file = fopen(infile, "w");
     if (temp_output_file==NULL) {
         printf("couldn't open template output file/n");
@@ -219,7 +219,7 @@ int main(int argc, char *argv[])
 			cotalphaBinWidth, cotalphaLowEdge, cotalphaBins); // ... along cot\alpha
     //                    qbinWidth, qbins );                              // ... for qBin
 
-    sprintf(infile,"generror_summary_zp%5.5d.out",id);
+    sprintf(infile,"generror_summary_zp%4.4d.out",id);
     generr_output_file = fopen(infile, "w");
     if (generr_output_file==NULL) {
         printf("couldn't open generr output file/n");
