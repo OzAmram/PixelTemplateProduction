@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
     gStyle->SetHistLineWidth(2);
 
     
-    const int n_hists = 53;
+    const int n_hists = 55;
 
     static vector<TH1F*> hp(n_hists);
     hp[0] = new TH1F("h101","Template Reco #Deltay (all sig); #Deltay (#mum)",nx,-halfxs,halfxs);
@@ -169,11 +169,15 @@ int main(int argc, char *argv[])
     hp[47] = new TH1F("h_cls_leny_pref","Cluster Length Y Pre-Unfold",n_cls_len_bins, 0.01, n_cls_len_bins +0.01);
     hp[48] = new TH1F("h_cls_lenx_pref","Cluster Length X Pre-Unfold",n_cls_len_bins, 0.01, n_cls_len_bins + 0.01);
 
-    const int 2d_templates_idx = 49;
+    const int templates_2d_idx = 49;
     hp[49] = new TH1F("h_resy_2d","2D Template Reco #Deltay (all sig); #Deltay (#mum)",nx,-halfxs,halfxs);
     hp[50] = new TH1F("h_resx_2d","2D Template Reco #Deltax (all sig); #Deltax (#mum)",nx,-halfxs,halfxs);
     hp[51] = new TH1F("h_pull_2dtemp_y", "2D Template Reco Pull Y (all clusters)", nx, -5., 5.);
     hp[52] = new TH1F("h_pull_2dtemp_x", "2D Template Reco Pull X (all clusters)", nx, -5., 5.);
+
+    const int pixel_charge_idx = 53;
+    hp[53] = new TH1F("h_pixel_charge_true", "Truth Pixel Charge", 0, 20000, 40);
+    hp[54] = new TH1F("h_pixel_charge_reco", "Reconstructed Pixel Charge", 0, 20000, 40);
 
     TH2F *h_cls_len_dy = new TH2F("h_cls_leny_dy", "Template Reco #Deltay",n_cls_len_bins, 0.5, 0.5 + n_cls_len_bins, nx, -halfxs, halfxs);
 
@@ -350,13 +354,17 @@ int main(int argc, char *argv[])
 
     //Initialize 2D templates
     std::vector< SiPixelTemplateStore2D > thePixelTemp2D_;
-    SiPixelTemplate2D templ2D; 
+    SiPixelTemplate2D *templ2D; 
+
+    int tempID2d;
+
     
     if(do_2d_templates){
-        templ2D = SiPixelTemplate2D(thePixelTemp2D_);
+        templ2D = new SiPixelTemplate2D(thePixelTemp2D_);
         // Initialize template store, Pixelav 100V/300V simulation, +20C as thePixelTemp[6] 
-        templ2D.pushfile(fileNum,thePixelTemp2D_);
-        templ2D.interpolate(tempID, 0.f, 0.f, -1.f);
+        templ2D->pushfile(fileNum,thePixelTemp2D_);
+        tempID2d =  thePixelTemp_.front().head.ID;
+        //templ2D->interpolate(tempID2d, 0.f, 0.f, -1.f, -1.f);
     }
 
 
@@ -406,6 +414,14 @@ int main(int argc, char *argv[])
             xtalk_unfold_row = 0;
         }
         float xtalk_apply = xtalk_frac + xtalk_noise * vgauss[3];
+
+        for(int j =0; j<TXSIZE; j++){
+            for(int i=0; i<TYSIZE; ++i) {
+                if(pixin[j][i] > 0.){
+                    hp[pixel_charge_idx]->Fill(pixin[j][i] * 10.);
+                }
+            }
+        }
 
         //printf("Before \n");
         //print_cluster(pixin);
@@ -510,6 +526,16 @@ int main(int argc, char *argv[])
             xclust += ((float)j)*xsize*clust[j][i];
             yclust += ((float)i)*ysize*clust[j][i];
         }
+
+        for(int j =0; j<TXSIZE; j++){
+            for(int i=0; i<TYSIZE; ++i) {
+                if(pixin[j][i] > 0.){
+                    hp[pixel_charge_idx+1]->Fill(clust[j][i] );
+                }
+            }
+        }
+
+
 
         /*
         printf("Output Cluster: \n");
@@ -637,7 +663,12 @@ int main(int argc, char *argv[])
             int edgeflagy = 0;
             int edgeflagx = 0;
 
-            int ierr2 = PixelTempReco2D(tempID, cotalpha, cotbeta, locBz, locBx, edgeflagy, edgeflagx, clusterPayload, templ2D, yrec2D, sigmay2D, xrec2D, sigmax2D, 
+            float xrec2D, yrec2D, sigmay2D, sigmax2D, deltay;
+            int npixels;
+
+            SiPixelTemplateReco2D::ClusMatrix clusterPayload2{&cluster[0][0], xdouble, ydouble, mrow,mcol};
+
+            int ierr2 = PixelTempReco2D(tempID2d, cotalpha, cotbeta, locBz, locBx, edgeflagy, edgeflagx, clusterPayload2, *templ2D, yrec2D, sigmay2D, xrec2D, sigmax2D, 
                     probxy, probQ, qbin, deltay, npixels);
 
             if(ierr2 ==0){
@@ -653,10 +684,13 @@ int main(int argc, char *argv[])
                     dx = xrec2D - ((TXSIZE/2)-0.5)*xsize - xhit;
 
                 }
-                hp[2d_templates_idx]->Fill(dy);
-                hp[2d_templates_idx+1]->Fill(dy);
-                hp[2d_templates_idx+2]->Fill(dy/sigmay2D);
-                hp[2d_templates_idx+3]->Fill(dy/sigmay2D);
+                hp[templates_2d_idx]->Fill(dy);
+                hp[templates_2d_idx+1]->Fill(dx);
+                hp[templates_2d_idx+2]->Fill(dy/sigmay2D);
+                hp[templates_2d_idx+3]->Fill(dx/sigmax2D);
+            }
+            else{
+                printf("2D reco error %i \n", ierr2);
             }
         }
 
@@ -913,7 +947,7 @@ int main(int argc, char *argv[])
 
 
     if(do_2d_templates){
-        for(i=2d_templates_idx; i<2d_templates_idx+4; ++i) {
+        for(i=templates_2d_idx; i<templates_2d_idx+4; ++i) {
             if(hp[i] == NULL) continue;
             hp[i]->Fit("gaus"); 
             TF1 *fitp = hp[i]->GetFunction("gaus");
@@ -960,6 +994,10 @@ int main(int argc, char *argv[])
     c1.Print(outfile1);
 
     for(i=49; i<53; ++i) {
+        pp[i]->Draw();
+        c1.Print(outfile1);
+    }
+    for(i=53; i<55; ++i) {
         pp[i]->Draw();
         c1.Print(outfile1);
     }
