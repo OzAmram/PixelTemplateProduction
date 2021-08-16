@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
     gStyle->SetHistLineWidth(2);
 
     
-    const int n_hists = 49;
+    const int n_hists = 51;
 
     static vector<TH1F*> hp(n_hists);
     hp[0] = new TH1F("h101","Template Reco #Deltay (all sig); #Deltay (#mum)",nx,-halfxs,halfxs);
@@ -175,6 +175,11 @@ int main(int argc, char *argv[])
     int n_eta_bins = 19;
     TH2F *h_eta_dy = new TH2F("h_eta_dy", "Template Reco #Deltay",n_eta_bins, eta_min, eta_max, nx, -halfxs, halfxs);
     TH2F *h_eta_dx = new TH2F("h_eta_dx", "Template Reco #Deltay",n_eta_bins, eta_min, eta_max,  nx, -halfxs, halfxs);
+
+    const int pixel_charge_idx = 49;
+    hp[49] = new TH1F("h_pixel_charge_true", "Truth Pixel Charge", 40, 0, 20000);
+    hp[50] = new TH1F("h_pixel_charge_reco", "Reconstructed Pixel Charge", 40, 0, 20000);
+
 
     // Set style for the the histograms	
 
@@ -373,6 +378,21 @@ int main(int argc, char *argv[])
         ++nevent;
         if(nevent > 100000) break;
 
+
+
+
+        for(int j =0; j<TXSIZE; j++){
+            for(int i=0; i<TYSIZE; ++i) {
+                if(pixin[j][i] > 0.){
+                    hp[pixel_charge_idx]->Fill(pixin[j][i] * 10.);
+                    //printf("%.1f ", pixin[j][i]);
+
+                }
+            }
+        }
+        //printf("\n");
+        //hp[pixel_charge_idx]->Print("range");
+
         triplg(vgauss);
         pixlst.clear();
         for(int i=0; i<ndcol; ++i) {ndhit[i] = 0;}
@@ -531,6 +551,16 @@ int main(int argc, char *argv[])
         xclust /= qclust;
         yclust /= qclust;
         hp[32]->Fill((double)qclust);
+
+
+        for(int j =0; j<TXSIZE; j++){
+            for(int i=0; i<TYSIZE; ++i) {
+                if(clust[j][i] > 1.){
+                    hp[pixel_charge_idx+1]->Fill(clust[j][i] );
+                }
+            }
+        }
+
 
         // Calculate the hit coordinates in the flipped coordinate system 
 
