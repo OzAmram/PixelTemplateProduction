@@ -814,9 +814,13 @@ int main(int argc, char *argv[])
             hp[cls_len_idx+1]->Fill(nxpix);
             hp[cls_len_idx+3]->Fill(nxpix_pref);
             h_cls_len_dx->Fill(nxpix_pref, dx);
-
-            h_eta_dx->Fill(eta, dx);
-            h_eta_dy->Fill(eta, dy);
+            
+            //template
+            h_eta_dx->Fill(eta, dx); 
+            h_eta_dy->Fill(eta, dy); 
+            //generic
+            //h_eta_dx->Fill(eta, dxc); 
+            //h_eta_dy->Fill(eta, dyc); 
 
             if(nxpix == 1) {
                 hp[25]->Fill(dx);
