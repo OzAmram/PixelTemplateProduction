@@ -54,6 +54,8 @@ int main(int argc, char *argv[])
     //	int random(void);
     float cluster[TXSIZE][TYSIZE], clust[TXSIZE][TYSIZE], rclust[TXSIZE][TYSIZE];
 
+
+    int nSplit = 0;
     std::pair<int, int> pixel, max;
 
     FILE *ifp;
@@ -109,7 +111,7 @@ int main(int argc, char *argv[])
     gStyle->SetHistLineWidth(2);
 
     
-    const int n_hists = 55;
+    const int n_hists = 59;
 
     static vector<TH1F*> hp(n_hists);
     hp[0] = new TH1F("h101","Template Reco #Deltay (all sig); #Deltay (#mum)",nx,-halfxs,halfxs);
@@ -149,7 +151,7 @@ int main(int argc, char *argv[])
     hp[34] = new TH1F("h117","Template Reco #Deltay (cot#beta > 0); #Deltay (#mum)",nx,-halfxs,halfxs);
     hp[35] = new TH1F("h118","Template Reco #Deltay (cot#beta < 0); #Deltay (#mum)",nx,-halfxs,halfxs);
     hp[36] = new TH1F("h119","Generic Reco #Deltay (>one pixel clust); #Deltay (#mum)",nx,-halfxs,halfxs);
-    hp[37] = new TH1F("h120","Generic Reco #Deltay (>one pixel clust); #Deltax (#mum)",nx,-halfxs,halfxs);
+    hp[37] = new TH1F("h120","Generic Reco #Deltax (>one pixel clust); #Deltax (#mum)",nx,-halfxs,halfxs);
     hp[38] = new TH1F("h411","dy_baryc (all sig); #Deltay (#mum)",nx,-halfxs,halfxs);
     hp[39] = new TH1F("h412","dx_baryc (all sig); #Deltax (#mum)",nx,-halfxs,halfxs);
     hp[40] = new TH1F("h121","CCE; CCE",110,0.,1.10);
@@ -178,6 +180,12 @@ int main(int argc, char *argv[])
     const int pixel_charge_idx = 53;
     hp[53] = new TH1F("h_pixel_charge_true", "Truth Pixel Charge", 0, 20000, 40);
     hp[54] = new TH1F("h_pixel_charge_reco", "Reconstructed Pixel Charge", 0, 20000, 40);
+
+    const int split_clust_idx = 55;
+    hp[55] = new TH1F("h_split_geny","Generic Reco #Deltay (split custs); #Deltay (#mum)",nx,-halfxs,halfxs);
+    hp[56] = new TH1F("h_split_genx","Generic Reco #Deltax (split custs); #Deltax (#mum)",nx,-halfxs,halfxs);
+    hp[57] = new TH1F("h_split_2dy","2D Template Reco #Deltay (split clusts); #Deltay (#mum)",nx,-halfxs,halfxs);
+    hp[58] = new TH1F("h_split_2dx","2D Template Reco #Deltax (split clusts); #Deltax (#mum)",nx,-halfxs,halfxs);
 
     TH2F *h_cls_len_dy = new TH2F("h_cls_leny_dy", "Template Reco #Deltay",n_cls_len_bins, 0.5, 0.5 + n_cls_len_bins, nx, -halfxs, halfxs);
 
@@ -421,6 +429,7 @@ int main(int argc, char *argv[])
         }
         //printf("\n");
         //hp[pixel_charge_idx]->Print("range");
+        if(nevent % 5000 ==0) printf("%i split / %i total \n", nSplit, nevent);
 
         triplg(vgauss);
         pixlst.clear();
@@ -527,6 +536,11 @@ int main(int argc, char *argv[])
         }
 
         if(qmax < clustering_thresh) continue;
+
+
+        //print_cluster(clust);
+        bool is_split = check_is_split(clust, q100);
+        if(is_split) nSplit++;
 
 
         //simlulate the clustering
@@ -686,6 +700,11 @@ int main(int argc, char *argv[])
             if(nxpix == 3 && xfrac >= 0.) {pp[12]->Fill(xfrac, dxc);}
             if(nxpix == 4 && xfrac >= 0.) {pp[13]->Fill(xfrac, dxc);}
 
+            if(is_split){
+                hp[split_clust_idx]->Fill(dyc, weight);
+                hp[split_clust_idx+1]->Fill(dxc, weight);
+            }
+
 
         }
 
@@ -714,10 +733,24 @@ int main(int argc, char *argv[])
                     dx = xrec2D - ((TXSIZE/2)-0.5)*xsize - xhit;
 
                 }
-                hp[templates_2d_idx]->Fill(dy);
-                hp[templates_2d_idx+1]->Fill(dx);
-                hp[templates_2d_idx+2]->Fill(dy/sigmay2D);
-                hp[templates_2d_idx+3]->Fill(dx/sigmax2D);
+                hp[templates_2d_idx]->Fill(dy, weight);
+                hp[templates_2d_idx+1]->Fill(dx, weight);
+                hp[templates_2d_idx+2]->Fill(dy/sigmay2D, weight);
+                hp[templates_2d_idx+3]->Fill(dx/sigmax2D, weight);
+
+                if(is_split){
+                    /*
+                    printf("Raw: \n");
+                    print_cluster(clust);
+                    printf("Recoed: \n");
+                    print_cluster(cluster);
+                    printf(" cota %.3f cotb %.3f xhit %.3f yhit %.3f  dx %.1f dy %.1f \n\n", cotalpha, cotbeta, xhit, yhit, dx, dy);
+                    */
+
+                    hp[split_clust_idx+2]->Fill(dy, weight);
+                    hp[split_clust_idx+3]->Fill(dx, weight);
+                }
+
             }
             else{
                 printf("2D reco error %i \n", ierr2);
@@ -989,6 +1022,14 @@ int main(int argc, char *argv[])
         }
     }
 
+
+    for(i=split_clust_idx; i<split_clust_idx+4; ++i) {
+        if(hp[i] == NULL) continue;
+        hp[i]->Fit("gaus"); 
+        TF1 *fitp = hp[i]->GetFunction("gaus");
+        if(fitp != NULL) fitp->SetLineColor(kBlue); 
+    }
+
     //  Create an output filename for this run 
 
     sprintf(outfile0,"pixel_histos%5.5d.pdf[",nfile);
@@ -1028,10 +1069,6 @@ int main(int argc, char *argv[])
     c1.Print(outfile1);
 
     for(i=49; i<53; ++i) {
-        pp[i]->Draw();
-        c1.Print(outfile1);
-    }
-    for(i=53; i<55; ++i) {
         pp[i]->Draw();
         c1.Print(outfile1);
     }
