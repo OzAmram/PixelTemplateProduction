@@ -313,7 +313,7 @@ void print_cluster(TwoD &clust){
     for (int i=0; i < TXSIZE; i++) {
         for(int  j=0; j < TYSIZE; j++){
 
-            printf("%5.1f ", clust[i][j]);
+            printf("%6.0f ", clust[i][j]);
         }
         printf("\n");
     }
@@ -476,17 +476,18 @@ void morph(int (&clust)[TXSIZE][TYSIZE], int (&kernel)[3][3], int op = DILATE){
         return;
 }
 
-bool check_is_split(float **clust){
+template <typename TwoD> //template to allow arrays of different sizes
+bool check_is_split(TwoD &clust, float thresh = 0.){
     int proj[100];
     memset(proj, 0., sizeof(proj));
     int ymin = 99999;
     int ymax = -99999;
     for(int i=0; i<TXSIZE; i++){
         for(int j=0; j<TYSIZE; j++){
-            if(clust[i][j] > 0.){
+            if(clust[i][j] > thresh){
                 proj[j] += clust[i][j];
                 ymin = std::min(ymin, j);
-                ymax = std::min(ymax, j);
+                ymax = std::max(ymax, j);
             }
         }
     }
