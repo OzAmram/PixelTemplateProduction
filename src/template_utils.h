@@ -9,6 +9,7 @@
 #include <vector>
 #include <boost/multi_array.hpp>
 #include <iostream>
+#include <cstring>
 #include <iomanip>
 #include <sstream>
 #include <fstream>
@@ -106,37 +107,41 @@ struct FrontEndModel
                 break;
 
             case 2: // signal slope ToT
-                if(qin < threshold) signal = 0;
-                else{
-                    int adc = std::floor((qin - threshold)/qperToT);
-                    adc = std::min(adc, ADCMax);
-                    signal = (adc + 0.5) * qperToT + threshold;
-                    //printf("In %.0f adc %i out %.0f \n", qin, adc, signal);
-                }
+                {
+                qin += zgauss * readout_noise;
+                if(qin < threshold) return 0;
+                int adc = std::floor((qin - threshold)/qperToT);
+                adc = std::min(adc, ADCMax);
+                signal = (adc + 0.5) * qperToT + threshold;
+                //printf("In %.0f adc %i out %.0f \n", qin, adc, signal);
                 break;
+                }
 
             case 3: //dual slope ToT (current phase 2 default)
-                if(qin < threshold) return 0;
-				else{
-
-					int kinkpoint = int(ADCMax/2) + 1;
-					int adc = std::floor((qin-threshold)/qperToT);
-					if (adc >= kinkpoint){
-					    adc = floor((adc - kinkpoint)/dualslope) + kinkpoint;
-                    }
-
-
-					if(adc < kinkpoint){
-						signal = int((adc + 0.5)* qperToT + threshold);
-					}
-                    else{
-                        signal = int((adc + 0.5 - kinkpoint) * dualslope*qperToT + (kinkpoint * qperToT) + threshold);
-                    }
-                    //printf("In %.0f adc %i out %.0f \n", qin, adc, signal);
-
-
+                {
+                float qin_new = qin + zgauss * readout_noise;
+                if(qin_new < threshold) return 0;
+                int kinkpoint = int(ADCMax/2) + 1;
+                int adc = std::floor((qin_new - threshold)/qperToT);
+                if (adc >= kinkpoint){
+                    qin_new = qin + zgauss*readout_noise * dualslope; //scale noise to be larger
+                    adc = std::floor((qin_new - threshold)/qperToT);
+                    adc = floor((adc - kinkpoint)/dualslope) + kinkpoint;
                 }
+                adc = std::min(adc, ADCMax);
+
+
+                if(adc < kinkpoint){
+                    signal = int((adc + 0.5)* qperToT + threshold);
+                }
+                else{
+                    signal = int((adc + 0.5 - kinkpoint) * dualslope*qperToT + (kinkpoint * qperToT) + threshold);
+                }
+                //printf("In %.0f adc %i out %.0f \n", qin, adc, signal);
+
+
                 break;
+                }
 
             default:
                 std::cout << "ElectronicModel::apply_model: illegal fe_type = " << fe_type << std::endl;
