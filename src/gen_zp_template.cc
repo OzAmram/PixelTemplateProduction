@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
     float  qsmear[nevents], npix[nevents],  qflx[nevents], qfly[nevents],
     qtotal[nevents];
     
-    bool good_clust[nevents];
+    bool good_clust[nevents], is_split[nevents];
 
     int nelec[nevents], qbins[nevents], qbin_merge[nevents], xwidth[nevents], xstart[nevents], ywidth[nevents], ystart[nevents];
 
@@ -86,7 +86,8 @@ int main(int argc, char *argv[])
 
 
     const float fmax = 0.5f;
-    int write_temp_header, use_l1_offset;
+    int write_temp_header, use_l1_offset, do_cluster_healing;
+    
 
     const double rten = 10.;
 
@@ -97,7 +98,6 @@ int main(int argc, char *argv[])
     //	int random(void);
 
     float clust[TXSIZE][TYSIZE], rclust[TXSIZE][TYSIZE], sigraw[TXSIZE+2][TYSIZE+2];
-    bool bclust[TXSIZE][TYSIZE];
     std::pair<int, int> pixel, max;
 
     FILE *temp_output_file, *generr_output_file;
@@ -136,8 +136,8 @@ int main(int argc, char *argv[])
 
 
     fgets(line, 160, config_file);
-    num_read = sscanf(line, " %d %d %f %f", &use_l1_offset, &write_temp_header, &xtalk_frac, &xtalk_noise);
-    if(num_read != 4){
+    num_read = sscanf(line, " %d %d %f %f %d", &use_l1_offset, &write_temp_header, &xtalk_frac, &xtalk_noise, &do_cluster_healing);
+    if(num_read != 5){
         printf("Error reading config file !\n");
         printf("Line was %s \n", line);
         return 0;
@@ -336,7 +336,6 @@ int main(int argc, char *argv[])
 
 
 
-    std::vector<std::pair<int, int> > pixlst;
 
     // Create template object
 
@@ -570,7 +569,6 @@ int main(int argc, char *argv[])
 
             triplg(vgauss);
             qsmear[n] = (1.+vgauss[0]*common_frac);
-            pixlst.clear();
             for(int i=0; i<ndcol; ++i) {ndhit[i] = 0;}
             int icol = 0;
             if(vgauss[1] < 0.) {icol = 1;}
@@ -653,46 +651,8 @@ int main(int argc, char *argv[])
             good_clust[n] = true;
 
 
-            // Simulate clustering around maximum signal (seed)
-            //
-            pixlst.clear();
-            pixlst.push_back(max);
-            memset(bclust, false, sizeof(bclust));
-            bclust[max.first][max.second] = true;
-
-            std::vector<std::pair<int, int> > pixlst_copy;
-
-            int numadd = 1;
-
-            //  Iteratively find all non zero pixels near our seed
-            while(numadd > 0){
-                //  Use copy of vector to avoid modifying vector as we loop through it
-                pixlst_copy = pixlst;
-                numadd = 0;
-                for ( auto pixIter = pixlst_copy.begin(); pixIter != pixlst_copy.end(); ++pixIter ) {
-                    //max's are +2 because we are doing <max in the loop
-                    int imin = pixIter->first-1; 
-                    int imax = pixIter->first+2;
-                    int jmin = pixIter->second-1;
-                    int jmax = pixIter->second+2;
-                    if(imin < 0) {imin = 0;}
-                    if(imax > TXSIZE) {imax = TXSIZE;}
-                    if(jmin < 0) {jmin = 0;}
-                    if(jmax > TYSIZE) {jmax = TYSIZE;}
-                    for(int i=imin; i<imax; ++i) {
-                        for(int j=jmin; j<jmax; ++j) {
-                            if(clust[i][j] > q100) {
-                                if(!bclust[i][j]) {
-                                    bclust[i][j] = true;
-                                    pixel.first = i; pixel.second = j;
-                                    pixlst.push_back(pixel);
-                                    ++numadd;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            //simlulate the clustering
+            auto pixlst = clusterizer(clust, q100, max, do_cluster_healing);
 
             float qmeas=0.;
             npix[n] = 0.;
@@ -703,6 +663,19 @@ int main(int argc, char *argv[])
                 cluster[n][i][j] = clust[i][j];
                 npix[n] += 1.;
             }
+
+            is_split[n] = check_is_split(cluster[n]);
+
+            /*
+            printf("Output Cluster: \n");
+            for(int i=0; i<TXSIZE; i++){
+                for(int j=0; j<TYSIZE; j++){
+                    printf("%.1f ", cluster[n][i][j]);
+                }
+                printf("\n");
+            }
+            */
+
             qtotal[n] = qmeas;
 
 
@@ -1202,6 +1175,8 @@ int main(int argc, char *argv[])
             // loss correction
 
 
+            //don't run 1d reco on split clusters
+            if(is_split[n]) continue;
 
             float cluster_local[TXSIZE][TYSIZE];
             memset(cluster_local, 0., sizeof(cluster_local));
@@ -1294,6 +1269,9 @@ int main(int argc, char *argv[])
         //do second round of template fits with charge loss correction
         for(int n=0; n<read_events; n++){
             if(!good_clust[n]) continue;
+            //
+            //don't run 1d reco on split clusters
+            if(is_split[n]) continue;
 
             float cluster_local[TXSIZE][TYSIZE];
             memset(cluster_local, 0., sizeof(cluster_local));

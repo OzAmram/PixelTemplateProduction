@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
     float zvtx, zdet;
     int izdet;
     static vector<double> fluence(4,0.);
-    int i, j, ierr, qbin, qb, nypix, nxpix, etabin, jmin, jmax, imin, imax, numadd, idcol;
+    int i, j, ierr, qbin, qb, nypix, nxpix, etabin, idcol;
     double dx, dy, eta, dxc, dyc, log10probxy, log10probQ, tote, bade, weight, alpha, qnorm, dxclust, dyclust;
     double qfrac;
     static int iyd, ixd, speed;	
@@ -53,8 +53,9 @@ int main(int argc, char *argv[])
     int triplg(std::vector<float>&);
     //	int random(void);
     float cluster[TXSIZE][TYSIZE], clust[TXSIZE][TYSIZE], rclust[TXSIZE][TYSIZE];
-    bool bclust[TXSIZE][TYSIZE];
 
+
+    int nSplit = 0;
     std::pair<int, int> pixel, max;
 
     FILE *ifp;
@@ -75,15 +76,16 @@ int main(int argc, char *argv[])
     }
 
     char extra[80], line[160];
-    int use_l1_offset;
+    int use_l1_offset, do_cluster_healing, do_IBCs, do_2d_templates;
     fgets(line, 160, ifp);
     sscanf(line,"%d %f %f %f %f %f %f %f %d %s", &nfile, &noise, &q100, &q101, &q100_frac, &common_frac, &gain_frac, &readout_noise, &frontend_type, &extra[0]);
     fgets(line, 160, ifp);
-    sscanf(line,"%d %d %f %f", &fileNum, &use_l1_offset, &xtalk_frac, &xtalk_noise);
+    sscanf(line,"%d %d %f %f %d %d %d", &fileNum, &use_l1_offset, &xtalk_frac, &xtalk_noise, &do_cluster_healing, &do_IBCs, &do_2d_templates);
     fclose(ifp);
     printf("template events file %d noise = %f, threshold0 = %f, threshold1 = %f, rms threshold frac = %f, common_frac = %f,"
             "gain fraction = %f, readout noise = %f, front end type = %d xtalk_frac = %.2f xtalk_noise = %.2f \n", 
             nfile, noise, q100, q101, q100_frac, common_frac, gain_frac, readout_noise, frontend_type, xtalk_frac, xtalk_noise);
+    printf("Do cluster healing %d, do IBCs %d do 2d templates %d \n", do_cluster_healing, do_IBCs, do_2d_templates);
     printf("Template file number %i \n", fileNum);
 
     FrontEndModel frontEnd;
@@ -103,13 +105,13 @@ int main(int argc, char *argv[])
     //  Create an input filename for this run 
 
 
-    double  halfxs=100.;
-    int nx=200;	
+    double  halfxs=1000.;
+    int nx=500;	
     gStyle->SetOptFit(101);
     gStyle->SetHistLineWidth(2);
 
     
-    const int n_hists = 51;
+    const int n_hists = 59;
 
     static vector<TH1F*> hp(n_hists);
     hp[0] = new TH1F("h101","Template Reco #Deltay (all sig); #Deltay (#mum)",nx,-halfxs,halfxs);
@@ -149,23 +151,42 @@ int main(int argc, char *argv[])
     hp[34] = new TH1F("h117","Template Reco #Deltay (cot#beta > 0); #Deltay (#mum)",nx,-halfxs,halfxs);
     hp[35] = new TH1F("h118","Template Reco #Deltay (cot#beta < 0); #Deltay (#mum)",nx,-halfxs,halfxs);
     hp[36] = new TH1F("h119","Generic Reco #Deltay (>one pixel clust); #Deltay (#mum)",nx,-halfxs,halfxs);
-    hp[37] = new TH1F("h120","Generic Reco #Deltay (>one pixel clust); #Deltax (#mum)",nx,-halfxs,halfxs);
+    hp[37] = new TH1F("h120","Generic Reco #Deltax (>one pixel clust); #Deltax (#mum)",nx,-halfxs,halfxs);
     hp[38] = new TH1F("h411","dy_baryc (all sig); #Deltay (#mum)",nx,-halfxs,halfxs);
     hp[39] = new TH1F("h412","dx_baryc (all sig); #Deltax (#mum)",nx,-halfxs,halfxs);
     hp[40] = new TH1F("h121","CCE; CCE",110,0.,1.10);
 
-    int pulls_idx = 41;
+   
+
+    const int pulls_idx = 41;
     hp[41] = new TH1F("h_pull_temp_y", "Template Reco Pull Y (all clusters)", nx, -5., 5.);
     hp[42] = new TH1F("h_pull_temp_x", "Template Reco Pull X (all clusters)", nx, -5., 5.);
     hp[43] = new TH1F("h_pull_gen_y", "Generic Reco Pull Y (all clusters)", nx, -5., 5.);
     hp[44] = new TH1F("h_pull_gen_x", "Generic Reco Pull X (all clusters)", nx, -5., 5.);
 
-    int cls_len_idx = 45;
+    const int cls_len_idx = 45;
     const int n_cls_len_bins = 10;
     hp[45] = new TH1F("h_cls_leny","Cluster Length Y",n_cls_len_bins, 0.01, n_cls_len_bins +0.01);
     hp[46] = new TH1F("h_cls_lenx","Cluster Length X",n_cls_len_bins, 0.01, n_cls_len_bins + 0.01);
     hp[47] = new TH1F("h_cls_leny_pref","Cluster Length Y Pre-Unfold",n_cls_len_bins, 0.01, n_cls_len_bins +0.01);
     hp[48] = new TH1F("h_cls_lenx_pref","Cluster Length X Pre-Unfold",n_cls_len_bins, 0.01, n_cls_len_bins + 0.01);
+
+    const int templates_2d_idx = 49;
+    hp[49] = new TH1F("h_resy_2d","2D Template Reco #Deltay (all sig); #Deltay (#mum)",nx,-halfxs,halfxs);
+    hp[50] = new TH1F("h_resx_2d","2D Template Reco #Deltax (all sig); #Deltax (#mum)",nx,-halfxs,halfxs);
+    hp[51] = new TH1F("h_pull_2dtemp_y", "2D Template Reco Pull Y (all clusters)", nx, -5., 5.);
+    hp[52] = new TH1F("h_pull_2dtemp_x", "2D Template Reco Pull X (all clusters)", nx, -5., 5.);
+
+    const int pixel_charge_idx = 53;
+    hp[53] = new TH1F("h_pixel_charge_true", "Truth Pixel Charge", 0, 20000, 40);
+    hp[54] = new TH1F("h_pixel_charge_reco", "Reconstructed Pixel Charge", 0, 20000, 40);
+
+    const int split_clust_idx = 55;
+    hp[55] = new TH1F("h_split_geny","Generic Reco #Deltay (split custs); #Deltay (#mum)",nx,-halfxs,halfxs);
+    hp[56] = new TH1F("h_split_genx","Generic Reco #Deltax (split custs); #Deltax (#mum)",nx,-halfxs,halfxs);
+    hp[57] = new TH1F("h_split_2dy","2D Template Reco #Deltay (split clusts); #Deltay (#mum)",nx,-halfxs,halfxs);
+    hp[58] = new TH1F("h_split_2dx","2D Template Reco #Deltax (split clusts); #Deltax (#mum)",nx,-halfxs,halfxs);
+
     TH2F *h_cls_len_dy = new TH2F("h_cls_leny_dy", "Template Reco #Deltay",n_cls_len_bins, 0.5, 0.5 + n_cls_len_bins, nx, -halfxs, halfxs);
 
     TH2F *h_cls_len_dx = new TH2F("h_cls_lenx_dx", "Template Reco #Deltay",n_cls_len_bins, 0.5, 0.5 + n_cls_len_bins, nx, -halfxs, halfxs);
@@ -344,6 +365,22 @@ int main(int argc, char *argv[])
     gtempl.pushfile(fileNum,thePixelGenErr_);	
 
 
+    //Initialize 2D templates
+    std::vector< SiPixelTemplateStore2D > thePixelTemp2D_;
+    SiPixelTemplate2D *templ2D; 
+
+    int tempID2d;
+
+    
+    if(do_2d_templates){
+        templ2D = new SiPixelTemplate2D(thePixelTemp2D_);
+        // Initialize template store, Pixelav 100V/300V simulation, +20C as thePixelTemp[6] 
+        templ2D->pushfile(fileNum,thePixelTemp2D_);
+        tempID2d =  thePixelTemp_.front().head.ID;
+        //templ2D->interpolate(tempID2d, 0.f, 0.f, -1.f, -1.f);
+    }
+
+
     // Ask for speed info
 
 
@@ -392,6 +429,7 @@ int main(int argc, char *argv[])
         }
         //printf("\n");
         //hp[pixel_charge_idx]->Print("range");
+        if(nevent % 5000 ==0) printf("%i split / %i total \n", nSplit, nevent);
 
         triplg(vgauss);
         pixlst.clear();
@@ -405,6 +443,14 @@ int main(int argc, char *argv[])
             xtalk_unfold_row = 0;
         }
         float xtalk_apply = xtalk_frac + xtalk_noise * vgauss[3];
+
+        for(int j =0; j<TXSIZE; j++){
+            for(int i=0; i<TYSIZE; ++i) {
+                if(pixin[j][i] > 0.){
+                    hp[pixel_charge_idx]->Fill(pixin[j][i] * 10.);
+                }
+            }
+        }
 
         //printf("Before \n");
         //print_cluster(pixin);
@@ -422,7 +468,6 @@ int main(int argc, char *argv[])
             triplg(ygauss);
             triplg(zgauss);
             for(int i=0; i<TYSIZE; ++i) {
-                bclust[j][i] = false;
                 qin = (10.*pixin[j][i] + xgauss[i]*noise);
                 rclust[TXSIZE-1-j][TYSIZE-1-i] = qin;
                 if(qin < q100*(1.+wgauss[i]*q100_frac)) {
@@ -493,46 +538,13 @@ int main(int argc, char *argv[])
         if(qmax < clustering_thresh) continue;
 
 
-        // Simulate clustering around maximum signal (seed)
+        //print_cluster(clust);
+        bool is_split = check_is_split(clust, q100);
+        if(is_split) nSplit++;
 
 
-        pixlst.push_back(max);
-        bclust[max.first][max.second] = true;
-
-        std::vector<std::pair<int, int> > pixlst_copy;
-
-
-
-        numadd = 1;
-        //iterively find all non zero pixels near our seed
-        while(numadd > 0){
-            //use copy of vector to avoid modifying vector as we loop through it
-            pixlst_copy = pixlst;
-            numadd = 0;
-            for ( auto pixIter = pixlst_copy.begin(); pixIter != pixlst_copy.end(); ++pixIter ) {
-                //max's are +2 because we are doing <max in the loop
-                jmin = pixIter->first-1; 
-                jmax = pixIter->first+2;
-                imin = pixIter->second-1;
-                imax = pixIter->second+2;
-                if(jmin < 0) {jmin = 0;}
-                if(jmax > TXSIZE) {jmax = TXSIZE;}
-                if(imin < 0) {imin = 0;}
-                if(imax > TYSIZE) {imax = TYSIZE;}
-                for(int j=jmin; j<jmax; ++j) {
-                    for(int i=imin; i<imax; ++i) {
-                        if(clust[j][i] > q100) {
-                            if(!bclust[j][i]) {
-                                bclust[j][i] = true;
-                                pixel.first = j; pixel.second = i;
-                                pixlst.push_back(pixel);
-                                ++numadd;
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        //simlulate the clustering
+        auto pixlst = clusterizer(clust, q100, max, do_cluster_healing);
 
 
         memset(cluster, 0., sizeof(cluster));
@@ -548,6 +560,28 @@ int main(int argc, char *argv[])
             xclust += ((float)j)*xsize*clust[j][i];
             yclust += ((float)i)*ysize*clust[j][i];
         }
+
+        for(int j =0; j<TXSIZE; j++){
+            for(int i=0; i<TYSIZE; ++i) {
+                if(pixin[j][i] > 0.){
+                    hp[pixel_charge_idx+1]->Fill(clust[j][i] );
+                }
+            }
+        }
+
+
+
+        /*
+        printf("Output Cluster: \n");
+        for(int i=0; i<TXSIZE; i++){
+            for(int j=0; j<TYSIZE; j++){
+                printf("%5.0f ", cluster[i][j]);
+            }
+            printf("\n");
+        }
+        */
+
+
         xclust /= qclust;
         yclust /= qclust;
         hp[32]->Fill((double)qclust);
@@ -630,15 +664,101 @@ int main(int argc, char *argv[])
         qfrac = (double)qclust/(double)neh;
         hp[40]->Fill(qfrac, weight);
 
-        // Do the template analysis on the cluster 
-        // Do the template analysis on the cluster 
+
         SiPixelTemplateReco::ClusMatrix clusterPayload{&cluster[0][0], xdouble, ydouble, mrow,mcol};
         SiPixelTemplateReco::ClusMatrix clusterPayloadC = clusterPayload;
-        //print_cluster(cluster);
+
+        // Do the generic reco 
         locBx = 1.;
         if(cotbeta < 0.) locBx = -1.;
         locBz = locBx;
-        if(cotalpha < 0.) locBz = -locBx;
+        if(cotalpha < 0.) locBz = -locBx;            
+        ierr = PixelGeneric2D(tempID, cotalpha, cotbeta, locBz, locBx, clusterPayloadC, gtempl, ycmssw, sycmssw, xcmssw, sxcmssw, nypix, nxpix, yfrac, xfrac, do_IBCs);
+        if(ierr ==0){
+            if(iyd != 0) {
+                dyc = ycmssw - (TYSIZE/2)*ysize - yhit;
+            } else {
+                dyc = ycmssw - ((TYSIZE/2)-0.5)*ysize - yhit;
+            }
+            if(ixd != 0) {
+                dxc = xcmssw - (TXSIZE/2)*xsize - xhit;
+            } else {
+                dxc = xcmssw - ((TXSIZE/2)-0.5)*xsize - xhit;
+            }
+            hp[22]->Fill(dyc, weight);
+            hp[23]->Fill(dxc, weight);
+            hp[pulls_idx + 2]->Fill(dyc/ sycmssw, weight);
+            hp[pulls_idx + 3]->Fill(dxc/ sxcmssw, weight);
+            if(nypix > 1) {hp[36]->Fill(dyc);}
+            if(nxpix > 1) {hp[37]->Fill(dxc);}
+            pp[48]->Fill((double)cotbeta,(double)nxpix);
+
+            if(nypix == 2 && yfrac >= 0.) {pp[8]->Fill(yfrac, dyc);}
+            if(nypix == 3 && yfrac >= 0.) {pp[9]->Fill(yfrac, dyc);}
+            if(nypix == 4 && yfrac >= 0.) {pp[10]->Fill(yfrac, dyc);}
+            if(nxpix == 2 && xfrac >= 0.) {pp[11]->Fill(xfrac, dxc);}
+            if(nxpix == 3 && xfrac >= 0.) {pp[12]->Fill(xfrac, dxc);}
+            if(nxpix == 4 && xfrac >= 0.) {pp[13]->Fill(xfrac, dxc);}
+
+            if(is_split){
+                hp[split_clust_idx]->Fill(dyc, weight);
+                hp[split_clust_idx+1]->Fill(dxc, weight);
+            }
+
+
+        }
+
+        if(do_2d_templates){
+            int edgeflagy = 0;
+            int edgeflagx = 0;
+
+            float xrec2D, yrec2D, sigmay2D, sigmax2D, deltay;
+            int npixels;
+
+            SiPixelTemplateReco2D::ClusMatrix clusterPayload2{&cluster[0][0], xdouble, ydouble, mrow,mcol};
+
+            int ierr2 = PixelTempReco2D(tempID2d, cotalpha, cotbeta, locBz, locBx, edgeflagy, edgeflagx, clusterPayload2, *templ2D, yrec2D, sigmay2D, xrec2D, sigmax2D, 
+                    probxy, probQ, qbin, deltay, npixels);
+
+            if(ierr2 ==0){
+                if(iyd != 0) {
+                    dy = yrec2D - (TYSIZE/2)*ysize - yhit;
+                } else {
+                    dy = yrec2D - ((TYSIZE/2)-0.5)*ysize - yhit;
+                }
+                
+                if(ixd != 0) {
+                    dx = xrec2D - (TXSIZE/2)*xsize - xhit;
+                } else {
+                    dx = xrec2D - ((TXSIZE/2)-0.5)*xsize - xhit;
+
+                }
+                hp[templates_2d_idx]->Fill(dy, weight);
+                hp[templates_2d_idx+1]->Fill(dx, weight);
+                hp[templates_2d_idx+2]->Fill(dy/sigmay2D, weight);
+                hp[templates_2d_idx+3]->Fill(dx/sigmax2D, weight);
+
+                if(is_split){
+                    /*
+                    printf("Raw: \n");
+                    print_cluster(clust);
+                    printf("Recoed: \n");
+                    print_cluster(cluster);
+                    printf(" cota %.3f cotb %.3f xhit %.3f yhit %.3f  dx %.1f dy %.1f \n\n", cotalpha, cotbeta, xhit, yhit, dx, dy);
+                    */
+
+                    hp[split_clust_idx+2]->Fill(dy, weight);
+                    hp[split_clust_idx+3]->Fill(dx, weight);
+                }
+
+            }
+            else{
+                printf("2D reco error %i \n", ierr2);
+            }
+        }
+
+        // Do the template analysis on the cluster 
+        //print_cluster(cluster);
         //std::cout << "cotalpha " << cotalpha << " cotbeta " << cotbeta << " Bz " << locBz << " Bx "<< locBx << std::endl;
         //std::cout << " ierr " << ierr << std::endl;
         ierr = PixelTempReco1D(tempID, cotalpha, cotbeta, locBz, locBx,  clusterPayload, templ, yrec, sigmay, proby, xrec, sigmax, probx,  qbin, speed, probQ);
@@ -706,30 +826,15 @@ int main(int argc, char *argv[])
             if(qbin == 1) {pp[44]->Fill(alpha, dx);}
             if(qbin < 4 && qbin > 1) {pp[46]->Fill(alpha, dx);}
 
-            locBx = 1.;
-            if(cotbeta < 0.) locBx = -1.;
-            locBz = locBx;
-            if(cotalpha < 0.) locBz = -locBx;            
-            ierr = PixelGeneric2D(tempID, cotalpha, cotbeta, locBz, locBx, clusterPayloadC, gtempl, ycmssw, sycmssw, xcmssw, sxcmssw, nypix, nxpix, yfrac, xfrac);
-            if(iyd != 0) {
-                dyc = ycmssw - (TYSIZE/2)*ysize - yhit;
-            } else {
-                dyc = ycmssw - ((TYSIZE/2)-0.5)*ysize - yhit;
-            }
+            if(qbin == 1) {pp[1]->Fill(eta, dyc);}
+            if(qb < 4 && qb > 1) {pp[3]->Fill(eta, dyc);}
+            if(qbin == 1) {pp[5]->Fill(eta, dxc);}
+            if(qb < 4 && qb > 1) {pp[7]->Fill(eta, dxc);}
+            if(qbin == 1) {pp[45]->Fill(alpha, dxc);}
+            if(qb < 4 && qb > 1) {pp[47]->Fill(alpha, dxc);}
             syc[qb] += dyc; syc2[qb] += dyc*dyc; scyc[qb] += dyc*dyc/(sycmssw*sycmssw);
-            if(ixd != 0) {
-                dxc = xcmssw - (TXSIZE/2)*xsize - xhit;
-            } else {
-                dxc = xcmssw - ((TXSIZE/2)-0.5)*xsize - xhit;
-            }
             sxc[qb] += dxc; sxc2[qb] += dxc*dxc; scxc[qb] += dxc*dxc/(sxcmssw*sxcmssw);
-            hp[22]->Fill(dyc, weight);
-            hp[23]->Fill(dxc, weight);
-            hp[pulls_idx + 2]->Fill(dyc/ sycmssw, weight);
-            hp[pulls_idx + 3]->Fill(dxc/ sxcmssw, weight);
-            if(nypix > 1) {hp[36]->Fill(dyc);}
-            if(nxpix > 1) {hp[37]->Fill(dxc);}
-            pp[48]->Fill((double)cotbeta,(double)nxpix);
+
 
             hp[cls_len_idx]->Fill(nypix);
             hp[cls_len_idx+2]->Fill(nypix_pref);
@@ -756,18 +861,6 @@ int main(int argc, char *argv[])
             } else {
                 hp[30]->Fill(dy);
             }
-            if(qbin == 1) {pp[1]->Fill(eta, dyc);}
-            if(qb < 4 && qb > 1) {pp[3]->Fill(eta, dyc);}
-            if(qbin == 1) {pp[5]->Fill(eta, dxc);}
-            if(qb < 4 && qb > 1) {pp[7]->Fill(eta, dxc);}
-            if(qbin == 1) {pp[45]->Fill(alpha, dxc);}
-            if(qb < 4 && qb > 1) {pp[47]->Fill(alpha, dxc);}
-            if(nypix == 2 && yfrac >= 0.) {pp[8]->Fill(yfrac, dyc);}
-            if(nypix == 3 && yfrac >= 0.) {pp[9]->Fill(yfrac, dyc);}
-            if(nypix == 4 && yfrac >= 0.) {pp[10]->Fill(yfrac, dyc);}
-            if(nxpix == 2 && xfrac >= 0.) {pp[11]->Fill(xfrac, dxc);}
-            if(nxpix == 3 && xfrac >= 0.) {pp[12]->Fill(xfrac, dxc);}
-            if(nxpix == 4 && xfrac >= 0.) {pp[13]->Fill(xfrac, dxc);}
             if(nypix == 2 && yfrac >= 0.) {pp[14]->Fill(yfrac, dy);}
             if(nypix == 3 && yfrac >= 0.) {pp[15]->Fill(yfrac, dy);}
             if(nypix == 4 && yfrac >= 0.) {pp[16]->Fill(yfrac, dy);}
@@ -913,6 +1006,24 @@ int main(int argc, char *argv[])
 
 
     for(i=41; i<45; ++i) {
+        if(hp[i] == NULL) continue;
+        hp[i]->Fit("gaus"); 
+        TF1 *fitp = hp[i]->GetFunction("gaus");
+        if(fitp != NULL) fitp->SetLineColor(kBlue); 
+    }
+
+
+    if(do_2d_templates){
+        for(i=templates_2d_idx; i<templates_2d_idx+4; ++i) {
+            if(hp[i] == NULL) continue;
+            hp[i]->Fit("gaus"); 
+            TF1 *fitp = hp[i]->GetFunction("gaus");
+            if(fitp != NULL) fitp->SetLineColor(kBlue); 
+        }
+    }
+
+
+    for(i=split_clust_idx; i<split_clust_idx+4; ++i) {
         if(hp[i] == NULL) continue;
         hp[i]->Fit("gaus"); 
         TF1 *fitp = hp[i]->GetFunction("gaus");
