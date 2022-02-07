@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
     static float xrec, yrec, sigmax, sigmay, probx, proby, probQ,  signal, locBz, locBx,  pixmax;
     static float pixmaxy, pixmaxx;
     static int startfile,  nbad, ngood, fe_model_type, numrun; 
-    int  id,NTy, NTyx,NTxx,IDtype,nypix(0), nxpix(0);
+    int  id,NTy, NTyx,NTxx,IDtype;
 
 
     std::multiset<float> qmsort;
@@ -163,17 +163,18 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    fgets(line, 160, config_file);
-    num_read = sscanf(line, " %s %f %f %i %f %f %i", dtitle, &cotbetaBinWidth, &cotbetaLowEdge, &cotbetaBins, &cotalphaBinWidth, &cotalphaLowEdge, &cotalphaBins);
-    printf("Using binning: cotbetaBinWidth=%f, cotbetaLowEdge=%f, cotbetaBins=%i, cotalphaBinWidth=%f, cotalphaLowEdge=%f, cotalphaBins=%i\n",
-            cotbetaBinWidth, cotbetaLowEdge, cotbetaBins, cotalphaBinWidth, cotalphaLowEdge, cotalphaBins );
-    
-    if(num_read != 7){
-        printf("Error reading config file !\n");
-        printf("Line was %s \n", line);
-        return 0;
-    }
+    if (fgets(line, 160, config_file) == NULL) {
+        num_read = sscanf(line, " %s %f %f %i %f %f %i", dtitle, &cotbetaBinWidth, &cotbetaLowEdge, &cotbetaBins, &cotalphaBinWidth, &cotalphaLowEdge, &cotalphaBins);
+        printf("Using binning: cotbetaBinWidth=%f, cotbetaLowEdge=%f, cotbetaBins=%i, cotalphaBinWidth=%f, cotalphaLowEdge=%f, cotalphaBins=%i\n",
+                cotbetaBinWidth, cotbetaLowEdge, cotbetaBins, cotalphaBinWidth, cotalphaLowEdge, cotalphaBins );
 
+        if(num_read != 7){
+            printf("Error reading config file !\n");
+            printf("Line was %s \n", line);
+            return 0;
+        }
+    }
+    
     fclose(config_file);
 
     FrontEndModel frontEnd;
@@ -1303,7 +1304,7 @@ int main(int argc, char *argv[])
                 }
 
                 // Fill the FastSim histograms
-                (void) fastSimResHistoStore.Fill( dx, dy, (double)cotalpha, (double)cotbeta, qbin, nxpix, nypix );
+                (void) fastSimResHistoStore.Fill( dx, dy, (double)cotalpha, (double)cotbeta, qbin, xwidth[n], ywidth[n] );
 
                 //merged cluster qbin first pass chi2
 

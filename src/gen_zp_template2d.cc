@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
     static float xhit, yhit, xrec, yrec, sigmax, sigmay, signal, cotalpha, cotbeta, qclust, locBz, locBx, probxy, probQ, pixmax;
     static float pixmaxy, pixmaxx;
     static int startfile, neh, nevent, tempID, nbad, fe_model_type, icol, ndcol, numrun; 
-    int  id,NTy, NTyx,NTxx,IDtype,nypix(0), nxpix(0);
+    int  id,NTy, NTyx,NTxx,IDtype;
     static float Bfield,Vbias,temp,fluenc;
     static vector<int> nbin(5,0);
     float deltay;
@@ -135,39 +135,40 @@ int main(int argc, char *argv[])
             "Bias Voltage = %.1f temparature = %.0f fluence = %.2f q-scale = %.4f xtalk_frac = %.2f xtalk_noise %.2f \n",
             use_l1_offset, write_temp_header, id, NTy, NTyx, NTxx, IDtype, Bfield, Vbias, temp, fluenc, qscale, xtalk_frac, xtalk_noise );
     
-    fgets(line, 160, config_file);
-    num_read = sscanf(line, "%s", dtitle);
-    if(num_read != 1){
-        printf("Error reading config file !\n");
-        printf("Line was %s \n", line);
-        return 0;
-    }
-    
-    fgets(line, 160, config_file);
-    std::string s_binedge;
-    istringstream linestream (line);
-    while (getline(linestream, s_binedge, ' ')) {
-        if (s_binedge == " ") {continue;}
-        else {
-            cotbetaEdges.push_back(std::stod(s_binedge,0));
+    if (fgets(line, 160, config_file) == NULL){
+        num_read = sscanf(line, "%s", dtitle);
+        if(num_read != 1){
+            printf("Error reading config file !\n");
+            printf("Line was %s \n", line);
+            return 0;
         }
-    }
+        
+        fgets(line, 160, config_file);
+        std::string s_binedge;
+        istringstream linestream (line);
+        while (getline(linestream, s_binedge, ' ')) {
+            if (s_binedge == " ") {continue;}
+            else {
+                cotbetaEdges.push_back(std::stod(s_binedge,0));
+            }
+        }
 
-    fgets(line, 160, config_file);
-    linestream.clear(); linestream.str(line);
-    while (getline(linestream, s_binedge, ' ')) {
-        if (s_binedge == " ") {continue;}
-        else {
-            cotalphaEdges.push_back(std::stod(s_binedge,0));
+        fgets(line, 160, config_file);
+        linestream.clear(); linestream.str(line);
+        while (getline(linestream, s_binedge, ' ')) {
+            if (s_binedge == " ") {continue;}
+            else {
+                cotalphaEdges.push_back(std::stod(s_binedge,0));
+            }
         }
-    }
-    printf("Using cotbeta binning:\n\t");
-    for (float e: cotbetaEdges) {
-        printf("%f, ",e);
-    }
-    printf("\nUsing cotalpha binning:\n\t");
-    for (float e: cotalphaEdges) {
-        printf("%f, ",e);
+        printf("Using cotbeta binning:\n\t");
+        for (float e: cotbetaEdges) {
+            printf("%f, ",e);
+        }
+        printf("\nUsing cotalpha binning:\n\t");
+        for (float e: cotalphaEdges) {
+            printf("%f, ",e);
+        }
     }
 
     fclose(config_file);
@@ -717,7 +718,7 @@ int main(int argc, char *argv[])
                 hp[23]->Fill((double)(probxy/npixels));
 
                 // Fill the FastSim histograms
-                (void) fastSimResHistoStore.Fill( dx, dy, (double)cotalpha, (double)cotbeta, qbin, nxpix, nypix );
+                (void) fastSimResHistoStore.Fill( dx, dy, (double)cotalpha, (double)cotbeta, qbin, xwidth[n], ywidth[n] );
 
             }
 
