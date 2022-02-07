@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    if (fgets(line, 160, config_file) == NULL) {
+    if (fgets(line, 160, config_file) != NULL) {
         num_read = sscanf(line, " %s %f %f %i %f %f %i", dtitle, &cotbetaBinWidth, &cotbetaLowEdge, &cotbetaBins, &cotalphaBinWidth, &cotalphaLowEdge, &cotalphaBins);
         printf("Using binning: cotbetaBinWidth=%f, cotbetaLowEdge=%f, cotbetaBins=%i, cotalphaBinWidth=%f, cotalphaLowEdge=%f, cotalphaBins=%i\n",
                 cotbetaBinWidth, cotbetaLowEdge, cotbetaBins, cotalphaBinWidth, cotalphaLowEdge, cotalphaBins );

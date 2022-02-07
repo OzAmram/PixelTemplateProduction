@@ -135,7 +135,7 @@ int main(int argc, char *argv[])
             "Bias Voltage = %.1f temparature = %.0f fluence = %.2f q-scale = %.4f xtalk_frac = %.2f xtalk_noise %.2f \n",
             use_l1_offset, write_temp_header, id, NTy, NTyx, NTxx, IDtype, Bfield, Vbias, temp, fluenc, qscale, xtalk_frac, xtalk_noise );
     
-    if (fgets(line, 160, config_file) == NULL){
+    if (fgets(line, 160, config_file) != NULL){
         num_read = sscanf(line, "%s", dtitle);
         if(num_read != 1){
             printf("Error reading config file !\n");
