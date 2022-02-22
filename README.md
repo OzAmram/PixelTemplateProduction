@@ -59,6 +59,23 @@ An example config for 1D barrel templates is:
 > 900 60 5 29 0 3.8 125. 263. 0. 1.
 
 
+Additional lines can be added which turn on the creation of the
+PixelResolutionHistograms and define their binning. 
+
+For **gen_zp_template** (which stores resolutions in 2x 1D bins of fixed width) this additional line should be structured as:
+
+> name CotBetaBinWidth CotBetaStart nCotBetaBins CotAlphaBinWidth CotAlphaStart nCotAlphaBins
+
+
+For **gen_zp_template2d** (which stores resolutions in 2D bins) these additional lines should be structured as:
+
+> name
+> CotBetaBinEdge1  CotBetaBinEdge2  CotBetaBinEdge3  CotBetaBinEdge4  ...
+> CotAlphaBinEdge1  CotAlphaBinEdge2  CotAlphaBinEdge3  CotAlphaBinEdge4  ...
+
+Where the 2nd and 3rd rows can be as long as desired and list the bin edges for
+the CotBeta and CotAlpha binning.
+Examples can be found in the config\_db directory.
 
 
 ## Description of Executables
@@ -83,4 +100,5 @@ An example `test_params.txt` config is:
 > 58606 150. 1600. 1600. 0.073 0.080 0.08 350. 0
 
 > 58401 0 0.0 0.0
+
 

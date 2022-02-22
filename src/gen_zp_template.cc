@@ -163,15 +163,21 @@ int main(int argc, char *argv[])
         return 0;
     }
 
+    bool do_reso_hists = false;
+    auto is_space = [](unsigned char const c) { return std::isspace(c); }; 
     if (fgets(line, 160, config_file) != NULL) {
-        num_read = sscanf(line, " %s %f %f %i %f %f %i", dtitle, &cotbetaBinWidth, &cotbetaLowEdge, &cotbetaBins, &cotalphaBinWidth, &cotalphaLowEdge, &cotalphaBins);
-        printf("Using binning: cotbetaBinWidth=%f, cotbetaLowEdge=%f, cotbetaBins=%i, cotalphaBinWidth=%f, cotalphaLowEdge=%f, cotalphaBins=%i\n",
-                cotbetaBinWidth, cotbetaLowEdge, cotbetaBins, cotalphaBinWidth, cotalphaLowEdge, cotalphaBins );
+        std::string s_line = string(line);
+        if(!std::all_of(s_line.begin(), s_line.end(), is_space)){ //read binning for reso histograms if line not blank
+            do_reso_hists = true;
+            num_read = sscanf(line, " %s %f %f %i %f %f %i", dtitle, &cotbetaBinWidth, &cotbetaLowEdge, &cotbetaBins, &cotalphaBinWidth, &cotalphaLowEdge, &cotalphaBins);
+            printf("Using binning: cotbetaBinWidth=%f, cotbetaLowEdge=%f, cotbetaBins=%i, cotalphaBinWidth=%f, cotalphaLowEdge=%f, cotalphaBins=%i\n",
+                    cotbetaBinWidth, cotbetaLowEdge, cotbetaBins, cotalphaBinWidth, cotalphaLowEdge, cotalphaBins );
 
-        if(num_read != 7){
-            printf("Error reading config file !\n");
-            printf("Line was %s \n", line);
-            return 0;
+            if(num_read != 7){
+                printf("Error reading config file !\n");
+                printf("Line was %s \n", line);
+                return 0;
+            }
         }
     }
     
@@ -204,21 +210,17 @@ int main(int argc, char *argv[])
     }
 
     sprintf(histStore_outfile,"pixel_histos%5.5d.root",id);
-    // Descriptive title
-    // e.g. Forward 50x50x150 flat disk pixel resolution histograms
-    // sprintf(dtitle,"%s",argv[1]);
-    // printf("dtitle %s\n",argv[1]);
-    // if (argv[1]==NULL) {
-    //     sprintf(dtitle,"Forward pixel resolution histograms");
-    // }
-    PixelResolutionHistograms
-        fastSimResHistoStore( histStore_outfile,                                // File name for histograms
+
+    PixelResolutionHistograms * fastSimResHistoStore;
+    if(do_reso_hists){
+        fastSimResHistoStore =  new PixelResolutionHistograms( histStore_outfile,                                // File name for histograms
 			"",                                     // No subdirectory
 			dtitle,                                 // Descriptive title	     
 			detType, // unsigned int detType,             // Do we need this?
 			cotbetaBinWidth, cotbetaLowEdge, cotbetaBins,    // Binning along cot\beta
 			cotalphaBinWidth, cotalphaLowEdge, cotalphaBins); // ... along cot\alpha
     //                    qbinWidth, qbins );                              // ... for qBin
+    }
 
     sprintf(infile,"generror_summary_zp%4.4d.out",id);
     generr_output_file = fopen(infile, "w");
@@ -1304,7 +1306,7 @@ int main(int argc, char *argv[])
                 }
 
                 // Fill the FastSim histograms
-                (void) fastSimResHistoStore.Fill( dx, dy, (double)cotalpha, (double)cotbeta, qbin, xwidth[n], ywidth[n] );
+                if(do_reso_hists) fastSimResHistoStore->Fill( dx, dy, (double)cotalpha, (double)cotbeta, qbin, xwidth[n], ywidth[n] );
 
                 //merged cluster qbin first pass chi2
 
@@ -1645,6 +1647,7 @@ int main(int argc, char *argv[])
     delete_2d_array(xsum2, nevents, TXSIZE);
     delete_2d_array(ysum1, nevents, TYSIZE);
     delete_2d_array(ysum2, nevents, TYSIZE);
+    if(do_reso_hists) delete fastSimResHistoStore;
 
     return 0;
 } // MAIN__ 
