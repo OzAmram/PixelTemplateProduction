@@ -94,7 +94,16 @@ int main(int argc, char *argv[])
     const int nvers = 21;
 
     float qin;
-    static char infile[120], label[160], header[120], outfile0[120], outfile1[120], outfile2[120];
+    static char infile[120], label[160], header[120], dtitle[80], outfile0[120], outfile1[120], outfile2[120], histStore_outfile[120];
+    unsigned int detType(1);
+    static float cotalphaLowEdge, cotalphaBinWidth, cotbetaBinWidth, cotbetaLowEdge;
+    static int cotalphaBins, cotbetaBins;
+    // const double    cotbetaBinWidth = 0.25; // 0.25 forward2 //0.21 //0.15 // 3.3. barrel, 0.21 forward1, 0.2 forward0
+    // const double    cotbetaLowEdge    = 0.0 ; // 0.0 forward2 //0.15 forward1, 0.25 forward0
+    // const int    cotbetaBins    = 3; //3
+    // const double    cotalphaBinWidth = 0.10; // 0.10 forward2 //0.38//0.02 //0.2 barrel 0.34 forward1, 0.28 forward0
+    // const double    cotalphaLowEdge = 0.0; // -0.04, 0.10 forward0
+    // const int       cotalphaBins    = 2; //2
     //	int random(void);
 
     float clust[TXSIZE][TYSIZE], rclust[TXSIZE][TYSIZE], sigraw[TXSIZE+2][TYSIZE+2];
@@ -154,6 +163,24 @@ int main(int argc, char *argv[])
         return 0;
     }
 
+    bool do_reso_hists = false;
+    auto is_space = [](unsigned char const c) { return std::isspace(c); }; 
+    if (fgets(line, 160, config_file) != NULL) {
+        std::string s_line = string(line);
+        if(!std::all_of(s_line.begin(), s_line.end(), is_space)){ //read binning for reso histograms if line not blank
+            do_reso_hists = true;
+            num_read = sscanf(line, " %s %f %f %i %f %f %i", dtitle, &cotbetaBinWidth, &cotbetaLowEdge, &cotbetaBins, &cotalphaBinWidth, &cotalphaLowEdge, &cotalphaBins);
+            printf("Using binning: cotbetaBinWidth=%f, cotbetaLowEdge=%f, cotbetaBins=%i, cotalphaBinWidth=%f, cotalphaLowEdge=%f, cotalphaBins=%i\n",
+                    cotbetaBinWidth, cotbetaLowEdge, cotbetaBins, cotalphaBinWidth, cotalphaLowEdge, cotalphaBins );
+
+            if(num_read != 7){
+                printf("Error reading config file !\n");
+                printf("Line was %s \n", line);
+                return 0;
+            }
+        }
+    }
+    
     fclose(config_file);
 
     FrontEndModel frontEnd;
@@ -180,6 +207,19 @@ int main(int argc, char *argv[])
     if (temp_output_file==NULL) {
         printf("couldn't open template output file/n");
         return 0;
+    }
+
+    sprintf(histStore_outfile,"pixel_histos%5.5d.root",id);
+
+    PixelResolutionHistograms * fastSimResHistoStore;
+    if(do_reso_hists){
+        fastSimResHistoStore =  new PixelResolutionHistograms( histStore_outfile,                                // File name for histograms
+			"",                                     // No subdirectory
+			dtitle,                                 // Descriptive title	     
+			detType, // unsigned int detType,             // Do we need this?
+			cotbetaBinWidth, cotbetaLowEdge, cotbetaBins,    // Binning along cot\beta
+			cotalphaBinWidth, cotalphaLowEdge, cotalphaBins); // ... along cot\alpha
+    //                    qbinWidth, qbins );                              // ... for qBin
     }
 
     sprintf(infile,"generror_summary_zp%4.4d.out",id);
@@ -1240,7 +1280,8 @@ int main(int argc, char *argv[])
                     chi_min[x_chi2_fp_idx + qbin_merge[n]] = std::min(chisq_x, chi_min[x_chi2_fp_idx + qbin_merge[n]]);
                 }
 
-
+                // Fill the FastSim histograms
+                if(do_reso_hists) fastSimResHistoStore->Fill( dx, dy, (double)cotalpha, (double)cotbeta, qbin, xwidth[n], ywidth[n] );
 
                 //merged cluster qbin first pass chi2
 
@@ -1584,6 +1625,7 @@ int main(int argc, char *argv[])
     delete_2d_array(xsum2, nevents, TXSIZE);
     delete_2d_array(ysum1, nevents, TYSIZE);
     delete_2d_array(ysum2, nevents, TYSIZE);
+    if(do_reso_hists) delete fastSimResHistoStore;
 
     return 0;
 } // MAIN__ 

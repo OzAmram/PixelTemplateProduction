@@ -4,6 +4,7 @@
 
 base=https://raw.githubusercontent.com/
 branch=cms-sw/cmssw/master/
+prh_dev_branch=lcorcodilos/cmssw/pixelHistoUL-infrastructure/
 mkdir cmssw_code
 cd cmssw_code/
 rm *
@@ -29,3 +30,6 @@ wget ${base}${branch}CondFormats/SiPixelTransient/interface/SiPixelTemplate.h
 wget ${base}${branch}CondFormats/SiPixelTransient/interface/SiPixelTemplate2D.h
 wget ${base}${branch}CondFormats/SiPixelTransient/interface/SiPixelTemplateDefs.h
 wget ${base}${branch}CondFormats/SiPixelTransient/interface/SiPixelUtils.h
+
+wget ${base}${prh_dev_branch}FastSimulation/TrackingRecHitProducer/src/PixelResolutionHistograms.cc
+wget ${base}${prh_dev_branch}FastSimulation/TrackingRecHitProducer/interface/PixelResolutionHistograms.h

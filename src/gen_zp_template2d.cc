@@ -64,7 +64,10 @@ int main(int argc, char *argv[])
     const int nvers = 21;
 
     float qin;
-    static char infile[120], label[160], header[120],  outfile0[120], outfile1[120], outfile2[120];
+    static char infile[120], label[160], header[120], dtitle[80], outfile0[120], outfile1[120], outfile2[120], histStore_outfile[120];
+    unsigned int detType(1);
+    static std::vector<double> cotalphaEdges;
+    static std::vector<double> cotbetaEdges;
     int triplg(std::vector<float>&);
     //	int random(void);
 
@@ -123,14 +126,53 @@ int main(int argc, char *argv[])
     printf("Using params: Use_l1_offset=%d, write_temp_header=%d, ID=%d NTy=%d NTyx=%d NTxx=%d Dtype=%d Bfield=%.2f "
             "Bias Voltage = %.1f temparature = %.0f fluence = %.2f q-scale = %.4f xtalk_frac = %.2f xtalk_noise %.2f \n",
             use_l1_offset, write_temp_header, id, NTy, NTyx, NTxx, IDtype, Bfield, Vbias, temp, fluenc, qscale, xtalk_frac, xtalk_noise );
-    if(num_read != 10){
-        printf("Error reading config file !\n");
-        printf("Line was %s \n", line);
-        return 0;
+    
+    bool do_reso_hists = false;
+    auto is_space = [](unsigned char const c) { return std::isspace(c); }; 
+    if (fgets(line, 160, config_file) != NULL){
+        std::string s_line = string(line);
+        if(!std::all_of(s_line.begin(), s_line.end(), is_space)){ //read binning for reso histograms if line not blank
+            do_reso_hists = true;
+
+
+            num_read = sscanf(line, "%s", dtitle);
+            if(num_read != 1){
+                printf("Error reading config file !\n");
+                printf("Line was %s \n", line);
+                return 0;
+            }
+            
+            fgets(line, 160, config_file);
+            std::string s_binedge;
+            istringstream linestream (line);
+            while (getline(linestream, s_binedge, ' ')) {
+                if (s_binedge == " ") {continue;}
+                else {
+                    cotbetaEdges.push_back(std::stod(s_binedge,0));
+                }
+            }
+
+            fgets(line, 160, config_file);
+            linestream.clear(); linestream.str(line);
+            while (getline(linestream, s_binedge, ' ')) {
+                if (s_binedge == " ") {continue;}
+                else {
+                    cotalphaEdges.push_back(std::stod(s_binedge,0));
+                }
+            }
+            printf("Using cotbeta binning:\n\t");
+            for (float e: cotbetaEdges) {
+                printf("%f, ",e);
+            }
+            printf("\nUsing cotalpha binning:\n\t");
+            for (float e: cotalphaEdges) {
+                printf("%f, ",e);
+            }
+        }
     }
 
-    fclose(config_file);
 
+    fclose(config_file);
     //  Calculate 50% of threshold in q units and enc noise in adc units
 
     q50=0.5*q100;
@@ -172,6 +214,19 @@ int main(int argc, char *argv[])
         frontEnd.vcal = 50.;	
         frontEnd.vcaloffst = 670.;
     }
+
+    sprintf(histStore_outfile,"pixel_histos%5.5d.root",id);
+    PixelResolutionHistograms * fastSimResHistoStore;
+    if(do_reso_hists){
+        fastSimResHistoStore =  new PixelResolutionHistograms( histStore_outfile,                                // File name for histograms
+			"",                                     // No subdirectory
+			dtitle,                                 // Descriptive title	     
+			detType, // unsigned int detType,             // Do we need this?
+            cotbetaEdges,
+            cotalphaEdges
+            );
+    }
+
 
     // Define the histograms to be used at each angle pair
 
@@ -545,6 +600,7 @@ int main(int argc, char *argv[])
             qclust=0.;
             imin = TYSIZE;
             imax = 0;
+
             for (auto pixIter = pixlst.begin() ; pixIter != pixlst.end(); ++pixIter ) {
                 int j = pixIter->first; 
                 int i = pixIter->second;
@@ -556,7 +612,33 @@ int main(int argc, char *argv[])
                 }
             }
 
+            int xwidth(0), ywidth(0);
+            for(int i=0; i<TXSIZE; i++){
+                for(int j=0; j<TYSIZE; j++){
+                    if(cluster[i][j] >0.){
+                        xwidth++;
+                        break;
+                    }
+                }
+            }
+
+            for(int j=0; j<TYSIZE; j++){
+                for(int i=0; i<TXSIZE; i++){
+                    if(cluster[i][j] >0.){
+                        ywidth++;
+                        break;
+                    }
+                }
+            }
+
+            //print_cluster(cluster);
+            //printf("xwidth %i ywidth %i \n", xwidth, ywidth);
+
+
+
+
             //bool is_split = check_is_split(cluster);
+
 
             hp[25]->Fill((double)qclust, 1.);
 
@@ -586,6 +668,7 @@ int main(int argc, char *argv[])
 
             edgeflagy = 0; //code for no gap OR split cluster
             edgeflagx = 0;
+
 
 
             //        if(fabs(cotbeta) < 2.1) continue;
@@ -620,6 +703,9 @@ int main(int argc, char *argv[])
                 hp[22]->Fill((double)probxy);
                 hp[24]->Fill((double)npixels);
                 hp[23]->Fill((double)(probxy/npixels));
+
+                // Fill the FastSim histograms
+                if(do_reso_hists) fastSimResHistoStore->Fill( dx, dy, (double)cotalpha, (double)cotbeta, qbin, xwidth, ywidth );
 
             }
 
@@ -735,6 +821,7 @@ int main(int argc, char *argv[])
     // Close output file   
 
     fclose(output_file);  
+    if(do_reso_hists) delete fastSimResHistoStore;
 
     /*  Determine current time */
 

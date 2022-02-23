@@ -1,0 +1,15 @@
+Steps to get pix_2t.proc
+------------------------
+- First line included from Morris in existing pix_2t.proc
+--- If not, it's 
+
+    `start_file nfiles noise`
+    
+    followed by entries up to "1" in Best Tune column of test_clusters.txt
+- Second line shouldn't change from `0 1 0. 0.`
+- Third line, the important parts are `id NTy NTyx NTxx DType`. These can be found
+in `template_summary_zp<templateId>.out` as the 0th, 3rd-6th (inclusive) entries of
+the second line.
+--- The id of this summary can matched to the cluster events with test_clusters.txt
+--- As a cross check, NTy + NTyx*NTxx should equal the number of files in the cluster events group
+--- The remainder of the third line is for documentation purposes
