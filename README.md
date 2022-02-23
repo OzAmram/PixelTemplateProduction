@@ -54,7 +54,7 @@ An example config for 1D barrel templates is:
 
 > 58401 205 250. 1600. 1600. 0.073 0.080 0.080 350. 0
 
-> 0 1 0.0 0.0
+> 0 1 0.0 0.0 0
 
 > 900 60 5 29 0 3.8 125. 263. 0. 1.
 
@@ -92,13 +92,19 @@ Examples can be found in the config\_db directory.
 **test_template**: Uses pre-made 1D templates to run local version of CMSSW 1D template reco and makes various plots. Useful for testing a new set of 1D templates. 
 Should be run a directory with template\_events, generror and template\_summary files. Also takes a config called `test_params.txt`.
 The first line of the config is the same as the `pix_2t.proc` but without the
-nfiles parameter (because it will only use one file). The second line has three
-parameters, the first is the file number of the template (the XXXXX) and the
-second is the `use_l1_offset` parameter, the third is the cross talk fraction. 
+nfiles parameter (because it will only use one file). 
+The second line has six  parameters:
+
+> nFile use_l1_offset xtalk_frac xtalk_noise do_cluster_healing do_IBCs do_2d_templates
+
+nFile is the file number of the template (the XXXXX) and the
+second is the `use_l1_offset` parameter, xtalk_frac is the fractional charge sharing for the cross talk, the xtalk_noise is the gaussian spread on the central value of the charge sharing, do_cluster_healing turns on the cluster healing before the CPEs, do_IBCs turns on the irradiation bias corrections for the generic algorithm, do_2d_templates tests the 2d reco as well and produces some additional plots (2d templates must be provided).
+
+
 
 An example `test_params.txt` config is:
 > 58606 150. 1600. 1600. 0.073 0.080 0.08 350. 0
 
-> 58401 0 0.0 0.0
+> 58401 0 0.0 0.0 1 0 0
 
 
