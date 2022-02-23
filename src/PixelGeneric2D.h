@@ -38,10 +38,10 @@ namespace SiPixelTemplateReco
    
    int PixelGeneric2D(int ID, float cotalpha, float cotbeta, float locBz, float locBx, ClusMatrix & cluster,
                       SiPixelGenError& templ,
-                      float& yrec, float& sigmay, float& xrec, float& sigmax, int& nypix, int& nxpix, float& yfrac, float& xfrac);
+                      float& yrec, float& sigmay, float& xrec, float& sigmax, int& nypix, int& nxpix, float& yfrac, float& xfrac, bool IBC);
    int PixelGeneric2D(int ID, float cotalpha, float cotbeta, ClusMatrix & cluster,
                       SiPixelGenError& templ,
-                      float& yrec, float& sigmay, float& xrec, float& sigmax, int& nypix, int& nxpix, float& yfrac, float& xfrac);
+                      float& yrec, float& sigmay, float& xrec, float& sigmax, int& nypix, int& nxpix, float& yfrac, float& xfrac, bool IBC);
 }
 
 

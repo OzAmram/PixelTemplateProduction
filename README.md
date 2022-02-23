@@ -39,9 +39,9 @@ Many files are produced when making templates but for the 1d production the real
 
 The format `pix_2t.proc` is as follows:
 
-> start\_file nfiles noise thresh1 thresh2 thresh1\_noise_frac common\_noise\_frac gain\_noise\_frac readout\_noise frontend\_type
+> start\_file nfiles noise thresh1 thresh2 thresh1\_noise\_frac common\_noise\_frac gain\_noise\_frac readout\_noise frontend\_type
 
-> use\_l1\_offset write\_header xtalk\_frac xtalk\_spread
+> use\_l1\_offset write\_header xtalk\_frac xtalk\_spread do\_cluster\_healing
 
 
 > id NTy NTyx NTxx DType Bfield VBias temp fluenc qscale 
