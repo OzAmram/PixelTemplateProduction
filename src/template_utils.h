@@ -293,8 +293,8 @@ void apply_xtalk(float pixin[TXSIZE][TYSIZE], int irow_start, float xtfrac = 0.1
 
 void unfold_xtalk(float clust[TXSIZE][TYSIZE], int irow_start, float xtfrac=0.1){
     //unfold cross talk. Remember cluster is flipped compared to before, 
-    // inverse matrix is (1/(2-x)) * |1 - x  -x |
-    //                               | -x  1 -x |
+    // inverse matrix is (1/(1-2x)) * |1 - x  -x |
+    //                                | -x  1 -x |
    if(xtfrac == 0.) return;
    float m11 = 1.-xtfrac;
    float minv11 = m11/(1. - 2.*xtfrac);

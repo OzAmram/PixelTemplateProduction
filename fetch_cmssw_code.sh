@@ -3,7 +3,7 @@
 #You can set the branch variable if you want to use a different branch than cmssw master
 
 base=https://raw.githubusercontent.com/
-branch=cms-sw/cmssw/master/
+branch=cms-sw/cmssw/CMSSW_11_1_X/
 prh_dev_branch=lcorcodilos/cmssw/pixelHistoUL-infrastructure/
 mkdir cmssw_code
 cd cmssw_code/

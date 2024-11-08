@@ -70,12 +70,16 @@ For **gen_zp_template** (which stores resolutions in 2x 1D bins of fixed width) 
 For **gen_zp_template2d** (which stores resolutions in 2D bins) these additional lines should be structured as:
 
 > name
+
 > CotBetaBinEdge1  CotBetaBinEdge2  CotBetaBinEdge3  CotBetaBinEdge4  ...
+
 > CotAlphaBinEdge1  CotAlphaBinEdge2  CotAlphaBinEdge3  CotAlphaBinEdge4  ...
 
 Where the 2nd and 3rd rows can be as long as desired and list the bin edges for
 the CotBeta and CotAlpha binning.
 Examples can be found in the config\_db directory.
+
+Generally resolution histograms are made with the 2D version. 
 
 
 ## Description of Executables

@@ -177,10 +177,6 @@ int main(int argc, char *argv[])
     hp[51] = new TH1F("h_pull_2dtemp_y", "2D Template Reco Pull Y (all clusters)", nx, -5., 5.);
     hp[52] = new TH1F("h_pull_2dtemp_x", "2D Template Reco Pull X (all clusters)", nx, -5., 5.);
 
-    const int pixel_charge_idx = 53;
-    hp[53] = new TH1F("h_pixel_charge_true", "Truth Pixel Charge", 0, 20000, 40);
-    hp[54] = new TH1F("h_pixel_charge_reco", "Reconstructed Pixel Charge", 0, 20000, 40);
-
     const int split_clust_idx = 55;
     hp[55] = new TH1F("h_split_geny","Generic Reco #Deltay (split custs); #Deltay (#mum)",nx,-halfxs,halfxs);
     hp[56] = new TH1F("h_split_genx","Generic Reco #Deltax (split custs); #Deltax (#mum)",nx,-halfxs,halfxs);

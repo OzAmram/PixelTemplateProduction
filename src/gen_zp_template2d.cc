@@ -705,7 +705,9 @@ int main(int argc, char *argv[])
                 hp[23]->Fill((double)(probxy/npixels));
 
                 // Fill the FastSim histograms
-                if(do_reso_hists) fastSimResHistoStore->Fill( dx, dy, (double)cotalpha, (double)cotbeta, qbin, xwidth, ywidth );
+                if(do_reso_hists){
+                    fastSimResHistoStore->Fill( dx, dy, (double)cotalpha, (double)cotbeta, qbin, xwidth, ywidth );
+                }
 
             }
 
