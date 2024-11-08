@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
 
     const int nevents = 30000;
 
-    float xhit[nevents], yhit[nevents], cotalpha, cotbeta;
+    float xhit[nevents], yhit[nevents], cotalpha[nevents], cotbeta[nevents];
 
     float  qsmear[nevents], npix[nevents],  qflx[nevents], qfly[nevents],
     qtotal[nevents];
@@ -167,6 +167,7 @@ int main(int argc, char *argv[])
     auto is_space = [](unsigned char const c) { return std::isspace(c); }; 
     if (fgets(line, 160, config_file) != NULL) {
         std::string s_line = string(line);
+        std::cout << s_line << std::endl;
         if(!std::all_of(s_line.begin(), s_line.end(), is_space)){ //read binning for reso histograms if line not blank
             do_reso_hists = true;
             num_read = sscanf(line, " %s %f %f %i %f %f %i", dtitle, &cotbetaBinWidth, &cotbetaLowEdge, &cotbetaBins, &cotalphaBinWidth, &cotalphaLowEdge, &cotalphaBins);
@@ -580,16 +581,16 @@ int main(int argc, char *argv[])
             read_cluster(events_file, pixin);
 
 
-            cotalpha = cosx/cosz;
-            cotbeta = cosy/cosz;
+            cotalpha[n] = cosx/cosz;
+            cotbeta[n] = cosy/cosz;
 
             //  Pixelav gives hit position at face of pixel, translate to
             //  3d center of the pixel
             //  propagate from edge to center of pixel
             //  negative sign to convert to cmssw coords
             //  these hit coords are centered at 0
-            xhit[n] = -(x1 + (zcen - z1) * cotalpha);
-            yhit[n] = -(y1 + (zcen - z1) * cotbeta);
+            xhit[n] = -(x1 + (zcen - z1) * cotalpha[n]);
+            yhit[n] = -(y1 + (zcen - z1) * cotbeta[n]);
 
             int ndcol = TYSIZE/2 +1;
             std::vector<int> ndhit(ndcol, 0);
@@ -1103,9 +1104,9 @@ int main(int argc, char *argv[])
 
 
         locBx = 1.;
-        if(cotbeta < 0.) locBx = -1.;
+        if(slice->cotbeta < 0.) locBx = -1.;
         locBz = locBx;
-        if(cotalpha < 0.) locBz = -locBx;
+        if(slice->cotalpha < 0.) locBz = -locBx;
 
         templ.sideload(slice, IDtype, locBx, locBz, lorwdy, lorwdx, q50, fbin, xsize, ysize, thick);
 
@@ -1173,13 +1174,13 @@ int main(int argc, char *argv[])
             //with the sign of angle correct (we want to 'add' them) 
 
             float xrec_gen = SiPixelUtils::generic_position_formula(xwidth[n], Q_f_x, Q_l_x, e_f_x, e_l_x,
-                    -lorwdx, thick, cotalpha,
+                    -lorwdx, thick, cotalpha[n],
                     xsize, isBigPix, isBigPix,
                     eff_charge_cut_lowX, eff_charge_cut_highX,
                     size_cutX) - lorbsx;
 
             float yrec_gen = SiPixelUtils::generic_position_formula(ywidth[n], Q_f_y, Q_l_y, e_f_y, e_l_y,
-                    -lorwdy, thick, cotbeta,
+                    -lorwdy, thick, cotbeta[n],
                     ysize, isBigPix, isBigPix,
                     eff_charge_cut_lowY, eff_charge_cut_highY,
                     size_cutY) - lorbsy;
@@ -1237,7 +1238,7 @@ int main(int argc, char *argv[])
             int qbin;
 
 
-            int ierr = PixelTempReco1D(tempID, cotalpha, cotbeta, locBz, locBx,  clusterPayload, templ, yrec, sigmay, proby, xrec, sigmax, probx,  qbin, speed, probQ);
+            int ierr = PixelTempReco1D(tempID, cotalpha[n], cotbeta[n], locBz, locBx,  clusterPayload, templ, yrec, sigmay, proby, xrec, sigmax, probx,  qbin, speed, probQ);
             if(ierr != 0) {
                 printf("First pass reconstruction failed with error %d \n", ierr);
                 printf("cluster \n");
@@ -1281,7 +1282,9 @@ int main(int argc, char *argv[])
                 }
 
                 // Fill the FastSim histograms
-                if(do_reso_hists) fastSimResHistoStore->Fill( dx, dy, (double)cotalpha, (double)cotbeta, qbin, xwidth[n], ywidth[n] );
+                if(do_reso_hists) {
+                    fastSimResHistoStore->Fill( dx, dy, (double)cotalpha[n], (double)cotbeta[n], qbin, xwidth[n], ywidth[n] );
+                }
 
                 //merged cluster qbin first pass chi2
 
@@ -1334,7 +1337,7 @@ int main(int argc, char *argv[])
             int qbin;
 
 
-            int ierr = PixelTempReco1D(tempID, cotalpha, cotbeta, locBz, locBx,  clusterPayload, templ, yrec, sigmay, proby, xrec, sigmax, probx,  qbin, speed, probQ);
+            int ierr = PixelTempReco1D(tempID, cotalpha[n], cotbeta[n], locBz, locBx,  clusterPayload, templ, yrec, sigmay, proby, xrec, sigmax, probx,  qbin, speed, probQ);
             if(ierr != 0) {
                 ++nbad; 
                 printf("2nd pass reconstruction failed with error %d \n", ierr);
